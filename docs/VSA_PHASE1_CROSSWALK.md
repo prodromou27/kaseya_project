@@ -9,24 +9,24 @@
 | VSA0-03 Identity/RBAC | P0-03, P0-04, P0-05 | DONE_VERIFIED | `apps/accounts/*`, `apps/customers/*` | `test_auth.py`, `test_oidc.py`, `test_tenant_isolation.py` | Real Entra UAT is VSAP-01 |
 | VSA0-04 Instance/scope/credential refs/mapping UI | P0-06, P1-03 | DONE_VERIFIED | `IntegrationInstance`, `CustomerSourceMapping`, `secrets.py`, `MappingsPanel.tsx` | `test_admin_api.py`, `test_sync.py` (quarantine) | — |
 | VSA0-05 Audit, export authz, seeds | P0-07, P0-09 | DONE_VERIFIED | `apps/audit/*`, `apps/core/redaction.py`, `seed_demo` | `test_audit_and_errors.py`, `test_reports.py` | — |
-| VSA1-01 API verification, connection test, rate budget, TLS, errors | P1-01 | PARTIAL | `vsa/capabilities.json`, `http.py` | `test_vsa_adapter.py` (50 tests) | No connection-test action (`/ratelimits`); capability record lacks devices/sites/groups/policies |
-| VSA1-02 Adapter orgs/sites/groups/devices/assets | P1-01 | DONE_VERIFIED (fixture, `ea26682`) | `vsa/adapter.py` (assets, organizations, asset detail) | `test_vsa_adapter.py` | **`/sites`, `/groups`, `/devices` missing**; no group ID |
+| VSA1-01 API verification, connection test, rate budget, TLS, errors | P1-01 | PARTIAL | `vsa/capabilities.json`, `http.py` | `test_vsa_adapter.py` (50 tests) | No connection-test action (`/ratelimits`) |
+| VSA1-02 Adapter orgs/sites/groups/devices/assets | P1-01 | DONE_VERIFIED (fixture, `ea26682`) | `vsa/adapter.py` (assets, organizations, sites, groups, devices, asset detail) | `test_vsa_adapter.py`, `test_vsa1_hierarchy_network.py` | LIVE_VALIDATION_PENDING |
 | VSA1-03 SyncRun/Generation/checkpoint/atomic publish | P1-02 | DONE_VERIFIED | `integrations/sync.py`, models | `test_sync.py` (26 tests) | — |
-| VSA1-04 Observation schema: NIC/disks/software/agent/OS/security | P1-04, P1-05 | DONE_VERIFIED (fixture, `ea26682`) | `inventory/models.py`, `software/models.py` | `test_sync.py`, `test_p1_api.py` | **NIC/IP/MAC, disks, security discarded** |
-| VSA1-05 Device list/search/saved views/detail tabs | P1-04, P2-03 | PARTIAL | `inventory/views.py`, `AssetsPage.tsx`, `AssetDetailPage.tsx`, `SavedViews.tsx` | `test_p1_api.py`, `p1.test.tsx`, E2E | No MAC/IP search; no network/hardware/security tabs |
-| VSA1-06 Customer > org > site > group explorer | — | DONE_VERIFIED (fixture, `ea26682`) | — | — | everything |
+| VSA1-04 Observation schema: NIC/disks/software/agent/OS/security | P1-04, P1-05 | DONE_VERIFIED (fixture, `ea26682`) | `inventory/models.py`, `inventory/ingest.py`, `inventory/network.py`, `software/models.py` | `test_sync.py`, `test_p1_api.py`, `test_vsa1_hierarchy_network.py` | LIVE_VALIDATION_PENDING |
+| VSA1-05 Device list/search/saved views/detail tabs | P1-04, P2-03 | PARTIAL | `inventory/views.py`, `AssetsPage.tsx`, `AssetDetailPage.tsx`, `SavedViews.tsx` | `test_p1_api.py`, `p1.test.tsx`, `vsa1.test.tsx`, E2E | Policy, notification and reconciliation tabs |
+| VSA1-06 Customer > org > site > group explorer | — | DONE_VERIFIED (fixture, `ea26682`) | `inventory/hierarchy.py`, `GroupsPage.tsx` | `test_vsa1_hierarchy_network.py`, `vsa1.test.tsx`, E2E `vsa1.spec.ts` | LIVE_VALIDATION_PENDING |
 | VSA2-01 Secure XLSX/CSV importer | — | MISSING | (openpyxl present) | — | everything |
 | VSA2-02 Deterministic matching + review | — | MISSING | — | — | everything |
 | VSA2-03 Compare to pinned complete generation, history, unexpected set | — | MISSING | (pinned generations exist) | — | everything |
 | VSA2-04 Multi-tab XLSX/CSV export | P1-09, P2-04 | PARTIAL | `reporting/renderers.py` (single data sheet) | `test_p2_reporting.py` | multi-sheet workbook |
-| VSA2-05 Group network view, CIDRs, duplicate IPs | — | PARTIAL (`ea26682`) | — | — | depends on VSA1-04 network data |
+| VSA2-05 Group network view, CIDRs, duplicate IPs | — | PARTIAL (`ea26682`) | `inventory/hierarchy.py` (`group_network`), `GroupNetworkPage.tsx` | `test_vsa1_hierarchy_network.py`, `vsa1.test.tsx`, E2E | Expected-subnet policy, threshold flags |
 | VSA3-01 Catalog, aliases, comparator, approvals | P1-06, P1-07 | DONE_VERIFIED | `software/catalog.py`, `comparator.py` | `test_comparator.py` (32), `test_p1_api.py` | — |
 | VSA3-02 Version classification dashboards, no false pending patch | P1-08 | DONE_VERIFIED | `software/queries.py`, `SoftwarePage.tsx` | `test_p1_api.py`, E2E p1 | — |
 | VSA3-03 Available/installed OS updates | P2-01, P2-02 | DONE_VERIFIED | `apps/patching/*`, `WindowsUpdatesPage.tsx` | `test_patching.py` (21), E2E p2 | — |
 | VSA3-04 Applied patch policies, definitions, drift | — | MISSING | — | — | everything (routes verified in docs) |
 | VSA3-05 Report builder, 3 formats, saved filters, provenance, scoped downloads | P1-09, P2-03, P2-04, P2-06 | DONE_VERIFIED | `apps/reporting/*`, `ReportsPage.tsx` | `test_p2_reporting.py`, `test_reports.py`, E2E p2 | New reports for onboarding, network and policy as their data lands |
 | VSA3-06 Schedules, mail only with approved policy | P2-05 | PARTIAL | `reporting/scheduling.py` | `test_p2_reporting.py` | Mail delivery is BLOCKED_APPROVAL (DEC-09); in-portal delivery is done |
-| VSA3-07 Third-party pending/failed/reboot investigation | — | DONE_VERIFIED as explicit-unavailable (`ea26682`); live = BLOCKED_VENDOR | — | docs evidence in `VSA_CURRENT_STATE.md` §3 | Explicit unavailable UI missing; live confirmation BLOCKED_VENDOR |
+| VSA3-07 Third-party pending/failed/reboot investigation | — | DONE_VERIFIED as explicit-unavailable (`ea26682`); live = BLOCKED_VENDOR | `software/capability.py`, `ThirdPartyPatchNotice.tsx` | `test_vsa1_hierarchy_network.py`, `vsa1.test.tsx`, E2E; docs evidence in `VSA_CURRENT_STATE.md` §3 | Live confirmation BLOCKED_VENDOR |
 | VSA4-01 Agent health thresholds/cohorts | P2-02 (partly), RPT-06 | PARTIAL | offline filter, `stale_devices` report | `test_p2_reporting.py` | thresholds, old-agent, cohort denominators |
 | VSA4-02 Hardware, disk, security tri-state | — | MISSING | — | — | depends on VSA1-04 |
 | VSA4-03 Notifications + approved custom fields | — | MISSING | — | — | — |
