@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: portal
+          POSTGRES_USER: portal
+          POSTGRES_PASSWORD: portal
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U portal" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DJANGO_ENV: test
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_PASSWORD: portal
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Django checks and migration drift
+        run: |
+          uv run python manage.py check
+          uv run python manage.py makemigrations --check --dry-run
+      - name: Lock file export is current
+        run: |
+          uv export --frozen --no-dev --no-emit-project --format requirements-txt -o /tmp/requirements.lock -q
+          diff -u requirements.lock /tmp/requirements.lock
+      - name: OpenAPI schema is current
+        run: |
+          uv run python manage.py spectacular --file /tmp/openapi.yaml --validate --fail-on-warn
+          diff -u openapi.yaml /tmp/openapi.yaml
+      - name: Tests (PostgreSQL; includes tenant-isolation, migration up/down)
+        run: uv run python -m pytest -q
+      - name: Deploy checks against production-like settings
+        env:
+          DJANGO_ENV: production
+          DJANGO_SECRET_KEY: ci-only-${{ github.run_id }}-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGH
+          DJANGO_ALLOWED_HOSTS: portal.example.internal
+          SECURE_SSL_REDIRECT: "true"
+          SESSION_COOKIE_SECURE: "true"
+        run: uv run python manage.py check --deploy --fail-level WARNING
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test -- --run
+      - run: npm run build
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose files
+        run: |
+          cp .env.example .env
+          docker compose -f compose.dev.yml config -q
+          mkdir -p secrets && for s in django_secret_key postgres_password oidc_client_secret tls_cert.pem tls_key.pem; do echo x > secrets/$s; done
+          PORTAL_HOSTNAME=portal.example.internal docker compose -f compose.prod.yml config -q
+      - name: Build images
+        run: |
+          docker build -t okp-backend:ci backend
+          docker build -t okp-frontend:ci frontend
+      - name: Images run as non-root
+        run: |
+          test "$(docker run --rm --entrypoint id okp-backend:ci -u)" != "0"
+          test "$(docker run --rm --entrypoint id okp-frontend:ci -u)" != "0"

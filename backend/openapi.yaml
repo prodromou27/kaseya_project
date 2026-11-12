@@ -1,0 +1,1911 @@
+openapi: 3.0.3
+info:
+  title: Odyssey Kaseya Analytics & Reporting Portal API
+  version: 0.1.0
+paths:
+  /api/v1/audit-events/:
+    get:
+      operationId: audit_events_list
+      description: System-wide audit log (super admin / system.audit.read).
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - audit-events
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditEventList'
+          description: ''
+  /api/v1/auth/config/:
+    get:
+      operationId: auth_config_retrieve
+      description: 'Public: which login methods are enabled. Also issues the CSRF
+        cookie for the SPA.'
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Local password login — bootstrap/dev only (SECURITY.md §2). CSRF-protected
+        and rate limited.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/oidc/callback/:
+    get:
+      operationId: auth_oidc_callback_retrieve
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /api/v1/auth/oidc/login/:
+    get:
+      operationId: auth_oidc_login_retrieve
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /api/v1/customers/:
+    get:
+      operationId: customers_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerList'
+          description: ''
+    post:
+      operationId: customers_create
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/v1/customers/{customer_pk}/audit-events/:
+    get:
+      operationId: customers_audit_events_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditEventList'
+          description: ''
+  /api/v1/customers/{customer_pk}/mappings/:
+    get:
+      operationId: customers_mappings_list
+      description: Customer-side mapping list and proposals. Approval is a super-admin
+        review action.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSourceMappingList'
+          description: ''
+    post:
+      operationId: customers_mappings_create
+      description: Customer-side mapping list and proposals. Approval is a super-admin
+        review action.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceMapping'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceMapping'
+          description: ''
+  /api/v1/customers/{customer_pk}/memberships/:
+    get:
+      operationId: customers_memberships_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMembershipList'
+          description: ''
+    post:
+      operationId: customers_memberships_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Membership'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+          description: ''
+  /api/v1/customers/{customer_pk}/memberships/{id}/:
+    patch:
+      operationId: customers_memberships_partial_update
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer membership.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMembership'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+          description: ''
+    delete:
+      operationId: customers_memberships_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer membership.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/customers/{customer_pk}/reports/:
+    get:
+      operationId: customers_reports_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReportRunList'
+          description: ''
+    post:
+      operationId: customers_reports_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportRun'
+          description: ''
+  /api/v1/customers/{id}/:
+    get:
+      operationId: customers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    patch:
+      operationId: customers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomer'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    delete:
+      operationId: customers_destroy
+      description: Customers are archived, never hard-deleted (audit, report and history
+        integrity).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/health/live/:
+    get:
+      operationId: health_live_retrieve
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/health/ready/:
+    get:
+      operationId: health_ready_retrieve
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/integrations/:
+    get:
+      operationId: integrations_list
+      description: 'Global connector configuration (super admin). No delete: disable
+        instead; mappings reference it.'
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIntegrationInstanceList'
+          description: ''
+    post:
+      operationId: integrations_create
+      description: 'Global connector configuration (super admin). No delete: disable
+        instead; mappings reference it.'
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationInstance'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
+  /api/v1/integrations/{id}/:
+    get:
+      operationId: integrations_retrieve
+      description: 'Global connector configuration (super admin). No delete: disable
+        instead; mappings reference it.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
+    patch:
+      operationId: integrations_partial_update
+      description: 'Global connector configuration (super admin). No delete: disable
+        instead; mappings reference it.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedIntegrationInstance'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
+  /api/v1/integrations/options/:
+    get:
+      operationId: integrations_options_retrieve
+      description: Minimal id/name/provider list for users who may propose source
+        mappings.
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/mappings/:
+    get:
+      operationId: mappings_list
+      description: System-wide mapping review queue (super admin). Approve / reject
+        / revoke.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - mappings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSourceMappingList'
+          description: ''
+  /api/v1/mappings/{id}/:
+    get:
+      operationId: mappings_retrieve
+      description: System-wide mapping review queue (super admin). Approve / reject
+        / revoke.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer source mapping.
+        required: true
+      tags:
+      - mappings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceMapping'
+          description: ''
+  /api/v1/mappings/{id}/approve/:
+    post:
+      operationId: mappings_approve_create
+      description: System-wide mapping review queue (super admin). Approve / reject
+        / revoke.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer source mapping.
+        required: true
+      tags:
+      - mappings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Review'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceMapping'
+          description: ''
+  /api/v1/mappings/{id}/reject/:
+    post:
+      operationId: mappings_reject_create
+      description: System-wide mapping review queue (super admin). Approve / reject
+        / revoke.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer source mapping.
+        required: true
+      tags:
+      - mappings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Review'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceMapping'
+          description: ''
+  /api/v1/mappings/{id}/revoke/:
+    post:
+      operationId: mappings_revoke_create
+      description: System-wide mapping review queue (super admin). Approve / reject
+        / revoke.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer source mapping.
+        required: true
+      tags:
+      - mappings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Review'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceMapping'
+          description: ''
+  /api/v1/reports/{id}/:
+    get:
+      operationId: reports_retrieve
+      description: Object routes by report ID. The customer is resolved from the run
+        row, then re-authorised.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report run.
+        required: true
+      tags:
+      - reports
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportRun'
+          description: ''
+  /api/v1/reports/{id}/download/:
+    get:
+      operationId: reports_download_retrieve
+      description: Object routes by report ID. The customer is resolved from the run
+        row, then re-authorised.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report run.
+        required: true
+      tags:
+      - reports
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/roles/:
+    get:
+      operationId: roles_list
+      tags:
+      - roles
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+          description: ''
+  /api/v1/users/:
+    get:
+      operationId: users_list
+      description: System user administration (super admin only). Users are deactivated,
+        never deleted (audit history).
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - users
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+    post:
+      operationId: users_create
+      description: System user administration (super admin only). Users are deactivated,
+        never deleted (audit history).
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: users_retrieve
+      description: System user administration (super admin only). Users are deactivated,
+        never deleted (audit history).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user.
+        required: true
+      tags:
+      - users
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      description: System user administration (super admin only). Users are deactivated,
+        never deleted (audit history).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        actor_label:
+          type: string
+          readOnly: true
+          description: Actor email/system name at event time.
+        action:
+          type: string
+          readOnly: true
+        customer:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        customer_code:
+          type: string
+          readOnly: true
+        target_type:
+          type: string
+          readOnly: true
+        target_id:
+          type: string
+          readOnly: true
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          readOnly: true
+        request_id:
+          type: string
+          readOnly: true
+        metadata:
+          readOnly: true
+      required:
+      - action
+      - actor_label
+      - created_at
+      - customer
+      - customer_code
+      - id
+      - metadata
+      - outcome
+      - request_id
+      - target_id
+      - target_type
+    AuthSourceEnum:
+      enum:
+      - local
+      - oidc
+      type: string
+      description: |-
+        * `local` - Local (bootstrap/dev only)
+        * `oidc` - OIDC (Microsoft Entra ID)
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          maxLength: 32
+        name:
+          type: string
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/CustomerStatusEnum'
+        data_region:
+          type: string
+          description: Approved data residency region.
+          maxLength: 64
+        restricted_data:
+          type: boolean
+          description: 'Restricted/government data: ingestion requires a separately
+            approved deployment (SECURITY.md §6).'
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        my_capabilities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - id
+      - my_capabilities
+      - name
+      - updated_at
+    CustomerStatusEnum:
+      enum:
+      - onboarding
+      - active
+      - suspended
+      - archived
+      type: string
+      description: |-
+        * `onboarding` - Onboarding
+        * `active` - Active
+        * `suspended` - Suspended
+        * `archived` - Archived
+    IntegrationInstance:
+      type: object
+      description: '``credential_ref`` is write-only: responses only say whether one
+        is configured.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        base_url:
+          type: string
+          maxLength: 500
+        region:
+          type: string
+          maxLength: 32
+        credential_ref:
+          type: string
+          writeOnly: true
+          maxLength: 200
+        credential_configured:
+          type: boolean
+          readOnly: true
+        enabled:
+          type: boolean
+        verify_tls:
+          type: boolean
+          readOnly: true
+        max_rps:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        status:
+          allOf:
+          - $ref: '#/components/schemas/IntegrationInstanceStatusEnum'
+          readOnly: true
+        is_fixture:
+          type: boolean
+          description: True for demo/fixture-backed instances. Never mixed with live
+            data.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - base_url
+      - created_at
+      - credential_configured
+      - id
+      - name
+      - provider
+      - status
+      - updated_at
+      - verify_tls
+    IntegrationInstanceStatusEnum:
+      enum:
+      - idle
+      - queued
+      - running
+      - partial
+      - failed
+      - completed
+      - disabled
+      type: string
+      description: |-
+        * `idle` - Idle
+        * `queued` - Queued
+        * `running` - Running
+        * `partial` - Partial
+        * `failed` - Failed
+        * `completed` - Completed
+        * `disabled` - Disabled
+    IntegrationRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        is_fixture:
+          type: boolean
+          description: True for demo/fixture-backed instances. Never mixed with live
+            data.
+      required:
+      - id
+      - name
+      - provider
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 256
+      required:
+      - email
+      - password
+    MappingStatusEnum:
+      enum:
+      - proposed
+      - approved
+      - rejected
+      - revoked
+      type: string
+      description: |-
+        * `proposed` - Proposed (not trusted)
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `revoked` - Revoked
+    Membership:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/UserRef'
+          readOnly: true
+        email:
+          type: string
+          format: email
+          writeOnly: true
+        role:
+          type: string
+        can_export:
+          type: boolean
+          description: Grants export to a viewer membership.
+        is_active:
+          type: boolean
+          readOnly: true
+        granted_by:
+          type: string
+          format: email
+          readOnly: true
+        granted_at:
+          type: string
+          format: date-time
+          readOnly: true
+        revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - granted_at
+      - granted_by
+      - id
+      - is_active
+      - revoked_at
+      - role
+      - updated_at
+      - user
+    OutcomeEnum:
+      enum:
+      - success
+      - denied
+      - failure
+      type: string
+      description: |-
+        * `success` - Success
+        * `denied` - Denied
+        * `failure` - Failure
+    PaginatedAuditEventList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+    PaginatedCustomerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+    PaginatedIntegrationInstanceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationInstance'
+    PaginatedMembershipList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Membership'
+    PaginatedReportRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportRun'
+    PaginatedSourceMappingList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceMapping'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    PatchedCustomer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          maxLength: 32
+        name:
+          type: string
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/CustomerStatusEnum'
+        data_region:
+          type: string
+          description: Approved data residency region.
+          maxLength: 64
+        restricted_data:
+          type: boolean
+          description: 'Restricted/government data: ingestion requires a separately
+            approved deployment (SECURITY.md §6).'
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        my_capabilities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+    PatchedIntegrationInstance:
+      type: object
+      description: '``credential_ref`` is write-only: responses only say whether one
+        is configured.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        base_url:
+          type: string
+          maxLength: 500
+        region:
+          type: string
+          maxLength: 32
+        credential_ref:
+          type: string
+          writeOnly: true
+          maxLength: 200
+        credential_configured:
+          type: boolean
+          readOnly: true
+        enabled:
+          type: boolean
+        verify_tls:
+          type: boolean
+          readOnly: true
+        max_rps:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        status:
+          allOf:
+          - $ref: '#/components/schemas/IntegrationInstanceStatusEnum'
+          readOnly: true
+        is_fixture:
+          type: boolean
+          description: True for demo/fixture-backed instances. Never mixed with live
+            data.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedMembership:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/UserRef'
+          readOnly: true
+        email:
+          type: string
+          format: email
+          writeOnly: true
+        role:
+          type: string
+        can_export:
+          type: boolean
+          description: Grants export to a viewer membership.
+        is_active:
+          type: boolean
+          readOnly: true
+        granted_by:
+          type: string
+          format: email
+          readOnly: true
+        granted_at:
+          type: string
+          format: date-time
+          readOnly: true
+        revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedUser:
+      type: object
+      description: Super-admin user management. No password hash, OIDC subject or
+        session data is ever returned.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        display_name:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
+        auth_source:
+          allOf:
+          - $ref: '#/components/schemas/AuthSourceEnum'
+          readOnly: true
+        global_role:
+          type: string
+          nullable: true
+        oidc_linked:
+          type: boolean
+          readOnly: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 256
+    ProviderEnum:
+      enum:
+      - vsa_x
+      - itglue
+      - autotask
+      type: string
+      description: |-
+        * `vsa_x` - Kaseya VSA X
+        * `itglue` - IT Glue
+        * `autotask` - Autotask PSA
+    ReportRequest:
+      type: object
+      properties:
+        report_type:
+          $ref: '#/components/schemas/ReportTypeEnum'
+        format:
+          type: string
+          default: csv
+          maxLength: 8
+        filters:
+          type: object
+          additionalProperties: {}
+      required:
+      - report_type
+    ReportRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        customer:
+          type: string
+          format: uuid
+          readOnly: true
+        customer_code:
+          type: string
+          readOnly: true
+        requested_by:
+          type: string
+          format: email
+          readOnly: true
+        report_type:
+          type: string
+          readOnly: true
+        format:
+          type: string
+          readOnly: true
+        filters:
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/StateEnum'
+          readOnly: true
+        row_count:
+          type: integer
+          readOnly: true
+          nullable: true
+        data_basis:
+          type: string
+          readOnly: true
+          description: fixture|live|portal_internal
+        error_code:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        download_available:
+          type: boolean
+          readOnly: true
+      required:
+      - completed_at
+      - created_at
+      - customer
+      - customer_code
+      - data_basis
+      - download_available
+      - error_code
+      - filters
+      - format
+      - id
+      - report_type
+      - requested_by
+      - row_count
+      - started_at
+      - state
+    ReportTypeEnum:
+      enum:
+      - customer_audit_log
+      type: string
+      description: '* `customer_audit_log` - customer_audit_log'
+    Review:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 2000
+    Role:
+      type: object
+      properties:
+        key:
+          type: string
+          maxLength: 32
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        is_global:
+          type: boolean
+        capabilities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - capabilities
+      - key
+      - name
+    SourceMapping:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        customer:
+          type: object
+          additionalProperties:
+            type: string
+          readOnly: true
+        integration_instance:
+          type: string
+          format: uuid
+        integration:
+          allOf:
+          - $ref: '#/components/schemas/IntegrationRef'
+          readOnly: true
+        external_org_id:
+          type: string
+          description: Vendor organisation ID (stored as text).
+          maxLength: 128
+        external_org_name:
+          type: string
+          description: Informational only; never used as an identity key.
+          maxLength: 255
+        mapping_status:
+          allOf:
+          - $ref: '#/components/schemas/MappingStatusEnum'
+          readOnly: true
+          default: proposed
+        proposed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        review_note:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - customer
+      - external_org_id
+      - id
+      - integration
+      - integration_instance
+      - mapping_status
+      - proposed_by
+      - review_note
+      - reviewed_at
+      - reviewed_by
+      - updated_at
+    StateEnum:
+      enum:
+      - queued
+      - running
+      - completed
+      - failed
+      type: string
+      description: |-
+        * `queued` - Queued
+        * `running` - Running
+        * `completed` - Completed
+        * `failed` - Failed
+    User:
+      type: object
+      description: Super-admin user management. No password hash, OIDC subject or
+        session data is ever returned.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        display_name:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
+        auth_source:
+          allOf:
+          - $ref: '#/components/schemas/AuthSourceEnum'
+          readOnly: true
+        global_role:
+          type: string
+          nullable: true
+        oidc_linked:
+          type: boolean
+          readOnly: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 256
+      required:
+      - auth_source
+      - date_joined
+      - email
+      - id
+      - last_login
+      - oidc_linked
+    UserRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        display_name:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
+      required:
+      - email
+      - id
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: okp_session

@@ -1,0 +1,47 @@
+[project]
+name = "odyssey-kaseya-portal-backend"
+version = "0.1.0"
+description = "Odyssey Kaseya Analytics & Reporting Portal — Django REST API and workers"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "django>=5.2.19,<5.3",
+    "djangorestframework>=3.18.2,<3.19",
+    "drf-spectacular>=0.28",
+    "psycopg[binary]>=3.2,<4",
+    "celery>=5.5,<6",
+    "redis>=5.2,<7",
+    "PyJWT[crypto]>=2.10,<3",
+    "requests>=2.32,<3",
+    "gunicorn>=23,<24",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.11",
+    "factory-boy>=3.3",
+    "ruff>=0.11",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["apps/*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "DJ", "RUF", "SIM"]
+ignore = ["RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+"config/settings.py" = ["S105"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning:celery.*"]

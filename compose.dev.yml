@@ -1,0 +1,117 @@
+# Development stack. Fixture/demo mode only — no vendor credentials.
+#   cp .env.example .env   # then edit values
+#   docker compose -f compose.dev.yml up --build
+# Only the proxy publishes a port, bound to 127.0.0.1. PostgreSQL and Redis are on an internal-only network.
+name: okp-dev
+
+x-backend: &backend
+  build: ./backend
+  env_file: .env
+  environment:
+    DJANGO_ENV: development
+    POSTGRES_HOST: db
+    POSTGRES_PORT: "5432"
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_TASK_ALWAYS_EAGER: "false"
+    REPORT_STORAGE_DIR: /app/var/reports
+    DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
+    DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+  volumes:
+    - ./backend:/app
+    - reports:/app/var/reports
+  depends_on:
+    db: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  networks: [data, web]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-portal}
+      POSTGRES_USER: ${POSTGRES_USER:-portal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [data]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--protected-mode", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [data]
+
+  backend:
+    <<: *backend
+    environment:
+      DJANGO_ENV: development
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_TASK_ALWAYS_EAGER: "false"
+      REPORT_STORAGE_DIR: /app/var/reports
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+      RUN_MIGRATIONS: "1"
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "config", "worker", "-Q", "maintenance,reports", "-l", "info", "--concurrency", "2"]
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping", "--timeout", "5"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npx vite --host 0.0.0.0 --port 5173"]
+    environment:
+      VITE_DEV_BACKEND: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5173/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [web]
+
+  proxy:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    volumes:
+      - ./infra/nginx/dev.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      backend: { condition: service_started }
+      frontend: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [web]
+
+networks:
+  data:
+    internal: true
+  web: {}
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  reports: {}
+  frontend_node_modules: {}

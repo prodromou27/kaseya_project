@@ -1,0 +1,142 @@
+# Production-shaped stack for the AlmaLinux host (docs/DEPLOYMENT.md). NOT yet validated on the target host.
+# Secrets are files under ./secrets (chmod 600, never committed) mounted as Docker secrets.
+#   docker compose -f compose.prod.yml --env-file .env.prod up -d --build
+name: okp
+
+x-app: &app
+  build: ./backend
+  image: okp-backend:${OKP_VERSION:-local}
+  environment:
+    DJANGO_ENV: production
+    DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
+    POSTGRES_HOST: db
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: ${POSTGRES_DB:-portal}
+    POSTGRES_USER: ${POSTGRES_USER:-portal}
+    POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    CELERY_BROKER_URL: redis://redis:6379/0
+    REPORT_STORAGE_DIR: /app/var/reports
+    DJANGO_ALLOWED_HOSTS: ${PORTAL_HOSTNAME:?set PORTAL_HOSTNAME},backend
+    DJANGO_CSRF_TRUSTED_ORIGINS: https://${PORTAL_HOSTNAME}
+    TRUST_PROXY_TLS_HEADER: "true"
+    LOCAL_LOGIN_ENABLED: ${LOCAL_LOGIN_ENABLED:-false}
+    OIDC_ENABLED: ${OIDC_ENABLED:-false}
+    OIDC_ISSUER: ${OIDC_ISSUER:-}
+    OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+    OIDC_CLIENT_SECRET_FILE: /run/secrets/oidc_client_secret
+    OIDC_REDIRECT_URI: https://${PORTAL_HOSTNAME}/api/v1/auth/oidc/callback/
+    OIDC_AUTO_PROVISION: ${OIDC_AUTO_PROVISION:-true}
+    CONNECTOR_ALLOWED_HOSTS_VSA_X: ${CONNECTOR_ALLOWED_HOSTS_VSA_X:-}
+    CONNECTOR_APPROVED_PRIVATE_CIDRS: ${CONNECTOR_APPROVED_PRIVATE_CIDRS:-}
+  secrets: [django_secret_key, postgres_password, oidc_client_secret]
+  volumes: [reports:/app/var/reports]
+  depends_on:
+    db: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  networks: [data, web]
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-portal}
+      POSTGRES_USER: ${POSTGRES_USER:-portal}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--protected-mode", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  backend:
+    <<: *app
+    environment:
+      DJANGO_ENV: production
+      DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-portal}
+      POSTGRES_USER: ${POSTGRES_USER:-portal}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REPORT_STORAGE_DIR: /app/var/reports
+      DJANGO_ALLOWED_HOSTS: ${PORTAL_HOSTNAME},backend
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://${PORTAL_HOSTNAME}
+      TRUST_PROXY_TLS_HEADER: "true"
+      LOCAL_LOGIN_ENABLED: ${LOCAL_LOGIN_ENABLED:-false}
+      OIDC_ENABLED: ${OIDC_ENABLED:-false}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET_FILE: /run/secrets/oidc_client_secret
+      OIDC_REDIRECT_URI: https://${PORTAL_HOSTNAME}/api/v1/auth/oidc/callback/
+      OIDC_AUTO_PROVISION: ${OIDC_AUTO_PROVISION:-true}
+      CONNECTOR_ALLOWED_HOSTS_VSA_X: ${CONNECTOR_ALLOWED_HOSTS_VSA_X:-}
+      CONNECTOR_APPROVED_PRIVATE_CIDRS: ${CONNECTOR_APPROVED_PRIVATE_CIDRS:-}
+      RUN_MIGRATIONS: "1"
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "config", "worker", "-Q", "maintenance,reports", "-l", "info", "--concurrency", "2"]
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping", "--timeout", "5"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+
+  proxy:
+    build: ./frontend
+    image: okp-frontend:${OKP_VERSION:-local}
+    environment:
+      PORTAL_HOSTNAME: ${PORTAL_HOSTNAME}
+      NGINX_ENVSUBST_FILTER: PORTAL_HOSTNAME
+    volumes:
+      - ./infra/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+    secrets: [tls_cert, tls_key]
+    ports: ["80:8080", "443:8443"]
+    depends_on:
+      backend: { condition: service_healthy }
+    networks: [web]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+networks:
+  data:
+    internal: true
+  web: {}
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  reports: {}
+
+secrets:
+  django_secret_key: { file: ./secrets/django_secret_key }
+  postgres_password: { file: ./secrets/postgres_password }
+  oidc_client_secret: { file: ./secrets/oidc_client_secret }
+  tls_cert: { file: ./secrets/tls_cert.pem }
+  tls_key: { file: ./secrets/tls_key.pem }
