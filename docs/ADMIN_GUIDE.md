@@ -1,0 +1,88 @@
+# Administrator guide — intended workflows
+
+**Status:** Functional specification for the portal administration UI and runbooks. Screen labels/routes are targets until implemented. Do not use this as a claim of deployed functionality.
+
+## 1. Responsibilities and roles
+
+- **Super administrator:** instance settings, identity and security policy, integration credential references, global customer mappings, audit access.
+- **Administrator:** scoped customer setup, engineer memberships, source-to-customer mapping review, schedules/catalog approvals within delegated rights.
+- **Engineer:** authorized customer read/search/report and manual read-only sync if permitted.
+- **Viewer:** assigned customer read access; exports only with explicit permission.
+
+Every administrative change must produce an audit event with actor, target, timestamp, before/after-safe summary, and outcome.
+
+## 2. Initial application provisioning
+
+1. Verify infrastructure/TLS/backup prerequisites from `DEPLOYMENT.md`.
+2. Complete migrations and create the **one-time local bootstrap administrator** on the management network.
+3. Register Microsoft Entra OIDC client; configure redirect/logout URLs, issuer, audience, trusted certs, MFA policy.
+4. Test SSO with a nonadmin user and audit events. Disable/restrict local auth and revoke/rotate bootstrap credentials.
+5. Set approved retention policy, report artifact storage, SMTP (optional), timezone, source freshness thresholds and alert channels.
+6. Validate each role against access matrix in `SECURITY.md` before onboarding real data.
+
+## 3. Onboard a new customer
+
+1. Open **Administration → Customers → Add customer**.
+2. Record customer code, name, status, data-processing approval reference, permitted retention and hosting classification.
+3. Assign engineers/viewers with minimum required permissions.
+4. Select integration instance(s) and retrieve available source organizations **without importing customer data**.
+5. Map exact source organization IDs. Record reviewer and approval. Never map only on fuzzy name similarity.
+6. Run a **preview/dry-run** that estimates asset count, API request budget and excluded/missing mappings.
+7. Authorize an initial **read-only** sync and verify asset counts directly against source UI; mark customer active only when validation succeeds.
+8. Generate first inventory report, review source timestamp and document acceptance.
+
+Government/CYTA and other restricted customers require specific approval, potentially a separate instance. Never assume the central Odyssey portal is an approved data destination.
+
+## 4. Configure VSA X integration
+
+1. Generate a vendor API token under a dedicated service identity using applicable minimum permissions.
+2. In **Integrations → Add VSA X**, choose supported HTTPS base URL, credentials reference, trust chain, and approved egress range.
+3. Test authentication using a harmless documented GET with bounded requests.
+4. Check accessible organization IDs, review allowed customer mappings, select data sections (`InstalledSoftware`, `AvailableUpdates`, etc.) and max concurrent requests.
+5. Define sync frequency from the observed request budget; monitor 429 and latency.
+6. Test one pilot customer against VSA UI results and confirm installed software/version consistency.
+7. Enable the schedule only after signed-off validation.
+
+If a connector reports unauthorized or TLS failures: suspend only that integration, preserve last published data, and show stale status. Do not disable TLS verification.
+
+## 5. IT Glue integration
+
+Choose the **actual account region**: US/EU/AU official endpoint. Configure `x-api-key` through vault reference. Restrict dataset to organizations and explicitly approved configuration fields. **Passwords and secret resources remain excluded.** Review source org mappings and run a preview before importing.
+
+## 6. Autotask PSA integration
+
+Configure API-only resource credentials and integration code; discover correct zone as documented. Confirm that API security level is copied and restricted, not an unrestricted default unless there is a documented approved exception. Restrict to company and ticket metadata. Reconcile company IDs to customer mappings and sample-compare counts with PSA UI.
+
+## 7. Software catalog review
+
+1. Import a catalog spreadsheet with `vendor`, `product`, `edition`, `channel`, `architecture`, `reference_version`, `source_url`, `verified_at`.
+2. Review proposed aliases and collision warnings.
+3. Verify the reference source and release channel. Make a revision immutable once approved.
+4. Preview impact: which existing installations change classification, how many become unknown/newer/outdated.
+5. Approve/reject and publish with named reviewer and audit record.
+6. Re-run compliance calculations asynchronously for affected approved customers only; preserve older reports and catalog revision links.
+
+A catalog update never means the portal is deploying a patch.
+
+## 8. Manage schedules and reports
+
+- Define schedules per customer and dataset, with timezone and rate-budget estimates.
+- Require completed source snapshot for formal reports; if stale datasets are permitted for investigative reports, watermark them.
+- Confirm recipient/customer authorization, report retention and export policies.
+- Review failed runs and retry under idempotency control; do not create unbounded duplicate schedules.
+
+## 9. Troubleshooting quick table
+
+| Symptom | Investigation | Safe action |
+|---|---|---|
+| VSA 401 | Token/permissions/endpoint | Review identity/secret ref; stop retries |
+| VSA 429 | API budget and `Retry-After` | Throttle or defer; preserve last snapshot |
+| Missing customer assets | Source mapping, rejected/quarantined rows, pagination | Correct mapping and rerun approved preview |
+| Wrong software comparison | Alias/channel/architecture/catalog revision | Mark unknown, review reference, reclassify |
+| Empty PSA tickets | API user rights, zone and mapping | Verify permissions in test scope |
+| Report download denied | Customer membership/retention expiry | Reauthorize, do not bypass RBAC |
+| PostgreSQL unavailable | DB health, storage, migrations | Follow restore/incident runbook |
+
+## 10. Operational governance
+
+Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: role membership and customer mapping review, catalog source review, backup health and report-retention audit. Quarterly: access review, restore exercise, vulnerability/dependency scans, least privilege validation and capacity trends (frequency subject to internal policy).
