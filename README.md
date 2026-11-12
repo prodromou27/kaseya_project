@@ -1,6 +1,6 @@
 # Odyssey Kaseya Analytics & Reporting Portal
 
-**Project state:** Specifications and implementation playbook only. **No runnable application is included in this documentation package.**
+**Project state:** P0 foundation implemented and tested (auth, RBAC, customer isolation, audit, admin UI). The P0 gate is open until a Docker boot, a green CI run and owner sign-off. **No vendor connector exists yet; the portal shows no vendor data.** See [PHASE_ACCEPTANCE_P0.md](docs/PHASE_ACCEPTANCE_P0.md).
 
 **Owner:** Odyssey internal engineering  
 **Deployment target:** Internal AlmaLinux host, Docker Compose  
@@ -78,6 +78,44 @@ odyssey-kaseya-portal/
 ```
 
 *Directories are targets for the coding agent to implement, not files delivered in this package.*
+
+## 5a. Running the application locally
+
+Prerequisites: Python 3.12 with [uv](https://docs.astral.sh/uv/), Node 22+, and PostgreSQL 16+ (or Docker).
+
+**With Docker Compose** (not yet validated, see the P0 record):
+
+```bash
+cp .env.example .env          # set POSTGRES_PASSWORD, DJANGO_SECRET_KEY, DEMO_USER_PASSWORD
+docker compose -f compose.dev.yml up --build
+docker compose -f compose.dev.yml exec backend python manage.py seed_demo
+# open http://127.0.0.1:8080
+```
+
+**Without Docker** (verified path):
+
+```bash
+cd backend
+uv sync --frozen
+export POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 POSTGRES_DB=portal POSTGRES_USER=portal POSTGRES_PASSWORD=...
+export CELERY_TASK_ALWAYS_EAGER=true          # no Redis needed for local dev
+uv run python manage.py migrate
+BOOTSTRAP_ADMIN_PASSWORD=... uv run python manage.py bootstrap_admin --email you@example.com   # one-time
+DEMO_USER_PASSWORD=... uv run python manage.py seed_demo                                       # optional DEMO data
+uv run python manage.py runserver 127.0.0.1:8000
+
+cd ../frontend && npm ci && npm run dev       # http://127.0.0.1:5173 (proxies /api to :8000)
+```
+
+**Checks:**
+
+```bash
+cd backend  && uv run ruff check . && uv run ruff format --check . && uv run python -m pytest -q   # needs PostgreSQL
+cd frontend && npm run lint && npm run typecheck && npm run test -- --run && npm run build
+cd frontend && DEMO_USER_PASSWORD=... npx playwright test   # against a running, seeded stack
+```
+
+Tests run only against PostgreSQL, never SQLite. API schema: `backend/openapi.yaml`, regenerated with `manage.py spectacular --file openapi.yaml`.
 
 ## 6. Starting implementation with Codex or Claude Code
 

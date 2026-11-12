@@ -16,6 +16,13 @@
 | ADR-008 | Docker Compose on AlmaLinux | Approved internal host pattern | Proposed pending operations validation |
 | ADR-009 | No secret retrieval from IT Glue | Reporting requirement does not need privileged credential content | Mandatory |
 | ADR-010 | Per-customer data-processing approval | Contractual restrictions vary by customer | Mandatory |
+| ADR-011 | Role capabilities defined in code (`apps/accounts/roles.py`); `Role` table seeded by migration | Capabilities cannot drift through runtime edits and stay reviewable in code review | Implemented (P0) |
+| ADR-012 | Customer-scoped denials return 404 (not 403) and are audited | Prevents customer-existence leaks while keeping denial evidence | Implemented (P0) |
+| ADR-013 | `SECURE_HSTS_PRELOAD` off by default; `security.W021` silenced only while it is off | The portal is an internal host; the preload list is for public domains | Implemented (P0) |
+| ADR-014 | Customers are archived, users disabled, integrations disabled — never hard-deleted | Preserves audit, report and mapping history; FKs use `PROTECT` | Implemented (P0) |
+| ADR-015 | Fixture integration instances must use `https://*.invalid` and may not hold credential references | A fixture record can never resolve to a real endpoint or be mistaken for live data | Implemented (P0) |
+| ADR-016 | OIDC users matched by (issuer, subject) only; auto-provisioned users get no grants; email collisions need admin linking | Prevents account takeover by email; least privilege | Implemented (P0, mock IdP) |
+| ADR-017 | Frontend pinned to proven majors (React Router 7, TanStack Table 8, Vite 7, TypeScript 5.9, ESLint 9) instead of the newest majors | Avoids building on APIs that are not yet verified; upgrade deliberately later | Implemented (P0) |
 
 ## Open decisions requiring authorized owners
 
@@ -31,6 +38,7 @@
 | DEC-08 | Reporting owner | Approved catalog sources, refresh/review cadence and exception owner? | Unknown classifications when not reviewed |
 | DEC-09 | Business owner | Customer-specific retention schedules, report recipients and allowed email distribution? | Export delivery disabled until approved |
 | DEC-10 | Team lead | First pilot customer and acceptance comparison baseline? | Synthetic demo only |
+| DEC-11 | Security | Require four-eyes review (proposer ≠ approver) for source-mapping approval? | Single super-admin approval, audited |
 
 ## Issue escalation
 

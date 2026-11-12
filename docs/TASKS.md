@@ -1,20 +1,20 @@
 # Implementation task backlog (agent-ready)
 
-**Status:** All unchecked; this package contains documentation only. Update only after tested code is merged/reviewed. Record actual evidence/commit in phase acceptance notes.
+**Status (2026-11-12):** P0-01 and P0-03 to P0-08 are implemented and tested at commit `d799241`. P0-02 is implemented but has not been booted (no Docker host). P0-09 is open. Evidence: [PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md). Update only after tested code is merged/reviewed.
 
 **Convention:** `P<phase>-<task>` task ID; C=critical, H=high, M=medium. Finish dependencies and acceptance conditions before marking checked.
 
 ## P0 — Application foundation
 
-- [ ] **P0-01 [C] Repository & quality setup:** Create Django/React monorepo, lock files, Ruff/ESLint/TypeScript strict, pytest/Vitest/Playwright, CI. **AC:** clean clone runs basic checks.
-- [ ] **P0-02 [C] Docker developer stack:** PostgreSQL, Redis, backend, frontend, proxy, worker; persistent volumes, health checks. **AC:** demo stack boots; no externally exposed DB/Redis.
-- [ ] **P0-03 [C] Core database and migrations:** User, Customer, Membership, Role, IntegrationInstance, CustomerSourceMapping, AuditEvent. **AC:** migrate/up/down on PostgreSQL.
-- [ ] **P0-04 [C] Identity and sessions:** secure bootstrap admin + OIDC integration contract/mocks, server-side sessions. **AC:** admin login; anonymous denied; secure cookies/CSRF tests.
-- [ ] **P0-05 [C] Tenant authorization:** Scope all DRF endpoints and services, deny default customer. **AC:** IDOR tests for list/detail/search/export/job.
-- [ ] **P0-06 [H] Customer admin UI:** customer CRUD, grant/revoke permissions, mappings review (internal write only). **AC:** role matrix and audit verified.
-- [ ] **P0-07 [H] Audit and errors:** structured audit/logging, redaction, API error standard, request IDs. **AC:** events and sensitive-data redaction tests.
-- [ ] **P0-08 [H] UI foundation:** navigation, customer selector, account status, empty/error/loading states, accessible table shell. **AC:** React tests/build.
-- [ ] **P0-09 [C] Foundation gate:** PostgreSQL backend tests, frontend checks, security negatives, Demo seeding, proof of boot. **AC:** signed phase record.
+- [x] **P0-01 [C] Repository & quality setup:** Create Django/React monorepo, lock files, Ruff/ESLint/TypeScript strict, pytest/Vitest/Playwright, CI. **AC:** clean clone runs basic checks. — *Done `d799241`: clean clone ran lint, typecheck, 146 backend and 23 frontend tests, and the build. CI workflows written, not yet run (no remote).*
+- [ ] **P0-02 [C] Docker developer stack:** PostgreSQL, Redis, backend, frontend, proxy, worker; persistent volumes, health checks. **AC:** demo stack boots; no externally exposed DB/Redis. — *Implemented (Dockerfiles, compose.dev/prod, nginx), **not booted**: no Docker in the dev environment.*
+- [x] **P0-03 [C] Core database and migrations:** User, Customer, Membership, Role, IntegrationInstance, CustomerSourceMapping, AuditEvent. **AC:** migrate/up/down on PostgreSQL. — *Done `d799241`: migrations up/down tested on PostgreSQL 16.2.*
+- [x] **P0-04 [C] Identity and sessions:** secure bootstrap admin + OIDC integration contract/mocks, server-side sessions. **AC:** admin login; anonymous denied; secure cookies/CSRF tests. — *Done `d799241`: OIDC tested against a mock IdP only; real Entra UAT is P5-01.*
+- [x] **P0-05 [C] Tenant authorization:** Scope all DRF endpoints and services, deny default customer. **AC:** IDOR tests for list/detail/search/export/job. — *Done `d799241`: IDOR tests for list/search/detail/nested/report/artifact/job/revocation, plus a mutation check.*
+- [x] **P0-06 [H] Customer admin UI:** customer CRUD, grant/revoke permissions, mappings review (internal write only). **AC:** role matrix and audit verified. — *Done `d799241`.*
+- [x] **P0-07 [H] Audit and errors:** structured audit/logging, redaction, API error standard, request IDs. **AC:** events and sensitive-data redaction tests. — *Done `d799241`: includes a PostgreSQL append-only trigger.*
+- [x] **P0-08 [H] UI foundation:** navigation, customer selector, account status, empty/error/loading states, accessible table shell. **AC:** React tests/build. — *Done `d799241`.*
+- [ ] **P0-09 [C] Foundation gate:** PostgreSQL backend tests, frontend checks, security negatives, Demo seeding, proof of boot. **AC:** signed phase record. — *Open: needs a Docker boot, a green CI run and owner sign-off. Non-container boot and 5 Playwright E2E tests passed.*
 
 ## P1 — VSA X inventory and software versions
 

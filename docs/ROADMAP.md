@@ -1,6 +1,6 @@
 # Product roadmap and delivery gates
 
-**State:** Design baseline as of 2026-11-12. The items are **planned**, not completed application features. Use `TASKS.md` for implementation tracking.
+**State:** Design baseline as of 2026-11-12. **P0 foundation is implemented and tested (commit `d799241`). Its gate is open until a Docker boot, a green CI run and owner sign-off** ([PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md)). P1–P5 are planned. Use `TASKS.md` for implementation tracking.
 
 ## Objectives
 
