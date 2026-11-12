@@ -20,6 +20,7 @@ import {
   type SoftwareSummary,
 } from "../../lib/types";
 import { softwareColumns } from "../inventory/AssetDetailPage";
+import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { DataSources } from "../inventory/DataSources";
 import { ExportButton } from "../reports/ExportButton";
 
@@ -42,6 +43,7 @@ function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: Complian
   return (
     <>
       <Notice tone="info">{s.disclaimer}</Notice>
+      <div className="mt-2"><ThirdPartyPatchNotice status={s.third_party_patch_status} /></div>
       <div className="my-3 grid grid-cols-2 gap-2 md:grid-cols-4">
         <Metric label="Version compliance" value={pct(s.version_compliance_pct)}
                 hint={`current / (current + outdated) = ${s.totals.current} / ${s.totals.current + s.totals.outdated}`} />

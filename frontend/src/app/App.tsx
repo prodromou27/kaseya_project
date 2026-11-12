@@ -6,6 +6,8 @@ import { LoadingState } from "../components/States";
 import { AdminPage } from "../features/admin/AdminPage";
 import { AssetDetailPage } from "../features/inventory/AssetDetailPage";
 import { AssetsPage } from "../features/inventory/AssetsPage";
+import { GroupNetworkPage } from "../features/groups/GroupNetworkPage";
+import { GroupsPage } from "../features/groups/GroupsPage";
 import { WindowsUpdatesPage } from "../features/patching/WindowsUpdatesPage";
 import { SoftwarePage } from "../features/software/SoftwarePage";
 import { LoginPage } from "../features/auth/LoginPage";
@@ -51,6 +53,8 @@ export function AppRoutes() {
         <Route path="assets" element={<AssetsPage />} />
         <Route path="assets/:assetId" element={<AssetDetailPage />} />
         <Route path="software" element={<SoftwarePage />} />
+        <Route path="groups" element={<GroupsPage />} />
+        <Route path="groups/:groupId" element={<GroupNetworkPage />} />
         <Route path="windows-updates" element={<WindowsUpdatesPage />} />
         <Route path="itglue" element={<NotYetAvailablePage title="IT Glue" phase="P3" />} />
         <Route path="autotask" element={<NotYetAvailablePage title="Autotask PSA" phase="P4" />} />

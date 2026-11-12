@@ -26,6 +26,7 @@ from apps.accounts import scope
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
 from apps.customers.models import Customer, CustomerSourceMapping
+from apps.inventory.ingest import collect_hierarchy, record_details
 from apps.patching.ingest import (
     carry_forward,
     pending_installed,
@@ -163,6 +164,7 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
         for page in adapter.iter_asset_pages(run.mapping.external_org_id, start_skip=run.next_skip):
             _ingest_page(run, generation, page)
         _collect_installed_updates(run, generation, adapter)
+        collect_hierarchy(run, generation, adapter)
         _finalize(run, generation)
     except VendorAuthError:
         return _fail(run, "auth_failed", instance_status=IntegrationInstance.Status.FAILED)
@@ -320,6 +322,7 @@ def _ingest_page(run: SyncRun, generation: DatasetGeneration, page: AssetPage) -
             if not created:
                 continue  # replayed page or duplicate across pages: idempotent
             record_list_sections(observation, asset_data)
+            record_details(observation, asset_data)
             if software:
                 seen: Counter[tuple[str, str, str]] = Counter()
                 rows = []

@@ -146,6 +146,8 @@ export type AssetRow = {
   device_type: string;
   group_name: string;
   site_external_id: string;
+  site_name: string;
+  group_external_id: string;
   organization_external_id: string;
   client_version: string;
   last_seen_online: string | null;
@@ -188,6 +190,8 @@ export type SoftwareRow = {
 };
 
 export type AssetDetail = {
+  details: AssetDetails | null;
+  third_party_patch_status: ThirdPartyPatchStatus;
   os_updates: null | { status: DevicePatchStatus; updates: DeviceOsUpdateRow[] };
   id: string;
   external_id: string;
@@ -239,6 +243,7 @@ export type SoftwareSummary = {
   unique_assets_evaluated: number;
   products: ProductSummary[];
   top_unsupported: { name: string; publisher: string; installations: number; unique_assets: number }[];
+  third_party_patch_status: ThirdPartyPatchStatus;
   disclaimer: string;
 };
 
@@ -410,3 +415,75 @@ export type TrendPoint = {
 };
 
 export type TrendResponse = { days: number; points: TrendPoint[]; method: string };
+
+// ---------------------------------------------------------------- VSA1/VSA2-05: hierarchy, network, details
+
+export type NodeCounts = {
+  devices: number;
+  stale: number;
+  never_seen: number;
+  agent_not_installed: number;
+  no_network_data: number;
+  no_update_data: number;
+};
+export type GroupTreeNode = { external_id: string; name: string; is_active: boolean | null; counts: NodeCounts };
+export type SiteTreeNode = { external_id: string; name: string; groups: GroupTreeNode[]; counts: NodeCounts };
+export type OrgTreeNode = { external_id: string; name: string; sites: SiteTreeNode[]; counts: NodeCounts };
+export type HierarchyResponse = {
+  as_of: string[];
+  data_basis: string[];
+  hierarchy_status: string[];
+  devices_without_asset: number;
+  stale_days: number;
+  organizations: OrgTreeNode[];
+  unassigned: NodeCounts;
+  note: string;
+};
+
+export type AdapterAddress = { raw: string; address: string; version: number | null; kind: string; network_cidr: string; cidr_status: string };
+export type Adapter = {
+  name: string;
+  mac: string;
+  mac_locally_administered: boolean;
+  dhcp_enabled: boolean | null;
+  subnet_mask: string;
+  gateways: string[];
+  dns_servers: string[];
+  sources: string[];
+  addresses: AdapterAddress[];
+};
+
+export type GroupNetwork = {
+  group: null | { external_id: string; name: string; is_active: boolean | null; site_external_id: string; organization_external_id: string };
+  group_listed: boolean;
+  as_of: string[];
+  data_basis: string[];
+  counts: { devices: number; with_reported_addresses: number; network_not_collected: number; multi_adapter: number };
+  subnets: { cidr: string; devices: number; addresses: number }[];
+  addresses_without_derived_subnet: Record<string, number>;
+  duplicate_ips: { address: string; devices: { asset_id: string; hostname: string; group_external_id: string }[] }[];
+  mac_reuse: { mac: string; device_count: number }[];
+  gateways: { value: string; adapters: number }[];
+  dns_servers: { value: string; adapters: number }[];
+  public_ips: { value: string; devices: number }[];
+  devices: { asset_id: string; hostname: string; last_seen_online: string | null; network_status: string; public_ip: string; adapters: Adapter[] }[];
+  note: string;
+  flags_note: string;
+};
+
+export type AssetDetails = {
+  network_status: string;
+  public_ip: string;
+  adapters: Adapter[];
+  disks_status: string;
+  disks: { name: string; is_system: boolean | null; free_percentage: string | null; total_value_raw: string }[];
+  security_status: string;
+  security: { type: string; name: string; enabled: boolean | null; up_to_date: boolean | null }[];
+  group_external_id: string;
+  site_name: string;
+  is_agent_installed: boolean | null;
+  is_mdm_enrolled: boolean | null;
+  units_note: string;
+};
+
+export type ThirdPartyPatchStatus = { state: string; message: string; evidence: string; live_validation: string };

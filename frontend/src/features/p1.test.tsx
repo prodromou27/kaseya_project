@@ -24,7 +24,8 @@ const dataset = (overrides: Partial<DatasetStatus> = {}): DatasetStatus => ({
 
 const asset = (overrides: Partial<AssetRow> = {}): AssetRow => ({
   id: "a1", external_id: "ext-1", hostname: "DEMOA-WS001", description: "", device_type: "windows",
-  group_name: "DEMOA Org - HQ - Workstations", site_external_id: "2001", organization_external_id: "1001",
+  group_name: "DEMOA Org - HQ - Workstations", site_external_id: "2001", site_name: "HQ", group_external_id: "20011",
+  organization_external_id: "1001",
   client_version: "5.1.2", last_seen_online: "2026-11-12T08:00:00Z", last_seen_stale: false, os_name: "Windows 11 Enterprise",
   os_version: "10.0", manufacturer: "", model: "", serial_number: "SN1", domain: "", tags: [], software_status: "collected",
   software_count: 5, active: true, source: "Demo VSA X (fixture)", data_basis: "fixture", generation_id: "g1",
@@ -41,6 +42,7 @@ const summary: SoftwareSummary = {
                states: { current: 3, outdated: 1, newer: 0, unknown: 0, unsupported: 0, excluded: 0 },
                installations: 4, unique_assets: 2, versions: [{ version: "130.0", state: "outdated", installations: 1, unique_assets: 1 }] }],
   top_unsupported: [],
+  third_party_patch_status: { state: "UNAVAILABLE", message: "Pending third-party patch status is not available from the configured VSA API; installed version comparison is shown separately.", evidence: "Public VSA X API v3 reference reviewed 2026-11-13.", live_validation: "LIVE_VALIDATION_PENDING" },
   disclaimer: "Version comparison against a reviewed reference catalog only. Not evidence of missing third-party patches or vulnerabilities.",
 };
 
@@ -101,6 +103,7 @@ describe("software versions", () => {
     expect(screen.getByText("current / (current + outdated) = 3 / 4")).toBeInTheDocument();
     expect(screen.getByText("4 of 10 installations comparable")).toBeInTheDocument();
     expect(screen.getByText(/Not evidence of missing third-party patches/)).toBeInTheDocument();
+    expect(screen.getByText(/Third-party patch deployment status: unavailable\./)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Not catalogued 4/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Unknown 2/ })).toBeInTheDocument();
   });

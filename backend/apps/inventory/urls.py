@@ -10,6 +10,8 @@ nested = SimpleRouter()
 nested.register("assets", views.CustomerAssetViewSet, basename="customer-asset")
 nested.register("datasets", views.DatasetStatusViewSet, basename="customer-dataset")
 nested.register("sync-runs", views.CustomerSyncRunViewSet, basename="customer-sync-run")
+nested.register("hierarchy", views.CustomerHierarchyViewSet, basename="customer-hierarchy")
+nested.register("groups", views.CustomerGroupViewSet, basename="customer-group")
 
 urlpatterns = [
     path("", include(router.urls)),

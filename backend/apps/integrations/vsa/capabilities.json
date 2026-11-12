@@ -1,7 +1,7 @@
 {
   "provider": "vsa_x",
   "reference": "https://api.vsax.net/",
-  "verified_on": "2026-11-12",
+  "verified_on": "2026-11-12 (assets/orgs); 2026-11-13 (devices/sites/groups/policies/ratelimits)",
   "verified_by": "coding agent (Claude) from the public documentation page; NOT live-tested",
   "authentication": {
     "scheme": "HTTP Basic, base64(TOKEN_ID:TOKEN_SECRET), HTTPS only",
@@ -9,7 +9,7 @@
   },
   "endpoints": {
     "GET /api/v3/assets": {
-      "status": "docs-verified; fixture-tested (include=Tags,AssetInfo,InstalledSoftware,Updates,AvailableUpdates since P2)",
+      "status": "docs-verified; fixture-tested (include adds IpAddresses,LocalIpAddresses,Disks,Security since VSA1-04)",
       "query": {
         "$top": "integer, max 100, default 100",
         "$skip": "integer starting position",
@@ -35,6 +35,57 @@
         "$skip": "starting position"
       },
       "response": "{Data: [{Id:int, Name, Type: Internal|Customer, ...}], Meta: {TotalCount, ResponseCode}}"
+    },
+    "GET /api/v3/sites": {
+      "status": "docs-verified 2026-11-13; fixture-tested (VSA1-02)",
+      "query": {
+        "$top": "max 100",
+        "$skip": "start",
+        "$filter": "OData; ParentId filterable"
+      },
+      "fields_used": "Id (int), Name, ParentId (org id), ParentName",
+      "fields_dropped": "ContactInformation (personal contact data), PSA mapping fields"
+    },
+    "GET /api/v3/groups": {
+      "status": "docs-verified 2026-11-13; fixture-tested (VSA1-02)",
+      "note": "returns active (not deleted) groups",
+      "query": {
+        "$top": "max 100",
+        "$skip": "start",
+        "$filter": "OData; ParentOrganizationId filterable"
+      },
+      "fields_used": "Id, Name, IsActive, ParentSiteId, ParentSiteName, ParentOrganizationId, ParentOrganizationName",
+      "fields_dropped": "Notes (free text), PSA mapping fields"
+    },
+    "GET /api/v3/devices": {
+      "status": "docs-verified 2026-11-13; fixture-tested (VSA1-02)",
+      "query": {
+        "$top": "documented max 2147483647 (portal uses 500)",
+        "$skip": "start",
+        "$filter": "OrganizationId filterable",
+        "$count": "true required for Meta.TotalCount",
+        "NextQueryLink": "only when TotalCount > 5000; portal pages with $skip instead"
+      },
+      "fields_used": "Identifier (GUID, same as asset Identifier), GroupId, GroupName, SiteId, SiteName, OrganizationId, IsAgentInstalled, IsMdmEnrolled"
+    },
+    "GET /api/v3/devices/:id": {
+      "status": "docs-verified 2026-11-13; not used yet",
+      "fields": "IsOnline, Uptime (free text), InMaintenance, ExternalIpAddress, notification counts, LocalIpAddresses, ClientVersion, GroupId, ..."
+    },
+    "GET /api/v3/devices/:id/appliedpolicies": {
+      "status": "docs-verified 2026-11-13; not implemented (VSA3-04)",
+      "fields": "PolicyType (Device Configuration|Monitoring|Antivirus|Ransomware Detection|Patch Management), PolicyId (nullable), PolicyName (e.g. 'No Policy (Explicitly configured)')"
+    },
+    "GET /api/v3/patchmanagement/policies/:id": {
+      "status": "docs-verified 2026-11-13; not implemented (VSA3-04)",
+      "fields": "Id, Name, Description, GeneralSettings, OsRules[], SoftwareRules[{ProductId, ProductName, Action}] \u2014 configuration, NOT deployment state"
+    },
+    "GET /api/v3/ratelimits/": {
+      "status": "docs-verified 2026-11-13; not implemented yet (VSA1-01 connection test)",
+      "fields": "FailedRequestRateLimits[], EndpointRateLimits[{EndpointName, Rules[{Limit, Remaining, PeriodInSeconds, ResetInSeconds}]}]"
+    },
+    "PUT /api/v3/devices/:deviceId/move": {
+      "status": "docs-verified WRITE route; NOT on the allowlist; disabled (VSA5, BLOCKED_APPROVAL)"
     }
   },
   "asset_fields_used": {
@@ -52,7 +103,12 @@
     "AssetInfo[System].Manufacturer/Model/Type/Domain": "section AssetInfo",
     "AssetInfo[BIOS].Serial Number": "section AssetInfo (hardware serial)",
     "AssetInfo[Operating System].Name/Version": "section AssetInfo",
-    "InstalledSoftware[].Name/Publisher/Version": "section InstalledSoftware"
+    "InstalledSoftware[].Name/Publisher/Version": "section InstalledSoftware",
+    "IpAddresses[].Name/MAC/IPs[].IP/V6": "section IpAddresses (per adapter addresses)",
+    "LocalIpAddresses[].Name/PhysicalAddress/DhcpEnabled/Gateways/DnsServers/SubnetMask/IpV4/IpV6": "section LocalIpAddresses",
+    "PublicIpAddress": "always included",
+    "Disks[].Name/System/FreePercentage/TotalValue": "section Disks (TotalValue units NOT documented \u2014 stored raw)",
+    "Security[].Type/Name/Enabled/UpToDate": "section Security (reported observations, tri-state)"
   },
   "asset_fields_deliberately_dropped": [
     "AssetInfo[Operating System].Product Key",
@@ -60,8 +116,8 @@
     "AssetInfo[Operating System].Registered User",
     "AssetInfo[Operating System].Last Logged On User",
     "AssetInfo[System].Owner Name",
-    "PublicIpAddress, IpAddresses, LocalIpAddresses (not needed for P1)",
-    "Security, EventLogs, Disks (not needed for P1)"
+    "IpAddresses[].IPs[].Download/Upload (traffic counters)",
+    "EventLogs, CpuUsage, MemoryUsage (point-in-time telemetry, not inventory)"
   ],
   "rate_limiting": {
     "status": "docs-verified",
@@ -87,7 +143,7 @@
       503,
       504
     ],
-    "error_body_shape": "NOT documented \u2014 adapter acts on status code only and never stores or logs error bodies"
+    "error_body_shape": "Documented example {Data: null, Meta: {ResponseCode, ErrorMessage}}; the adapter still acts on status codes only and never stores or logs error bodies"
   },
   "not_established": [
     "Per-device third-party missing-patch applicability (InstalledSoftware is version inventory only)",
@@ -105,5 +161,10 @@
     "InstalledUpdates[]": "UpdateId, RevisionNumber, Title, Description, Severity, ReleaseDate, InstalledAt, InstalledByAgent \u2014 only on GET /api/v3/assets/:id with include=InstalledUpdates",
     "InstalledAt": "example value '2024-01-07T00:00:00' has NO timezone; stored as raw text, never assumed UTC",
     "KbArticle on InstalledUpdates": "not shown in the documented example; treated as optional"
+  },
+  "route_census": {
+    "date": "2026-11-13",
+    "documented_routes": 72,
+    "third_party_patch_status_route": "NONE documented. Only patchmanagement/policies/:id and /globalrules (configuration). Third-party applicability/deployment/pending/failed/reboot state = UNVERIFIED; UI shows unavailable."
   }
 }

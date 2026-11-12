@@ -174,7 +174,7 @@ def test_installed_updates_disabled_by_default_makes_no_detail_calls(world, vsa)
     _, mapping = vsa
     transport = FixtureVsaTransport([device(1, available=[], installed=[upd("1", "Unspecified")])])
     run(mapping, world.engineer_a, transport)
-    assert all(path == "/api/v3/assets" for path, _ in transport.calls)
+    assert not any(path.startswith("/api/v3/assets/") for path, _ in transport.calls)  # no per-device detail calls
     assert PatchObservation.objects.get().installed_status == "not_requested"
 
 
@@ -184,7 +184,7 @@ def test_installed_updates_budget_rotation_and_carry_forward(world, vsa):
     data = [device(i, available=[], installed=[upd(f"50{i:05d}", "Unspecified", f"inst-{i}")]) for i in range(1, 5)]
     t1 = FixtureVsaTransport(data)
     r1 = run(mapping, world.engineer_a, t1)
-    detail_calls = [p for p, _ in t1.calls if p != "/api/v3/assets"]
+    detail_calls = [p for p, _ in t1.calls if p.startswith("/api/v3/assets/")]
     assert len(detail_calls) == 2 and r1.installed_updates_requested == 2
     statuses = dict(
         PatchObservation.objects.filter(generation=r1.generation).values_list("asset__external_id", "installed_status")
@@ -193,7 +193,7 @@ def test_installed_updates_budget_rotation_and_carry_forward(world, vsa):
 
     t2 = FixtureVsaTransport(data)
     r2 = run(mapping, world.engineer_a, t2)
-    second = {p.split("/")[-1] for p, _ in t2.calls if p != "/api/v3/assets"}
+    second = {p.split("/")[-1] for p, _ in t2.calls if p.startswith("/api/v3/assets/")}
     first = {p.split("/")[-1] for p in detail_calls}
     assert second.isdisjoint(first)  # rotation: least recently collected devices first
     gen2 = PatchObservation.objects.filter(generation=r2.generation)
@@ -321,5 +321,7 @@ def test_demo_tenant_os_updates(world, vsa):
     s = world.client(world.engineer_a).get(f"/api/v1/customers/{world.customer_a.id}/os-updates/summary/").json()
     assert s["devices_total"] == 130
     assert s["available_section"]["not_supported"] > 0 and s["available_section"]["not_collected"] > 0
-    assert s["installed_section"]["collected"] == 60
+    # 60 budgeted detail calls: each device either returned InstalledUpdates or (by design) omitted the section.
+    assert s["installed_section"]["collected"] + s["installed_section"]["not_collected"] == 60
+    assert r.installed_updates_requested == 60
     assert sum(s["available_section"].values()) == 130

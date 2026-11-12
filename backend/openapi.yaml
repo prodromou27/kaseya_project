@@ -664,6 +664,58 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/groups/{id}/network/:
+    get:
+      operationId: customers_groups_network_retrieve
+      description: '``/customers/{id}/groups/{group_id}/network/`` — reported network
+        facts for one VSA group (VSA2-05).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]{1,18}$
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/hierarchy/:
+    get:
+      operationId: customers_hierarchy_retrieve
+      description: '``/customers/{id}/hierarchy/`` — organisation > site > group tree
+        with device counts (VSA1-06).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/mappings/:
     get:
       operationId: customers_mappings_list
@@ -2553,6 +2605,13 @@ components:
           maxLength: 255
         site_external_id:
           type: string
+          maxLength: 64
+        site_name:
+          type: string
+          maxLength: 255
+        group_external_id:
+          type: string
+          description: Blank = not in the device list.
           maxLength: 64
         organization_external_id:
           type: string

@@ -10,6 +10,7 @@ type NavItem = { to: string; label: string; phase?: string; adminOnly?: boolean 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard" },
   { to: "/customers", label: "Customers" },
+  { to: "/groups", label: "Groups & network" },
   { to: "/assets", label: "Assets" },
   { to: "/software", label: "Software versions" },
   { to: "/windows-updates", label: "Windows updates" },

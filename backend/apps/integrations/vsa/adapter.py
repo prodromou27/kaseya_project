@@ -15,13 +15,17 @@ from .schema import Page, PageInvalid, RecordInvalid, VsaOrganization, normalize
 PAGE_SIZE = 100  # documented maximum for $top
 MAX_PAGES = 5000  # hard stop: 500k assets per organisation
 # Sections collected from the list endpoint. InstalledUpdates is only available per device (budgeted).
-ASSET_INCLUDE = "Tags,AssetInfo,InstalledSoftware,Updates,AvailableUpdates"
+ASSET_INCLUDE = "Tags,AssetInfo,InstalledSoftware,Updates,AvailableUpdates,IpAddresses,LocalIpAddresses,Disks,Security"
+DEVICE_PAGE_SIZE = 500  # documented max is 2147483647; bounded for memory
 DETAIL_INCLUDE = "InstalledUpdates"
 
 ALLOWED_PATHS = [
     re.compile(r"/api/v3/assets"),
     re.compile(r"/api/v3/assets/[A-Za-z0-9-]{1,64}"),
     re.compile(r"/api/v3/organizations"),
+    re.compile(r"/api/v3/sites"),
+    re.compile(r"/api/v3/groups"),
+    re.compile(r"/api/v3/devices"),
 ]
 _DEVICE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
@@ -98,6 +102,33 @@ class VsaXAdapter:
         if not _DEVICE_ID.fullmatch(identifier or ""):
             raise ValueError("Unsafe device identifier.")
         return self.client.get_json(f"/api/v3/assets/{identifier}", {"include": DETAIL_INCLUDE}).json
+
+    def _paged(self, path: str, params: dict[str, str], page_size: int, max_pages: int = 2000) -> Iterator[Page]:
+        skip = 0
+        for _ in range(max_pages):
+            result = self.client.get_json(path, {**params, "$top": str(page_size), "$skip": str(skip)})
+            page = parse_page(result.json)
+            yield page
+            if len(page.records) < page_size:
+                return
+            skip += len(page.records)
+        raise PageInvalid("Page limit exceeded.")
+
+    def iter_sites(self, organization_id: str) -> Iterator[Page]:
+        org = validate_org_id(organization_id)
+        return self._paged("/api/v3/sites", {"$filter": f"ParentId eq {org}", "$orderby": "Id"}, PAGE_SIZE)
+
+    def iter_groups(self, organization_id: str) -> Iterator[Page]:
+        org = validate_org_id(organization_id)
+        return self._paged("/api/v3/groups", {"$filter": f"ParentOrganizationId eq {org}", "$orderby": "Id"}, PAGE_SIZE)
+
+    def iter_devices(self, organization_id: str) -> Iterator[Page]:
+        org = validate_org_id(organization_id)
+        return self._paged(
+            "/api/v3/devices",
+            {"$filter": f"OrganizationId eq {org}", "$orderby": "Identifier", "$count": "true"},
+            DEVICE_PAGE_SIZE,
+        )
 
     def list_organizations(self) -> tuple[list[VsaOrganization], list[str]]:
         """All organisations visible to the token. Returns (organisations, invalid-record reasons)."""

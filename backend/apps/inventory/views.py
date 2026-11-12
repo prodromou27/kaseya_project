@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import contextlib
+import ipaddress
+import re
 from datetime import timedelta
 from typing import Any
 
@@ -19,7 +22,9 @@ from apps.customers.models import CustomerSourceMapping
 from apps.customers.views import CustomerScopedMixin
 from apps.integrations.models import SyncRun
 from apps.integrations.sync import SyncRefused, request_sync
+from apps.software.capability import THIRD_PARTY_PATCH_STATUS
 
+from .hierarchy import group_network, hierarchy
 from .models import Asset, AssetObservation
 from .queries import current_generations, current_observations, stale_cutoff
 
@@ -55,6 +60,8 @@ class AssetRowSerializer(serializers.ModelSerializer):
             "device_type",
             "group_name",
             "site_external_id",
+            "site_name",
+            "group_external_id",
             "organization_external_id",
             "client_version",
             "last_seen_online",
@@ -95,14 +102,19 @@ class CustomerAssetViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewsets.
         qs = current_observations(self.get_customer().id)
         search = p.get("search", "").strip()[:100]
         if search:
-            qs = qs.filter(
-                Q(hostname__icontains=search) | Q(serial_number__icontains=search) | Q(asset__external_id=search)
-            )
+            cond = Q(hostname__icontains=search) | Q(serial_number__icontains=search) | Q(asset__external_id=search)
+            mac = re.sub(r"[^0-9A-Fa-f]", "", search).upper()
+            if len(mac) == 12:  # MAC in any common notation
+                cond |= Q(adapters__mac=mac)
+            with contextlib.suppress(ValueError):  # exact IP address (zone suffix ignored)
+                cond |= Q(adapters__ips__address=ipaddress.ip_address(search.partition("%")[0]).compressed)
+            qs = qs.filter(cond).distinct()
         for param, field in (
             ("group", "group_name"),
             ("os", "os_name"),
             ("device_type", "device_type"),
             ("site", "site_external_id"),
+            ("group_id", "group_external_id"),
             ("software_status", "software_status"),
         ):
             value = p.get(param, "").strip()[:255]
@@ -181,8 +193,39 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
                     "status": DevicePatchStatusSerializer(po).data,
                     "updates": DeviceOsUpdateSerializer(updates, many=True).data,
                 }
+        details: dict[str, Any] | None = None
+        if current is not None:
+            from .hierarchy import adapter_payload
+
+            details = {
+                "network_status": current.network_status,
+                "public_ip": current.public_ip,
+                "adapters": [adapter_payload(a) for a in current.adapters.prefetch_related("ips").order_by("name")],
+                "disks_status": current.disks_status,
+                "disks": [
+                    {
+                        "name": d.name,
+                        "is_system": d.is_system,
+                        "free_percentage": d.free_percentage,
+                        "total_value_raw": d.total_value_raw,
+                    }
+                    for d in current.disks.order_by("name")
+                ],
+                "security_status": current.security_status,
+                "security": [
+                    {"type": s.type, "name": s.name, "enabled": s.enabled, "up_to_date": s.up_to_date}
+                    for s in current.security_items.order_by("type", "name")
+                ],
+                "group_external_id": current.group_external_id,
+                "site_name": current.site_name,
+                "is_agent_installed": current.is_agent_installed,
+                "is_mdm_enrolled": current.is_mdm_enrolled,
+                "units_note": "Disk TotalValue units are not documented by VSA X and are shown as reported.",
+            }
         return Response(
             {
+                "details": details,
+                "third_party_patch_status": THIRD_PARTY_PATCH_STATUS,
                 "os_updates": os_updates,
                 "asset": AssetRowSerializer(current, context={"offline_days": 7}).data if current else None,
                 "id": str(asset.id),
@@ -328,3 +371,34 @@ def _uuid(value: Any) -> Any:
         return uuid.UUID(str(value))
     except ValueError:
         raise NotFound() from None
+
+
+class CustomerHierarchyViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
+    """``/customers/{id}/hierarchy/`` — organisation > site > group tree with device counts (VSA1-06)."""
+
+    customer_capability = Cap.CUSTOMER_READ
+    queryset = AssetObservation.objects.none()
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        try:
+            days = max(1, min(int(request.query_params.get("stale_days", "7")), 365))
+        except ValueError as exc:
+            raise ValidationError({"stale_days": "Integer 1-365."}) from exc
+        return Response(hierarchy(self.get_customer().id, days))
+
+
+class CustomerGroupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
+    """``/customers/{id}/groups/{group_id}/network/`` — reported network facts for one VSA group (VSA2-05)."""
+
+    customer_capability = Cap.CUSTOMER_READ
+    queryset = AssetObservation.objects.none()
+    lookup_value_regex = "[0-9]{1,18}"
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["get"])
+    def network(self, request: Request, pk: str | None = None, *args: Any, **kwargs: Any) -> Response:
+        data = group_network(self.get_customer().id, str(pk))
+        if data is None:
+            raise NotFound()
+        return Response(data)

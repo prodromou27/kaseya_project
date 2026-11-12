@@ -51,6 +51,67 @@ class OsUpdateItem:
 
 
 @dataclass(frozen=True)
+class NetworkAdapter:
+    """One reported adapter, merged from ``LocalIpAddresses`` (mask/gateway/DNS) and ``IpAddresses`` (all IPs)."""
+
+    name: str
+    mac: str  # 12 upper-case hex digits or ""
+    dhcp_enabled: bool | None
+    subnet_mask: str
+    gateways: tuple[str, ...]
+    dns_servers: tuple[str, ...]
+    addresses: tuple[str, ...]  # raw address strings as reported (IPv6 may carry a %zone suffix)
+    sources: frozenset[str]
+    mask_address: str = ""  # the LocalIpAddresses.IpV4 value the SubnetMask was reported with
+
+
+@dataclass(frozen=True)
+class DiskItem:
+    name: str
+    is_system: bool | None
+    free_percentage: float | None
+    total_value_raw: str  # units are not documented by VSA X: kept verbatim, never converted
+
+
+@dataclass(frozen=True)
+class SecurityItem:
+    type: str
+    name: str
+    enabled: bool | None  # tri-state: None = not reported
+    up_to_date: bool | None
+
+
+@dataclass(frozen=True)
+class VsaSite:
+    id: str
+    name: str
+    organization_id: str
+
+
+@dataclass(frozen=True)
+class VsaGroup:
+    id: str
+    name: str
+    is_active: bool | None
+    site_id: str
+    site_name: str
+    organization_id: str
+    organization_name: str
+
+
+@dataclass(frozen=True)
+class VsaDeviceRef:
+    identifier: str
+    organization_id: str
+    group_id: str
+    group_name: str
+    site_id: str
+    site_name: str
+    is_agent_installed: bool | None
+    is_mdm_enrolled: bool | None
+
+
+@dataclass(frozen=True)
 class VsaAsset:
     identifier: str
     organization_id: str
@@ -75,6 +136,11 @@ class VsaAsset:
     update_counts: dict[str, int] | None = None
     available_updates: tuple[OsUpdateItem, ...] | None = None
     installed_updates: tuple[OsUpdateItem, ...] | None = None
+    # None = section(s) absent (not collected); () = collected but empty.
+    network_adapters: tuple[NetworkAdapter, ...] | None = None
+    public_ip: str = ""
+    disks: tuple[DiskItem, ...] | None = None
+    security: tuple[SecurityItem, ...] | None = None
     sections: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -249,6 +315,166 @@ def normalize_installed_updates(detail_body: Any, identifier: str) -> tuple[OsUp
     return _os_updates(data["InstalledUpdates"], installed=True)
 
 
+_MAC = re.compile(r"[^0-9A-Fa-f]")
+
+
+def _mac(value: Any) -> str:
+    raw = _MAC.sub("", _text(value)).upper()
+    return raw if len(raw) == 12 and raw != "000000000000" else ""
+
+
+def _bool(value: Any) -> bool | None:
+    return value if isinstance(value, bool) else None
+
+
+def _str_list(value: Any, limit: int = 32) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(_text(v)[:64] for v in value[:limit] if isinstance(v, str) and v.strip())
+
+
+def _network(item: dict[str, Any]) -> tuple[NetworkAdapter, ...] | None:
+    local, addrs = item.get("LocalIpAddresses"), item.get("IpAddresses")
+    if local is None and addrs is None:
+        return None
+    if (local is not None and not isinstance(local, list)) or (addrs is not None and not isinstance(addrs, list)):
+        raise RecordInvalid("invalid_network_section")
+    merged: dict[str, dict[str, Any]] = {}
+
+    def slot(name: str, mac: str) -> dict[str, Any]:
+        key = f"mac:{mac}" if mac else f"name:{name.casefold()}"
+        return merged.setdefault(
+            key,
+            {
+                "name": name,
+                "mac": mac,
+                "dhcp": None,
+                "mask": "",
+                "gw": (),
+                "dns": (),
+                "addresses": [],
+                "sources": set(),
+                "mask_addr": "",
+            },
+        )
+
+    for entry in (local or [])[:64]:
+        if not isinstance(entry, dict):
+            raise RecordInvalid("invalid_network_section")
+        s = slot(_text(entry.get("Name")), _mac(entry.get("PhysicalAddress")))
+        s["sources"].add("LocalIpAddresses")
+        s["dhcp"] = _bool(entry.get("DhcpEnabled"))
+        s["mask"] = _text(entry.get("SubnetMask"))[:45]
+        s["gw"], s["dns"] = _str_list(entry.get("Gateways")), _str_list(entry.get("DnsServers"))
+        s["mask_addr"] = _text(entry.get("IpV4"))[:64]
+        for key in ("IpV4", "IpV6"):
+            v = _text(entry.get(key))[:64]
+            if v and v not in s["addresses"]:
+                s["addresses"].append(v)
+    for entry in (addrs or [])[:64]:
+        if not isinstance(entry, dict):
+            raise RecordInvalid("invalid_network_section")
+        s = slot(_text(entry.get("Name")), _mac(entry.get("MAC")))
+        s["sources"].add("IpAddresses")
+        ips = entry.get("IPs")
+        for ip in (ips if isinstance(ips, list) else [])[:64]:
+            v = _text(ip.get("IP"))[:64] if isinstance(ip, dict) else ""
+            if v and v not in s["addresses"]:
+                s["addresses"].append(v)
+    return tuple(
+        NetworkAdapter(
+            name=v["name"],
+            mac=v["mac"],
+            dhcp_enabled=v["dhcp"],
+            subnet_mask=v["mask"],
+            gateways=v["gw"],
+            dns_servers=v["dns"],
+            addresses=tuple(v["addresses"]),
+            sources=frozenset(v["sources"]),
+            mask_address=v["mask_addr"],
+        )
+        for v in merged.values()
+    )
+
+
+def _disks(value: Any) -> tuple[DiskItem, ...]:
+    if not isinstance(value, list):
+        raise RecordInvalid("invalid_disks_section")
+    out = []
+    for d in value[:64]:
+        if not isinstance(d, dict):
+            raise RecordInvalid("invalid_disks_section")
+        free = d.get("FreePercentage")
+        total = d.get("TotalValue")
+        out.append(
+            DiskItem(
+                name=_text(d.get("Name"))[:64],
+                is_system=_bool(d.get("System")),
+                free_percentage=float(free)
+                if isinstance(free, int | float) and not isinstance(free, bool) and 0 <= free <= 100
+                else None,
+                total_value_raw=str(total) if isinstance(total, int | float) and not isinstance(total, bool) else "",
+            )
+        )
+    return tuple(out)
+
+
+def _security(value: Any) -> tuple[SecurityItem, ...]:
+    if not isinstance(value, list):
+        raise RecordInvalid("invalid_security_section")
+    out = []
+    for e in value[:64]:
+        if not isinstance(e, dict):
+            raise RecordInvalid("invalid_security_section")
+        out.append(
+            SecurityItem(
+                type=_text(e.get("Type"))[:64],
+                name=_text(e.get("Name"))[:128],
+                enabled=_bool(e.get("Enabled")),
+                up_to_date=_bool(e.get("UpToDate")),
+            )
+        )
+    return tuple(out)
+
+
+def normalize_site(item: dict[str, Any]) -> VsaSite:
+    sid, org = _id(item.get("Id")), _id(item.get("ParentId"))
+    if not sid or not org:
+        raise RecordInvalid("site_missing_id")
+    return VsaSite(id=sid, name=_text(item.get("Name")), organization_id=org)
+
+
+def normalize_group(item: dict[str, Any]) -> VsaGroup:
+    gid, site, org = _id(item.get("Id")), _id(item.get("ParentSiteId")), _id(item.get("ParentOrganizationId"))
+    if not gid or not org:
+        raise RecordInvalid("group_missing_id")
+    return VsaGroup(
+        id=gid,
+        name=_text(item.get("Name")),
+        is_active=_bool(item.get("IsActive")),
+        site_id=site,
+        site_name=_text(item.get("ParentSiteName")),
+        organization_id=org,
+        organization_name=_text(item.get("ParentOrganizationName")),
+    )
+
+
+def normalize_device_ref(item: dict[str, Any]) -> VsaDeviceRef:
+    ident, org = _id(item.get("Identifier")), _id(item.get("OrganizationId"))
+    if not ident or not org:
+        raise RecordInvalid("device_missing_id")
+    return VsaDeviceRef(
+        identifier=ident,
+        organization_id=org,
+        group_id=_id(item.get("GroupId")),
+        group_name=_text(item.get("GroupName")),
+        site_id=_id(item.get("SiteId")),
+        site_name=_text(item.get("SiteName")),
+        is_agent_installed=_bool(item.get("IsAgentInstalled")),
+        is_mdm_enrolled=_bool(item.get("IsMdmEnrolled")),
+    )
+
+
 def normalize_asset(item: dict[str, Any]) -> VsaAsset:
     identifier = _id(item.get("Identifier"))
     if not identifier:
@@ -259,7 +485,19 @@ def normalize_asset(item: dict[str, Any]) -> VsaAsset:
     tags_raw = item.get("Tags")
     tags = tuple(_text(t) for t in tags_raw if isinstance(t, str)) if isinstance(tags_raw, list) else ()
     sections = frozenset(
-        k for k in ("Tags", "AssetInfo", "InstalledSoftware", "Updates", "AvailableUpdates") if k in item
+        k
+        for k in (
+            "Tags",
+            "AssetInfo",
+            "InstalledSoftware",
+            "Updates",
+            "AvailableUpdates",
+            "IpAddresses",
+            "LocalIpAddresses",
+            "Disks",
+            "Security",
+        )
+        if k in item
     )
     info = _asset_info(item.get("AssetInfo"))
     return VsaAsset(
@@ -279,6 +517,10 @@ def normalize_asset(item: dict[str, Any]) -> VsaAsset:
         available_updates=(
             _os_updates(item["AvailableUpdates"], installed=False) if "AvailableUpdates" in item else None
         ),
+        network_adapters=_network(item),
+        public_ip=_text(item.get("PublicIpAddress"))[:64],
+        disks=_disks(item["Disks"]) if "Disks" in item else None,
+        security=_security(item["Security"]) if "Security" in item else None,
         sections=sections,
         **info,
     )

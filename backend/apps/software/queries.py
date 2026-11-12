@@ -11,6 +11,7 @@ from django.db.models import Count, Q, QuerySet
 
 from apps.inventory.queries import current_generations
 
+from .capability import THIRD_PARTY_PATCH_STATUS
 from .comparator import ALGORITHM_VERSION
 from .models import ComplianceEvaluation, ComplianceResult
 
@@ -138,6 +139,7 @@ def summary(customer_id: Any) -> dict[str, Any]:
             }
             for r in top_unsupported
         ],
+        "third_party_patch_status": THIRD_PARTY_PATCH_STATUS,
         "disclaimer": (
             "Version comparison against a reviewed reference catalog only. Not evidence of missing third-party "
             "patches or vulnerabilities."

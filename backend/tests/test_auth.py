@@ -41,6 +41,7 @@ def _concrete(path: str) -> str:
 
     path = re.sub(r"<str:customer_pk>", "11111111-1111-1111-1111-111111111111", path)
     path = re.sub(r"\(\?P<pk>\[\^/\.\]\+\)", "22222222-2222-2222-2222-222222222222", path)
+    path = re.sub(r"\(\?P<pk>\[0-9\]\{1,18\}\)", "123", path)  # numeric VSA IDs (e.g. groups)
     path = re.sub(r"\(\?P<format>[^)]*\)", "", path)
     return "/" + path.replace("^", "").replace("$", "").replace("\\.", ".").replace("\\", "")
 

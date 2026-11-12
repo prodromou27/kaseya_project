@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
@@ -49,10 +49,13 @@ const columns: ColumnDef<AssetRow, unknown>[] = [
   { header: "Agent", accessorKey: "client_version" },
 ];
 
-type Filters = { search: string; group: string; os: string; offline: string; ordering: string };
+type Filters = { search: string; group: string; os: string; offline: string; ordering: string; group_id: string };
 
 function AssetTable({ customer }: { customer: Customer }) {
-  const [filters, setFilters] = useState<Filters>({ search: "", group: "", os: "", offline: "", ordering: "hostname" });
+  const [params] = useSearchParams();
+  const [filters, setFilters] = useState<Filters>({
+    search: "", group: "", os: "", offline: "", ordering: "hostname", group_id: params.get("group_id") ?? "",
+  });
   const [page, setPage] = useState(1);
   const facets = useQuery({
     queryKey: ["assets", customer.id, "facets"],
@@ -75,7 +78,7 @@ function AssetTable({ customer }: { customer: Customer }) {
       <div className="mb-3 flex flex-wrap items-end gap-3" role="search" aria-label="Filter assets">
         <label className="flex flex-col text-xs font-medium text-slate-700">
           Search
-          <input className="input w-56" type="search" maxLength={100} placeholder="Hostname, serial or device ID"
+          <input className="input w-56" type="search" maxLength={100} placeholder="Hostname, serial, device ID, MAC or IP"
                  value={filters.search} onChange={(e) => set("search")(e.target.value)} />
         </label>
         <label className="flex flex-col text-xs font-medium text-slate-700">
@@ -85,6 +88,12 @@ function AssetTable({ customer }: { customer: Customer }) {
             {(facets.data?.group ?? []).map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </label>
+        {filters.group_id ? (
+          <span className="flex items-center gap-1 self-center text-xs">
+            <Badge tone="info">VSA group {filters.group_id}</Badge>
+            <button type="button" className="underline" onClick={() => set("group_id")("")}>clear</button>
+          </span>
+        ) : null}
         <label className="flex flex-col text-xs font-medium text-slate-700">
           OS
           <select className="input w-48" value={filters.os} onChange={(e) => set("os")(e.target.value)}>
@@ -110,7 +119,7 @@ function AssetTable({ customer }: { customer: Customer }) {
           </select>
         </label>
         <SavedViews customer={customer} viewType="assets" current={filters}
-                    onLoad={(f) => { setFilters({ search: "", group: "", os: "", offline: "", ordering: "hostname", ...f }); setPage(1); }} />
+                    onLoad={(f) => { setFilters({ search: "", group: "", os: "", offline: "", ordering: "hostname", group_id: "", ...f }); setPage(1); }} />
         {customer.my_capabilities.includes("customer.export") ? (
           <ExportButton customer={customer} reportType="asset_inventory" label="Export inventory CSV"
                         filters={{ search: filters.search, group: filters.group, os: filters.os }} />

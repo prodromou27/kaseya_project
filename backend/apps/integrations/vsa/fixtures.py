@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 _FILTER = re.compile(r"^OrganizationId eq ([0-9]+)$")
+_SITE_FILTER = re.compile(r"^ParentId eq ([0-9]+)$")
+_GROUP_FILTER = re.compile(r"^ParentOrganizationId eq ([0-9]+)$")
 
 
 @dataclass
@@ -34,11 +36,18 @@ class FixtureVsaTransport:
         assets: list[dict[str, Any]],
         organizations: list[dict[str, Any]] | None = None,
         *,
+        sites: list[dict[str, Any]] | None = None,
+        groups: list[dict[str, Any]] | None = None,
+        devices: list[dict[str, Any]] | None = None,
         scripted: list[FakeResponse | Exception] | None = None,
         on_request: Callable[[str, Mapping[str, str]], None] | None = None,
     ):
         self.assets = assets
         self.organizations = organizations or []
+        # Hierarchy/device list default to values derived from the assets (fixture-only private keys _GroupId etc.).
+        self.sites = sites if sites is not None else _derive_sites(assets)
+        self.groups = groups if groups is not None else _derive_groups(assets)
+        self.devices = devices if devices is not None else _derive_devices(assets)
         self.scripted = list(scripted or [])  # responses returned (in order) before normal behaviour
         self.on_request = on_request
         self.calls: list[tuple[str, dict[str, str]]] = []
@@ -49,6 +58,12 @@ class FixtureVsaTransport:
 
         tenant = demo_tenant()
         return cls(tenant["assets"], tenant["organizations"])
+
+    def _list(self, rows: list[dict[str, Any]], skip: int, top: int, total: bool = True) -> FakeResponse:
+        meta: dict[str, Any] = {"ResponseCode": 200}
+        if total:
+            meta["TotalCount"] = len(rows)
+        return FakeResponse(200, {"Data": rows[skip : skip + top], "Meta": meta})
 
     def get(self, url: str, *, params: Mapping[str, str], headers: Mapping[str, str], auth: Any) -> FakeResponse:
         params = dict(params)
@@ -79,7 +94,26 @@ class FixtureVsaTransport:
             return FakeResponse(400)
         if top < 1 or skip < 0:
             return FakeResponse(400)
+        if path == "/api/v3/devices":
+            flt = _FILTER.fullmatch(params.get("$filter", ""))
+            if not flt or params.get("$orderby") != "Identifier":
+                return FakeResponse(400)
+            rows = sorted(
+                (d for d in self.devices if str(d.get("OrganizationId")) == flt.group(1)),
+                key=lambda d: str(d.get("Identifier", "")),
+            )
+            return self._list(rows, skip, top, total=params.get("$count") == "true")
         top = min(top, 100)
+        if path == "/api/v3/sites":
+            flt = _SITE_FILTER.fullmatch(params.get("$filter", ""))
+            if not flt:
+                return FakeResponse(400)
+            return self._list([s for s in self.sites if str(s.get("ParentId")) == flt.group(1)], skip, top)
+        if path == "/api/v3/groups":
+            flt = _GROUP_FILTER.fullmatch(params.get("$filter", ""))
+            if not flt:
+                return FakeResponse(400)
+            return self._list([g for g in self.groups if str(g.get("ParentOrganizationId")) == flt.group(1)], skip, top)
         if path == "/api/v3/assets":
             rows = self.assets
             flt = params.get("$filter")
@@ -92,7 +126,7 @@ class FixtureVsaTransport:
                 return FakeResponse(400)
             rows = sorted(rows, key=lambda a: str(a.get("Identifier", "")))
             # InstalledUpdates is documented only on the per-device endpoint; never return it from the list.
-            rows = [{k: v for k, v in r.items() if k != "InstalledUpdates"} for r in rows]
+            rows = [{k: v for k, v in r.items() if k != "InstalledUpdates" and not k.startswith("_")} for r in rows]
             return FakeResponse(
                 200, {"Data": rows[skip : skip + top], "Meta": {"TotalCount": len(rows), "ResponseCode": 200}}
             )
@@ -102,3 +136,68 @@ class FixtureVsaTransport:
                 200, {"Data": rows[skip : skip + top], "Meta": {"TotalCount": len(rows), "ResponseCode": 200}}
             )
         return FakeResponse(404)
+
+
+def _group_id(asset: dict[str, Any]) -> int:
+    return int(asset.get("_GroupId") or (int(asset.get("SiteId") or 0) * 10 + 1))
+
+
+def _derive_sites(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: dict[int, dict[str, Any]] = {}
+    for a in assets:
+        if isinstance(a.get("SiteId"), int) and isinstance(a.get("OrganizationId"), int):
+            seen.setdefault(
+                a["SiteId"],
+                {
+                    "Id": a["SiteId"],
+                    "Name": a.get("_SiteName", f"Site {a['SiteId']}"),
+                    "ParentId": a["OrganizationId"],
+                    "ParentName": f"Org {a['OrganizationId']}",
+                    "ContactInformation": {"Email": "should-not-be-stored@example.invalid"},
+                },
+            )
+    return sorted(seen.values(), key=lambda s: s["Id"])
+
+
+def _derive_groups(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: dict[int, dict[str, Any]] = {}
+    for a in assets:
+        if isinstance(a.get("SiteId"), int) and isinstance(a.get("OrganizationId"), int):
+            gid = _group_id(a)
+            seen.setdefault(
+                gid,
+                {
+                    "Id": gid,
+                    "Name": a.get("_GroupName", f"Group {gid}"),
+                    "IsActive": True,
+                    "ParentSiteId": a["SiteId"],
+                    "ParentSiteName": f"Site {a['SiteId']}",
+                    "ParentOrganizationId": a["OrganizationId"],
+                    "ParentOrganizationName": f"Org {a['OrganizationId']}",
+                    "Notes": "free text",
+                },
+            )
+    return sorted(seen.values(), key=lambda g: g["Id"])
+
+
+def _derive_devices(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out = []
+    for a in assets:
+        if not isinstance(a.get("SiteId"), int) or not isinstance(a.get("OrganizationId"), int):
+            continue
+        out.append(
+            {
+                "Identifier": a.get("Identifier"),
+                "Name": a.get("Name"),
+                "GroupId": _group_id(a),
+                "GroupName": a.get("_GroupName", f"Group {_group_id(a)}"),
+                "IsAgentInstalled": True,
+                "IsMdmEnrolled": False,
+                "SiteId": a["SiteId"],
+                "SiteName": f"Site {a['SiteId']}",
+                "OrganizationId": a["OrganizationId"],
+                "OrganizationName": f"Org {a['OrganizationId']}",
+                "HasCustomFields": False,
+            }
+        )
+    return out

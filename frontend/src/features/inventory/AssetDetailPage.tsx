@@ -7,7 +7,9 @@ import { DataTable } from "../../components/DataTable";
 import { QueryBoundary } from "../../components/States";
 import { Tabs } from "../../components/Tabs";
 import { Badge, Notice, PageHeader, statusTone } from "../../components/ui";
+import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { api } from "../../lib/api";
+import { AdapterList } from "../groups/GroupNetworkPage";
 import { formatUtc } from "../../lib/format";
 import { STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
 
@@ -31,7 +33,10 @@ function Overview({ detail }: { detail: AssetDetail }) {
   if (!a) return <Notice tone="warn">This device is not in the current published dataset (it may have been removed at the source or its mapping revoked).</Notice>;
   const fields: [string, string][] = [
     ["Device ID (source)", detail.external_id], ["Hostname", a.hostname], ["Description", a.description],
-    ["Group", a.group_name], ["Site ID", a.site_external_id], ["Organization ID", a.organization_external_id],
+    ["Group", `${a.group_name}${a.group_external_id ? ` (ID ${a.group_external_id})` : " (group ID not reported)"}`],
+    ["Site", `${a.site_name || "?"} (ID ${a.site_external_id || "?"})`], ["Organization ID", a.organization_external_id],
+    ["Agent installed", detail.details?.is_agent_installed === null || detail.details === null ? "not reported"
+      : detail.details.is_agent_installed ? "yes" : "no"],
     ["OS", [a.os_name, a.os_version].filter(Boolean).join(" ") || "not reported"],
     ["Manufacturer / model", [a.manufacturer, a.model].filter(Boolean).join(" ") || "not reported"],
     ["Serial number", a.serial_number || "not reported"], ["Domain", a.domain || "not reported"],
@@ -47,6 +52,63 @@ function Overview({ detail }: { detail: AssetDetail }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+function Network({ detail }: { detail: AssetDetail }) {
+  const d = detail.details;
+  if (!d) return <Notice tone="warn">Not in the current dataset.</Notice>;
+  if (d.network_status === "not_collected") {
+    return <Notice tone="warn">The source returned no network sections for this device (not collected, not “no network”).</Notice>;
+  }
+  return (
+    <div className="space-y-2 text-sm">
+      <p className="text-xs text-slate-500">
+        Reported adapters from VSA X. Subnets are derived only from a reported IPv4 address with its reported mask.
+        {d.public_ip ? ` Public IP reported: ${d.public_ip}.` : ""}
+      </p>
+      <AdapterList adapters={d.adapters} />
+    </div>
+  );
+}
+
+function tri(v: boolean | null, yes: string, no: string) {
+  return v === null ? <Badge tone="neutral">not reported</Badge> : <Badge tone={v ? "good" : "warn"}>{v ? yes : no}</Badge>;
+}
+
+function HardwareSecurity({ detail }: { detail: AssetDetail }) {
+  const d = detail.details;
+  if (!d) return <Notice tone="warn">Not in the current dataset.</Notice>;
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <section aria-labelledby="disk-h">
+        <h3 id="disk-h" className="mb-1 text-sm font-semibold">Disks</h3>
+        {d.disks_status === "not_collected" ? <Notice tone="warn">Disk section not collected.</Notice> : (
+          <DataTable caption="Disks" rows={d.disks} getRowId={(r) => r.name} emptyTitle="Source reported no disks."
+            columns={[
+              { header: "Volume", accessorKey: "name" },
+              { header: "System", cell: ({ row }) => (row.original.is_system === null ? "—" : row.original.is_system ? "yes" : "no") },
+              { header: "Free", cell: ({ row }) => row.original.free_percentage === null ? "not reported"
+                  : <span>{Number(row.original.free_percentage)}% {Number(row.original.free_percentage) < 10 ? <Badge tone="warn">low</Badge> : null}</span> },
+              { header: "Total (as reported)", cell: ({ row }) => row.original.total_value_raw || "—" },
+            ]} />
+        )}
+        <p className="mt-1 text-[11px] text-slate-500">{d.units_note} Inventory snapshot, not live telemetry.</p>
+      </section>
+      <section aria-labelledby="sec-h">
+        <h3 id="sec-h" className="mb-1 text-sm font-semibold">Reported security observations</h3>
+        {d.security_status === "not_collected" ? <Notice tone="warn">Security section not collected.</Notice> : (
+          <DataTable caption="Security observations" rows={d.security} getRowId={(r) => `${r.type}-${r.name}`} emptyTitle="Source reported no security items."
+            columns={[
+              { header: "Type", accessorKey: "type" },
+              { header: "Name", accessorKey: "name" },
+              { header: "Enabled", cell: ({ row }) => tri(row.original.enabled, "enabled", "disabled") },
+              { header: "Up to date", cell: ({ row }) => tri(row.original.up_to_date, "up to date", "not up to date") },
+            ]} />
+        )}
+        <p className="mt-1 text-[11px] text-slate-500">Observations reported by the agent; not a security assessment. “Not reported” is neither secure nor insecure.</p>
+      </section>
+    </div>
   );
 }
 
@@ -105,10 +167,12 @@ export function AssetDetailPage() {
             { id: "software", label: `Installed software (${detail.software.length})`, content: (
               detail.asset?.software_status === "not_collected"
                 ? <Notice tone="warn">The source did not return an InstalledSoftware section for this device. This is “not collected”, not “no software”.</Notice>
-                : <DataTable caption="Installed software" columns={softwareColumns} rows={detail.software} getRowId={(r) => r.id}
-                             emptyTitle="The source reported no installed software for this device." />
+                : <><ThirdPartyPatchNotice status={detail.third_party_patch_status} /><DataTable caption="Installed software" columns={softwareColumns} rows={detail.software} getRowId={(r) => r.id}
+                             emptyTitle="The source reported no installed software for this device." /></>
             ) },
             { id: "os-updates", label: "OS updates", content: <OsUpdates detail={detail} /> },
+            { id: "network", label: "Network", content: <Network detail={detail} /> },
+            { id: "hardware", label: "Hardware & security", content: <HardwareSecurity detail={detail} /> },
             { id: "history", label: "Observation history", content: (
               <DataTable caption="Observation history" getRowId={(h) => h.generation_id} rows={detail.history} columns={[
                 { header: "Dataset published", cell: ({ row }) => formatUtc(row.original.published_at) },

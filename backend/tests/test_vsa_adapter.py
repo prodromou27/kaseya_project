@@ -79,8 +79,10 @@ def test_documented_example_normalises_with_allowlisted_fields_only():
         ("Google Update Helper", "Google Inc.", "1.3.33.5"),
     ]
     dumped = repr(asset)
-    for secret in ("XXXXX-XXXXX", "11111-22222-233333-44444", "ORG\\\\username", "John", "1.2.3.4"):
+    for secret in ("XXXXX-XXXXX", "11111-22222-233333-44444", "ORG\\\\username", "John"):
         assert secret not in dumped, secret
+    # PublicIpAddress is intentionally kept since VSA1-04 (group network views); contact/user fields are not.
+    assert asset.public_ip == "1.2.3.4"
 
 
 def test_missing_software_section_is_not_collected_not_empty():

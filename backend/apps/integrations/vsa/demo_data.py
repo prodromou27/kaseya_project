@@ -129,6 +129,13 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
     }
     if index % 41 != 0:  # every 41st asset omits the section → must surface as "not collected", never "no software"
         asset["InstalledSoftware"] = software
+    # Fixture-only private keys (stripped from list responses) drive the derived /sites, /groups and /devices data.
+    site_id = asset["SiteId"]
+    kind = "Servers" if "SRV" in name else "Workstations"
+    asset["_GroupId"] = site_id * 10 + (2 if kind == "Servers" else 1)
+    asset["_GroupName"] = kind
+    asset["_SiteName"] = site
+    _add_network_and_hardware(rng, asset, org_id, index)
     if asset["Type"] == "windows" and index % 37 != 0:  # every 37th Windows device omits OS update sections
         available = [u for u in _DEMO_UPDATES if rng.random() < u["_p"]]
         asset["AvailableUpdates"] = [{k: v for k, v in u.items() if k != "_p"} for u in available]
@@ -151,6 +158,52 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
             for n in range(1, 1 + rng.randint(0, 4))
         ]
     return asset
+
+
+def _add_network_and_hardware(rng: random.Random, asset: dict[str, Any], org_id: int, index: int) -> None:
+    """Fictional RFC 1918 / documentation-range addressing. Exercises multi-NIC, IPv6 zones, virtual adapters,
+    a deliberate duplicate IP and devices without network/disk/security sections."""
+    if index % 23 == 0:
+        return  # no network/disk/security sections at all → "not collected"
+    third = 10 if asset["SiteId"] % 10 == 1 else 20
+    octet = 10 + index if index != 77 else 10 + 76  # index 77 deliberately duplicates index 76's address
+    mac = f"0050{org_id % 100:02d}{index // 256:02X}{index % 256:02X}00"
+    lan = {
+        "Name": "Ethernet",
+        "PhysicalAddress": mac,
+        "DhcpEnabled": True,
+        "Gateways": [f"10.{org_id % 100}.{third}.1"],
+        "DnsServers": [f"10.{org_id % 100}.{third}.2"],
+        "SubnetMask": "255.255.255.0",
+        "IpV4": f"10.{org_id % 100}.{third}.{octet}",
+        "IpV6": f"fe80::{index:x}:1%{index % 20 + 1}",
+    }
+    local = [lan]
+    ips = [{"Name": "Ethernet", "MAC": mac, "IPs": [{"IP": lan["IpV4"], "V6": False, "Download": 1, "Upload": 1}]}]
+    if index % 9 == 0:  # second, locally-administered (virtual) adapter on another subnet
+        vmac = f"0A{org_id % 100:02d}{index:04X}0001"[:12]
+        local.append(
+            {
+                "Name": "vEthernet (Default Switch)",
+                "PhysicalAddress": vmac,
+                "DhcpEnabled": False,
+                "Gateways": [],
+                "DnsServers": [],
+                "SubnetMask": "255.255.240.0",
+                "IpV4": f"172.{16 + org_id % 10}.{index % 16}.{index % 200 + 1}",
+                "IpV6": "",
+            }
+        )
+    asset["LocalIpAddresses"] = local
+    asset["IpAddresses"] = ips
+    asset["PublicIpAddress"] = f"198.51.100.{org_id % 200}"
+    asset["Disks"] = [
+        {"Name": "C:", "System": True, "FreePercentage": rng.choice([4, 12, 35, 61, 80]), "TotalValue": 256000000}
+    ]
+    asset["Security"] = [
+        {"Type": "Antivirus", "Name": "Fictional AV (fixture)", "Enabled": index % 13 != 0, "UpToDate": index % 7 != 0},
+        {"Type": "Firewall", "Name": "Windows Firewall - Domain Profile", "Enabled": True},
+    ]
 
 
 @lru_cache(maxsize=1)

@@ -66,6 +66,15 @@ class AssetObservation(models.Model):
     tags = models.JSONField(default=list, blank=True)
     software_status = models.CharField(max_length=16, choices=SoftwareStatus.choices)
     software_count = models.PositiveIntegerField(null=True, blank=True)
+    # VSA1-02/04: group membership from GET /api/v3/devices; network/disk/security asset sections.
+    group_external_id = models.CharField(max_length=64, blank=True, help_text="Blank = not in the device list.")
+    site_name = models.CharField(max_length=255, blank=True)
+    is_agent_installed = models.BooleanField(null=True)
+    is_mdm_enrolled = models.BooleanField(null=True)
+    public_ip = models.CharField(max_length=64, blank=True)
+    network_status = models.CharField(max_length=16, default="not_collected")
+    disks_status = models.CharField(max_length=16, default="not_collected")
+    security_status = models.CharField(max_length=16, default="not_collected")
     collected_at = models.DateTimeField()
 
     class Meta:
@@ -76,7 +85,151 @@ class AssetObservation(models.Model):
             models.Index(fields=["generation", "hostname"], name="inventory_obs_gen_host_idx"),
             models.Index(fields=["customer", "last_seen_online"], name="inventory_obs_cust_seen"),
             models.Index(fields=["generation", "group_name"], name="inventory_obs_gen_group"),
+            models.Index(fields=["generation", "group_external_id"], name="inventory_obs_gen_gid"),
         ]
 
     def __str__(self) -> str:
         return f"{self.hostname} @ {self.generation_id}"
+
+
+# ---------------------------------------------------------------------------------------------- VSA1-02 / VSA1-06
+
+
+class SectionStatus(models.TextChoices):
+    COLLECTED = "collected", "Collected"
+    NOT_COLLECTED = "not_collected", "Not collected (section absent)"
+
+
+class OrganizationNode(models.Model):
+    """VSA organisation as observed in one generation. Names are labels; ``external_id`` is the key."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="org_nodes")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    external_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["generation", "external_id"], name="inventory_orgnode_unique")]
+
+    def __str__(self) -> str:
+        return f"org {self.external_id}"
+
+
+class SiteNode(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    generation = models.ForeignKey(
+        "integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="site_nodes"
+    )
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    external_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=255, blank=True)
+    organization_external_id = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["generation", "external_id"], name="inventory_sitenode_unique")]
+
+    def __str__(self) -> str:
+        return f"site {self.external_id}"
+
+
+class GroupNode(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    generation = models.ForeignKey(
+        "integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="group_nodes"
+    )
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    external_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(null=True)
+    site_external_id = models.CharField(max_length=64, blank=True)
+    organization_external_id = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["generation", "external_id"], name="inventory_groupnode_unique")]
+        indexes = [models.Index(fields=["generation", "site_external_id"], name="inventory_group_gen_site_idx")]
+
+    def __str__(self) -> str:
+        return f"group {self.external_id}"
+
+
+# ---------------------------------------------------------------------------------------------- VSA1-04
+
+
+class NetworkAdapterObservation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    observation = models.ForeignKey(AssetObservation, on_delete=models.CASCADE, related_name="adapters")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name="+")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    name = models.CharField(max_length=255, blank=True)
+    mac = models.CharField(max_length=12, blank=True)
+    mac_locally_administered = models.BooleanField(default=False)
+    dhcp_enabled = models.BooleanField(null=True)
+    subnet_mask = models.CharField(max_length=45, blank=True)
+    gateways = models.JSONField(default=list)
+    dns_servers = models.JSONField(default=list)
+    sources = models.JSONField(default=list, help_text="VSA sections this adapter was assembled from.")
+
+    class Meta:
+        indexes = [models.Index(fields=["generation", "mac"], name="inventory_nic_gen_mac_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.name} {self.mac}"
+
+
+class IpAddressObservation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    adapter = models.ForeignKey(NetworkAdapterObservation, on_delete=models.CASCADE, related_name="ips")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name="+")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    raw = models.CharField(max_length=64)
+    address = models.CharField(max_length=45, blank=True, help_text="Canonical form without zone; blank if invalid.")
+    zone = models.CharField(max_length=32, blank=True)
+    version = models.PositiveSmallIntegerField(null=True)
+    kind = models.CharField(max_length=16)
+    prefix_length = models.PositiveSmallIntegerField(null=True)
+    network_cidr = models.CharField(max_length=49, blank=True)
+    cidr_status = models.CharField(max_length=24)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["customer", "generation", "address"], name="inventory_ip_cust_gen_addr"),
+            models.Index(fields=["generation", "network_cidr"], name="inventory_ip_gen_cidr_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return self.raw
+
+
+class DiskObservation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    observation = models.ForeignKey(AssetObservation, on_delete=models.CASCADE, related_name="disks")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name="+")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    name = models.CharField(max_length=64, blank=True)
+    is_system = models.BooleanField(null=True)
+    free_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True)
+    total_value_raw = models.CharField(max_length=32, blank=True, help_text="VSA 'TotalValue'; units undocumented.")
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class SecurityObservation(models.Model):
+    """Reported posture attribute (antivirus, firewall, UAC, ransomware). An observation, not a certification."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    observation = models.ForeignKey(AssetObservation, on_delete=models.CASCADE, related_name="security_items")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name="+")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    type = models.CharField(max_length=64, blank=True)
+    name = models.CharField(max_length=128, blank=True)
+    enabled = models.BooleanField(null=True)
+    up_to_date = models.BooleanField(null=True)
+
+    def __str__(self) -> str:
+        return f"{self.type}: {self.name}"
