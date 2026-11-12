@@ -28,6 +28,11 @@
 | ADR-021 | Catalog imports and aliases need a reviewer other than the submitter (`CATALOG_REQUIRE_SEPARATE_REVIEWER`) | Poisoned reference versions are a listed threat | Implemented (P1) |
 | ADR-022 | Revoking a mapping immediately hides its published data from customer views and reports | A wrong mapping is a leak; revocation must be effective at once | Implemented (P1) |
 | ADR-023 | Alias matching is exact or prefix only (no regex) | Avoids ReDoS and over-broad, hard-to-review matches | Implemented (P1) |
+| ADR-024 | Per-device OS-update status vocabulary (collected / not_collected / not_supported / not_requested / failed / carried_forward) | A missing section must never read as "0 missing updates" | Implemented (P2) |
+| ADR-025 | InstalledUpdates collected per device within a configurable budget, least recently collected first, carry-forward labelled with its original time | The only documented source is a per-device endpoint (3600 req/h per token+endpoint) | Implemented (P2) |
+| ADR-026 | `InstalledAt` stored verbatim, never converted | The documented example has no timezone | Implemented (P2) |
+| ADR-027 | Schedules deliver in-portal only; owner and recipients re-authorised per run; `(schedule, slot)` DB-unique | DEC-09 (no e-mail yet); duplicate and revocation safety | Implemented (P2) |
+| ADR-028 | Regeneration re-pins to the original generation/evaluation IDs, constrained to the run's customer | Reproducible historical reports without cross-tenant pin forgery | Implemented (P2) |
 | ADR-017 | Frontend pinned to proven majors (React Router 7, TanStack Table 8, Vite 7, TypeScript 5.9, ESLint 9) instead of the newest majors | Avoids building on APIs that are not yet verified; upgrade deliberately later | Implemented (P0) |
 
 ## Open decisions requiring authorized owners

@@ -1,6 +1,6 @@
 # Implementation task backlog (agent-ready)
 
-**Status (2026-11-12):** P0-01 and P0-03 to P0-08 are done (`d799241`). P1-01 to P1-09 are done and fixture-tested (`23550d1`); there has been **no live VSA X validation**. P0-02 has not been booted, and the gates P0-09 and P1-10 are open. Evidence: [PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md), [PHASE_ACCEPTANCE_P1.md](PHASE_ACCEPTANCE_P1.md). Update only after tested code is merged/reviewed.
+**Status (2026-11-13):** P0-01 and P0-03 to P0-08 are done (`d799241`). P1-01 to P1-09 (`23550d1`) and P2-01 to P2-06 (`c483a8f`) are done and fixture-tested; there has been **no live VSA X validation**. P0-02 has not been booted, and the gates P0-09, P1-10 and P2-07 are open. Evidence: [PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md), [PHASE_ACCEPTANCE_P1.md](PHASE_ACCEPTANCE_P1.md), [PHASE_ACCEPTANCE_P2.md](PHASE_ACCEPTANCE_P2.md). Update only after tested code is merged/reviewed.
 
 **Convention:** `P<phase>-<task>` task ID; C=critical, H=high, M=medium. Finish dependencies and acceptance conditions before marking checked.
 
@@ -31,13 +31,13 @@
 
 ## P2 — Windows updates, reports, history
 
-- [ ] **P2-01 [H] OS update collection:** VSA `Updates`, `AvailableUpdates`, `InstalledUpdates`, missing-data states. **AC:** correct OS classification and provenance.
-- [ ] **P2-02 [H] Patch views:** KB, severity where present, devices, scan freshness and unknown counts. **AC:** no false zeros.
-- [ ] **P2-03 [C] Report schema/permissions:** templates, saved views, report runs, customer scope. **AC:** cross-tenant filters denied.
-- [ ] **P2-04 [H] XLSX/PDF:** professional layouts, data basis, streaming/private artifact storage. **AC:** valid files and matching row counts.
-- [ ] **P2-05 [H] Scheduling:** Celery Beat, idempotent jobs, timezone and recipient controls. **AC:** duplicate suppression and revoke access tests.
-- [ ] **P2-06 [H] Historical snapshots:** pinned generations, catalog revision identity, trend charts. **AC:** old reports reproducible.
-- [ ] **P2-07 [C] Reporting gate:** all RPT-01–06 cases, negative export and retention tests. **AC:** phase record.
+- [x] **P2-01 [H] OS update collection:** VSA `Updates`, `AvailableUpdates`, `InstalledUpdates`, missing-data states. **AC:** correct OS classification and provenance. — *Done `c483a8f`: Updates/AvailableUpdates from the list endpoint; InstalledUpdates per device (budgeted, rotated, labelled carry-forward); fixture-only.*
+- [x] **P2-02 [H] Patch views:** KB, severity where present, devices, scan freshness and unknown counts. **AC:** no false zeros. — *Done `c483a8f`: explicit not-collected/non-Windows states; no false zeros (tests + E2E).*
+- [x] **P2-03 [C] Report schema/permissions:** templates, saved views, report runs, customer scope. **AC:** cross-tenant filters denied. — *Done `c483a8f`: templates, saved views, definitions; cross-tenant filters rejected.*
+- [x] **P2-04 [H] XLSX/PDF:** professional layouts, data basis, streaming/private artifact storage. **AC:** valid files and matching row counts. — *Done `c483a8f`: string-typed XLSX, escaped PDF, identical row sets; private storage.*
+- [x] **P2-05 [H] Scheduling:** Celery Beat, idempotent jobs, timezone and recipient controls. **AC:** duplicate suppression and revoke access tests. — *Done `c483a8f`: Beat dispatcher, DB-unique slots, re-authorisation, in-portal delivery only.*
+- [x] **P2-06 [H] Historical snapshots:** pinned generations, catalog revision identity, trend charts. **AC:** old reports reproducible. — *Done `c483a8f`: pinned regeneration reproduces rows; trend endpoint and chart.*
+- [ ] **P2-07 [C] Reporting gate:** all RPT-01–06 cases, negative export and retention tests. **AC:** phase record. — *Open: needs the P0/P1 gates, a live pilot and reporting-owner review (DEC-08/09).*
 
 ## P3 — IT Glue connector
 

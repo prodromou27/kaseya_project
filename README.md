@@ -1,6 +1,6 @@
 # Odyssey Kaseya Analytics & Reporting Portal
 
-**Project state:** P0 foundation and P1 VSA X inventory and software-version comparison are implemented and **fixture-tested** (no live VSA X validation yet). The P0 and P1 gates stay open until a Docker boot, a green CI run, owner sign-off and an optional live pilot. See [PHASE_ACCEPTANCE_P1.md](docs/PHASE_ACCEPTANCE_P1.md).
+**Project state:** P0 foundation, P1 VSA X inventory and software versions, and P2 Windows updates, CSV/XLSX/PDF reports, schedules and history are implemented and **fixture-tested** (no live VSA X validation yet). The phase gates stay open until a Docker boot, a green CI run, a live pilot and owner sign-off. See [PHASE_ACCEPTANCE_P2.md](docs/PHASE_ACCEPTANCE_P2.md).
 
 **Owner:** Odyssey internal engineering  
 **Deployment target:** Internal AlmaLinux host, Docker Compose  

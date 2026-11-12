@@ -16,6 +16,21 @@ All implementation claims require linked evidence. Use semantic versions for app
 - No source code for the Django/React application in this package.
 - No deployed portal, working vendor connector, live customer data, tests, or production sign-off.
 
+## [0.3.0-dev] — 2026-11-13 (unreleased; P2 Windows updates, reports, history, commit `c483a8f`)
+
+Evidence: [PHASE_ACCEPTANCE_P2.md](PHASE_ACCEPTANCE_P2.md). **Fixture-tested only.**
+
+### Added
+- VSA X OS update sections: available updates (list endpoint) and installed updates (per-device, budgeted), with an explicit status for each device.
+- Windows updates view, an OS-update tab on each asset, and the RPT-04 report.
+- XLSX and PDF output for every report, plus RPT-05 (version distribution) and RPT-06 (stale devices).
+- Report templates endpoint, saved views and report definitions.
+- Timezone-aware schedules with in-portal delivery, scheduled read-only syncs and an expired-artifact purge.
+- Regeneration of a report from its original pinned snapshot, a history/trend endpoint and a dashboard chart.
+
+### Security
+- XLSX cells are string-typed (no formulas). PDF text is escaped. Filters cannot reference another customer's records. Schedule recipients are re-authorised on every run.
+
 ## [0.2.0-dev] — 2026-11-12 (unreleased; P1 VSA X + software versions, commit `23550d1`)
 
 Evidence: [PHASE_ACCEPTANCE_P1.md](PHASE_ACCEPTANCE_P1.md). **Fixture-tested only. No live VSA X validation.**

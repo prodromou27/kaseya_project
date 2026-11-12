@@ -101,3 +101,13 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
 5. **Catalog:** Administration → Software catalog. Paste the JSON rows, run the dry-run preview, then submit. A **different**
    administrator approves. Published revisions are immutable.
 6. **Exceptions:** customer admins add time-limited, justified exceptions on the Software versions page.
+
+### Added in P2
+
+7. **Installed updates:** set "InstalledUpdates budget / sync" on an integration (per-device calls per sync). Leave it at 0 until
+   the API budget has been measured in a pilot. Devices outside the budget show *carried forward* or *not requested*.
+8. **Scheduled syncs:** Administration → Sync schedules (approved mappings only). Requires the `beat` service in Compose.
+9. **Report schedules:** Reports → Definitions & schedules. Delivery is in-portal only (DEC-09). Recipients must currently have
+   export access. Anyone who loses access is removed at the next run, and this is audited.
+10. **Retention:** report files are deleted after `REPORT_ARTIFACT_TTL_HOURS` (hourly purge job). Dataset generations are kept
+    until a retention policy is approved.
