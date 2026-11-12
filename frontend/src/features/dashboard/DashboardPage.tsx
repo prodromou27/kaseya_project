@@ -4,6 +4,7 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/States";
 import { Badge, Notice, PageHeader, statusTone } from "../../components/ui";
 import { useMe } from "../../lib/auth";
 import { useCustomers } from "../../lib/customerContext";
+import { Trends } from "./Trends";
 
 export function DashboardPage() {
   const me = useMe();
@@ -14,8 +15,8 @@ export function DashboardPage() {
       <PageHeader title="Dashboard" subtitle={selected ? `${selected.code} — ${selected.name}` : "No customer selected"} />
       <div className="mb-4">
         <Notice tone="info">
-          Foundation release (P0). No vendor connector is live yet, so inventory, software and update figures are not
-          available. Nothing on this portal currently reflects vendor data.
+          Figures come from read-only VSA X datasets. Sources labelled <strong>fixture</strong> are synthetic demo data,
+          not a live tenant. Software figures are version comparisons, not patch applicability.
         </Notice>
       </div>
 
@@ -55,6 +56,9 @@ export function DashboardPage() {
             Open customer
           </Link>
         </section>
+      ) : null}
+      {selected ? (
+        <Trends customer={selected} />
       ) : customers.length > 0 ? (
         <EmptyState title="Select a customer">Use the customer selector in the header to scope the portal.</EmptyState>
       ) : null}

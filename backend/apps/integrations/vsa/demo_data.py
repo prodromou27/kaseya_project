@@ -14,6 +14,62 @@ from typing import Any
 
 FIXTURE_NOW = datetime(2026, 11, 12, 9, 0, tzinfo=UTC)
 
+# Fictional KB numbers and titles (5099xxx range) — not real Microsoft updates.
+_DEMO_UPDATES: list[dict[str, Any]] = [
+    {
+        "UpdateId": "demo-upd-0001",
+        "RevisionNumber": 1,
+        "KbArticle": "5099001",
+        "Severity": "Critical",
+        "Title": "DEMO Cumulative Security Update (KB5099001) (fixture)",
+        "Category": "SECURITY_UPDATE_CRITICAL",
+        "CvssScore": 9.1,
+        "CveCodes": [],
+        "ReleaseDate": "2026-10-14",
+        "Description": "Fictional",
+        "_p": 0.35,
+    },
+    {
+        "UpdateId": "demo-upd-0002",
+        "RevisionNumber": 3,
+        "KbArticle": "5099002",
+        "Severity": "Important",
+        "Title": "DEMO Servicing Stack Update (KB5099002) (fixture)",
+        "Category": "SECURITY_UPDATE_IMPORTANT",
+        "CvssScore": 7.0,
+        "CveCodes": [],
+        "ReleaseDate": "2026-10-14",
+        "Description": "Fictional",
+        "_p": 0.5,
+    },
+    {
+        "UpdateId": "demo-upd-0003",
+        "RevisionNumber": 1,
+        "KbArticle": "5099003",
+        "Severity": "Unspecified",
+        "Title": "DEMO .NET Quality Rollup (KB5099003) (fixture)",
+        "Category": "UPDATE",
+        "CvssScore": None,
+        "CveCodes": [],
+        "ReleaseDate": "2026-09-09",
+        "Description": "Fictional",
+        "_p": 0.25,
+    },
+    {
+        "UpdateId": "demo-upd-0004",
+        "RevisionNumber": 2,
+        "KbArticle": "",
+        "Severity": "Unspecified",
+        "Title": "DEMO Driver Update without KB (fixture)",
+        "Category": "DRIVER",
+        "CvssScore": None,
+        "CveCodes": [],
+        "ReleaseDate": "2026-08-01",
+        "Description": "Fictional",
+        "_p": 0.15,
+    },
+]
+
 _SOFTWARE_POOL: list[tuple[str, str, list[str]]] = [
     ("Google Chrome", "Google LLC", ["131.0.6778.86", "130.0.6723.117", "131.0.6778.86", "129.0.6668.101"]),
     ("Google Chrome Beta", "Google LLC", ["132.0.6834.15"]),
@@ -41,7 +97,7 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
         "GroupName": f"{prefix} Org - {site} - {'Servers' if 'SRV' in name else 'Workstations'}",
         "Description": "Windows Server 2022 Standard" if "SRV" in name else "Windows 11 Enterprise",
         "Tags": ["demo"],
-        "Type": "windows",
+        "Type": "mac" if index % 29 == 0 else "windows",
         "ClientVersion": "5.1.2",
         "LastSeenOnline": (FIXTURE_NOW - timedelta(hours=rng.choice([1, 2, 5, 30, 24 * 20]))).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
@@ -73,6 +129,27 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
     }
     if index % 41 != 0:  # every 41st asset omits the section → must surface as "not collected", never "no software"
         asset["InstalledSoftware"] = software
+    if asset["Type"] == "windows" and index % 37 != 0:  # every 37th Windows device omits OS update sections
+        available = [u for u in _DEMO_UPDATES if rng.random() < u["_p"]]
+        asset["AvailableUpdates"] = [{k: v for k, v in u.items() if k != "_p"} for u in available]
+        asset["Updates"] = {
+            "Critical": sum(1 for u in available if u["Severity"] == "Critical"),
+            "Important": sum(1 for u in available if u["Severity"] == "Important"),
+            "Unspecified": sum(1 for u in available if u["Severity"] not in ("Critical", "Important")),
+        }
+        asset["InstalledUpdates"] = [
+            {
+                "UpdateId": f"demo-installed-{n}",
+                "RevisionNumber": 1,
+                "Title": f"DEMO Installed Update {n} (fixture)",
+                "Description": "Fictional fixture update",
+                "Severity": "Unspecified",
+                "ReleaseDate": "2026-10-01",
+                "InstalledAt": "2026-10-05T03:00:00",
+                "InstalledByAgent": True,
+            }
+            for n in range(1, 1 + rng.randint(0, 4))
+        ]
     return asset
 
 

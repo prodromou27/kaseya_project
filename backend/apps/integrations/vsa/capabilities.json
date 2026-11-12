@@ -9,7 +9,7 @@
   },
   "endpoints": {
     "GET /api/v3/assets": {
-      "status": "docs-verified; fixture-tested",
+      "status": "docs-verified; fixture-tested (include=Tags,AssetInfo,InstalledSoftware,Updates,AvailableUpdates since P2)",
       "query": {
         "$top": "integer, max 100, default 100",
         "$skip": "integer starting position",
@@ -21,17 +21,24 @@
       "rate_limit": "3600 requests/hour per token+endpoint"
     },
     "GET /api/v3/assets/:id": {
-      "status": "docs-verified; not used in P1 (InstalledUpdates is P2)",
-      "response": "{Data: asset, Meta: {ResponseCode}}"
+      "status": "docs-verified; fixture-tested (P2, budgeted per run)",
+      "query": {
+        "include": "same sections as list; additionally accepts InstalledUpdates"
+      },
+      "response": "{Data: asset, Meta: {ResponseCode}}",
+      "used_for": "InstalledUpdates only (not returned by the list endpoint)"
     },
     "GET /api/v3/organizations": {
       "status": "docs-verified; fixture-tested",
-      "query": {"$top": "max 100, default 100", "$skip": "starting position"},
+      "query": {
+        "$top": "max 100, default 100",
+        "$skip": "starting position"
+      },
       "response": "{Data: [{Id:int, Name, Type: Internal|Customer, ...}], Meta: {TotalCount, ResponseCode}}"
     }
   },
   "asset_fields_used": {
-    "Identifier": "string, always included — primary source key",
+    "Identifier": "string, always included \u2014 primary source key",
     "Name": "string, always included",
     "GroupName": "string 'Org - Site - Group', always included",
     "Description": "string, always included",
@@ -39,7 +46,7 @@
     "ClientVersion": "string, always included",
     "LastSeenOnline": "ISO-8601 string, always included",
     "ComputerId": "int, always included",
-    "OrganizationId": "int, always included — mapped via approved CustomerSourceMapping",
+    "OrganizationId": "int, always included \u2014 mapped via approved CustomerSourceMapping",
     "SiteId": "int, always included",
     "Tags": "array of string (section Tags)",
     "AssetInfo[System].Manufacturer/Model/Type/Domain": "section AssetInfo",
@@ -59,16 +66,44 @@
   "rate_limiting": {
     "status": "docs-verified",
     "429": "Too Many Requests with Retry-After (seconds)",
-    "headers": ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
-    "failed_requests_per_ip": "100/minute and 2000/hour count failed (non-2xx except 503) requests — auth failures must stop immediately"
+    "headers": [
+      "X-RateLimit-Limit",
+      "X-RateLimit-Remaining",
+      "X-RateLimit-Reset"
+    ],
+    "failed_requests_per_ip": "100/minute and 2000/hour count failed (non-2xx except 503) requests \u2014 auth failures must stop immediately"
   },
   "errors": {
-    "documented_status_codes": [200, 202, 400, 401, 403, 404, 429, 500, 502, 503, 504],
-    "error_body_shape": "NOT documented — adapter acts on status code only and never stores or logs error bodies"
+    "documented_status_codes": [
+      200,
+      202,
+      400,
+      401,
+      403,
+      404,
+      429,
+      500,
+      502,
+      503,
+      504
+    ],
+    "error_body_shape": "NOT documented \u2014 adapter acts on status code only and never stores or logs error bodies"
   },
   "not_established": [
     "Per-device third-party missing-patch applicability (InstalledSoftware is version inventory only)",
     "Software architecture/channel per installation (InstalledSoftware has only Name, Publisher, Version)",
-    "Stable ordering guarantees for $skip paging; adapter uses $orderby=Identifier and verifies counts"
-  ]
+    "Stable ordering guarantees for $skip paging; adapter uses $orderby=Identifier and verifies counts",
+    "A per-device OS update scan timestamp (scan freshness can only be approximated by collection time and LastSeenOnline)",
+    "Whether AvailableUpdates is populated for non-Windows device types (treated as not_supported unless Type == windows)",
+    "Third-party application patch applicability (AvailableUpdates is documented as OS updates)"
+  ],
+  "os_update_fields": {
+    "verified_on": "2026-11-12",
+    "basis": "documented example responses (no per-field table is published for these sections)",
+    "Updates": "object of integer counts by severity; example keys Critical, Important, Unspecified (section Updates)",
+    "AvailableUpdates[]": "UpdateId, RevisionNumber, Title, Description, KbArticle, Severity, CvssScore, CveCodes, Category, ReleaseDate \u2014 'List of available OS updates' (section AvailableUpdates)",
+    "InstalledUpdates[]": "UpdateId, RevisionNumber, Title, Description, Severity, ReleaseDate, InstalledAt, InstalledByAgent \u2014 only on GET /api/v3/assets/:id with include=InstalledUpdates",
+    "InstalledAt": "example value '2024-01-07T00:00:00' has NO timezone; stored as raw text, never assumed UTC",
+    "KbArticle on InstalledUpdates": "not shown in the documented example; treated as optional"
+  }
 }

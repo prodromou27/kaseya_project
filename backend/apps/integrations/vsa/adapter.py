@@ -14,13 +14,16 @@ from .schema import Page, PageInvalid, RecordInvalid, VsaOrganization, normalize
 
 PAGE_SIZE = 100  # documented maximum for $top
 MAX_PAGES = 5000  # hard stop: 500k assets per organisation
-# P1 needs inventory + installed software only. OS update sections are added in P2.
-ASSET_INCLUDE = "Tags,AssetInfo,InstalledSoftware"
+# Sections collected from the list endpoint. InstalledUpdates is only available per device (budgeted).
+ASSET_INCLUDE = "Tags,AssetInfo,InstalledSoftware,Updates,AvailableUpdates"
+DETAIL_INCLUDE = "InstalledUpdates"
 
 ALLOWED_PATHS = [
     re.compile(r"/api/v3/assets"),
+    re.compile(r"/api/v3/assets/[A-Za-z0-9-]{1,64}"),
     re.compile(r"/api/v3/organizations"),
 ]
+_DEVICE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
 _ORG_ID = re.compile(r"^[0-9]{1,18}$")
 
@@ -89,6 +92,12 @@ class VsaXAdapter:
                 return
             skip += len(page.records)
         raise PageInvalid("Page limit exceeded; refusing to paginate further.")
+
+    def get_installed_updates(self, identifier: str) -> Any:
+        """``GET /api/v3/assets/:id?include=InstalledUpdates`` → raw body. Identifier is validated before use."""
+        if not _DEVICE_ID.fullmatch(identifier or ""):
+            raise ValueError("Unsafe device identifier.")
+        return self.client.get_json(f"/api/v3/assets/{identifier}", {"include": DETAIL_INCLUDE}).json
 
     def list_organizations(self) -> tuple[list[VsaOrganization], list[str]]:
         """All organisations visible to the token. Returns (organisations, invalid-record reasons)."""

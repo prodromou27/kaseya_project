@@ -74,8 +74,10 @@ test("super admin approves the demo source mapping and the audit trail records i
 test("customer admin generates and downloads a scoped audit report", async ({ page }) => {
   await login(page, "demo.admin.a@demo.invalid");
   await page.getByRole("link", { name: "Reports" }).click();
-  await page.getByRole("button", { name: "Generate audit log CSV" }).click();
-  const link = page.getByRole("link", { name: "Download CSV" }).first();
+  await page.getByLabel("Report", { exact: true }).selectOption({ label: "Customer audit log" });
+  await page.getByRole("button", { name: "Generate" }).click();
+  await page.getByRole("tab", { name: "History" }).click();
+  const link = page.getByRole("link", { name: "Download" }).first();
   await expect(link).toBeVisible({ timeout: 15_000 });
   const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);
   expect(download.suggestedFilename()).toMatch(/^DEMO-A_customer_audit_log_.*\.csv$/);

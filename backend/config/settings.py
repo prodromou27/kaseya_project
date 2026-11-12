@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.reporting",
     "apps.inventory",
     "apps.software",
+    "apps.patching",
 ]
 
 MIDDLEWARE = [
@@ -181,9 +182,10 @@ REST_FRAMEWORK = {
 }
 SPECTACULAR_SETTINGS = {
     "TITLE": "Odyssey Kaseya Analytics & Reporting Portal API",
-    "VERSION": "0.1.0",
+    "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
+    "ENUM_NAME_OVERRIDES": {"UpdateStatusEnum": "apps.patching.models.UpdateStatus"},
 }
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
@@ -206,6 +208,12 @@ CELERY_TASK_ROUTES = {
     "apps.reporting.tasks.*": {"queue": "reports"},
     "apps.integrations.tasks.run_sync": {"queue": "sync_vsa"},
 }
+CELERY_BEAT_SCHEDULE = {
+    "dispatch-schedules": {"task": "apps.reporting.tasks.dispatch_schedules", "schedule": 60.0},
+    "purge-expired-artifacts": {"task": "apps.reporting.tasks.purge_expired_artifacts", "schedule": 3600.0},
+}
+CELERY_TASK_ROUTES["apps.reporting.tasks.purge_expired_artifacts"] = {"queue": "maintenance"}
+CELERY_TASK_ROUTES["apps.reporting.tasks.dispatch_schedules"] = {"queue": "maintenance"}
 SYNC_MAX_DROP_RATIO = float(env_str("SYNC_MAX_DROP_RATIO", "0.5"))
 DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
 CATALOG_REQUIRE_SEPARATE_REVIEWER = env_bool("CATALOG_REQUIRE_SEPARATE_REVIEWER", default=True)

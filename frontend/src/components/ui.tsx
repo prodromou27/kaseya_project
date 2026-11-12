@@ -88,4 +88,9 @@ export const statusTone: Record<string, Tone> = {
   partial: "warn",
   fixture: "info",
   live: "warn",
+  collected: "good",
+  not_collected: "warn",
+  not_supported: "neutral",
+  not_requested: "neutral",
+  carried_forward: "info",
 };

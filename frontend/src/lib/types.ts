@@ -70,6 +70,7 @@ export type Integration = {
   enabled: boolean;
   verify_tls: boolean;
   max_rps: string;
+  installed_updates_budget: number;
   status: string;
   is_fixture: boolean;
 };
@@ -96,6 +97,8 @@ export type ReportRun = {
   customer_code: string;
   requested_by: string;
   report_type: string;
+  title?: string;
+  regenerated_from?: string | null;
   format: string;
   state: "queued" | "running" | "completed" | "failed";
   row_count: number | null;
@@ -185,6 +188,7 @@ export type SoftwareRow = {
 };
 
 export type AssetDetail = {
+  os_updates: null | { status: DevicePatchStatus; updates: DeviceOsUpdateRow[] };
   id: string;
   external_id: string;
   active: boolean;
@@ -302,3 +306,107 @@ export const STATE_LABEL: Record<ComplianceState, string> = {
   unsupported: "Not catalogued",
   excluded: "Excluded",
 };
+
+// ---------------------------------------------------------------- P2: OS updates, reporting, history
+
+export type UpdateStatus = "collected" | "not_collected" | "not_supported" | "not_requested" | "failed" | "carried_forward";
+
+export const UPDATE_STATUS_LABEL: Record<UpdateStatus, string> = {
+  collected: "Reported",
+  not_collected: "Not collected",
+  not_supported: "Not supported (non-Windows)",
+  not_requested: "Not requested",
+  failed: "Collection failed",
+  carried_forward: "Carried forward",
+};
+
+export type OsUpdateSummary = {
+  as_of: string[];
+  generation_ids: string[];
+  data_basis: string[];
+  devices_total: number;
+  available_section: Record<UpdateStatus, number>;
+  devices_reporting_updates: number;
+  devices_with_available_updates: number;
+  devices_with_zero_available: number;
+  devices_by_severity: Record<string, number>;
+  devices_with_other_severity: number;
+  installed_section: Record<UpdateStatus, number>;
+  top_available_updates: { os_update_id: string; kb_article: string; title: string; severity: string; devices: number }[];
+  freshness_note: string;
+  scope_note: string;
+};
+
+export type DeviceOsUpdateRow = {
+  id: string;
+  asset_id: string;
+  hostname: string;
+  state: "available" | "installed";
+  kb_article: string;
+  title: string;
+  severity: string;
+  category: string;
+  cvss_score: string | null;
+  release_date: string;
+  installed_at_raw: string;
+  installed_status: UpdateStatus;
+  installed_collected_at: string | null;
+};
+
+export type DevicePatchStatus = {
+  asset_id: string;
+  hostname: string;
+  device_type: string;
+  os_name: string;
+  last_seen_online: string | null;
+  update_counts: Record<string, number> | null;
+  available_status: UpdateStatus;
+  available_count: number | null;
+  installed_status: UpdateStatus;
+  installed_count: number | null;
+  installed_collected_at: string | null;
+  collected_at: string;
+};
+
+export type ReportTemplate = {
+  key: string;
+  title: string;
+  description: string;
+  formats: string[];
+  required_capabilities: string[];
+  columns: string[];
+  filters: Record<string, { type: string; required: boolean; choices?: string[] }>;
+  limitations: string;
+};
+
+export type ReportDefinitionRow = { id: string; name: string; report_type: string; format: string; filters: Record<string, unknown>; owner: string };
+
+export type ReportScheduleRow = {
+  id: string;
+  definition: string;
+  frequency: "daily" | "weekly" | "monthly";
+  time_of_day: string;
+  weekday: number | null;
+  day_of_month: number | null;
+  timezone: string;
+  recipient_emails: string[];
+  enabled: boolean;
+  next_run_at: string | null;
+  last_run_at: string | null;
+};
+
+export type SavedViewRow = { id: string; name: string; view_type: string; filters: Record<string, string>; shared: boolean; owner: string };
+
+export type TrendPoint = {
+  day: string;
+  as_of: string;
+  source: string;
+  generation_id: string;
+  data_basis: string;
+  devices: number;
+  software: null | { evaluation_id: string; catalog_revision_ids: string[]; algorithm_version: string; current: number;
+                     outdated: number; comparable: number; eligible: number; devices_with_outdated: number | null };
+  os_updates: { devices_reporting: number; devices_not_reporting: number; devices_with_available: number; devices_with_critical: number };
+};
+
+export type TrendResponse = { days: number; points: TrendPoint[]; method: string };

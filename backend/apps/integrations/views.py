@@ -18,7 +18,7 @@ from apps.accounts.permissions import IsSystemAdmin
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
 
-from .models import IntegrationInstance, SyncQuarantine
+from .models import IntegrationInstance, SyncQuarantine, SyncSchedule
 
 
 class IntegrationInstanceSerializer(serializers.ModelSerializer):
@@ -38,6 +38,7 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "credential_ref",
             "credential_configured",
             "enabled",
+            "installed_updates_budget",
             "verify_tls",
             "max_rps",
             "status",
@@ -216,3 +217,84 @@ def _discover_organizations(instance: IntegrationInstance) -> Response:
             ],
         }
     )
+
+
+class SyncScheduleSerializer(serializers.ModelSerializer):
+    customer = serializers.SerializerMethodField()
+    integration = serializers.CharField(source="mapping.integration_instance.name", read_only=True)
+    external_org_id = serializers.CharField(source="mapping.external_org_id", read_only=True)
+
+    class Meta:
+        model = SyncSchedule
+        fields = [
+            "id",
+            "mapping",
+            "customer",
+            "integration",
+            "external_org_id",
+            "interval_hours",
+            "enabled",
+            "next_run_at",
+            "last_run_at",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "customer",
+            "integration",
+            "external_org_id",
+            "next_run_at",
+            "last_run_at",
+            "created_at",
+        ]
+
+    def get_customer(self, obj: SyncSchedule) -> dict[str, str]:
+        return {"id": str(obj.mapping.customer_id), "code": obj.mapping.customer.code}
+
+    def validate_mapping(self, value: Any) -> Any:
+        if value.mapping_status != "approved":
+            raise ValidationError("Only approved mappings can be scheduled.")
+        return value
+
+
+class SyncScheduleViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Scheduled read-only collection (super admin). Dispatched by Celery Beat."""
+
+    permission_classes = [IsSystemAdmin]
+    serializer_class = SyncScheduleSerializer
+    queryset = SyncSchedule.objects.select_related("mapping", "mapping__customer", "mapping__integration_instance")
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def perform_create(self, serializer: SyncScheduleSerializer) -> None:
+        from django.utils import timezone
+
+        s = serializer.save(next_run_at=timezone.now())
+        record_event(
+            action="sync.schedule_saved",
+            outcome="success",
+            actor=self.request.user,
+            customer=s.mapping.customer,
+            target_type="sync_schedule",
+            target_id=str(s.id),
+            request=self.request,
+            metadata={"interval_hours": s.interval_hours},
+        )
+
+    def perform_update(self, serializer: SyncScheduleSerializer) -> None:
+        s = serializer.save()
+        record_event(
+            action="sync.schedule_saved",
+            outcome="success",
+            actor=self.request.user,
+            customer=s.mapping.customer,
+            target_type="sync_schedule",
+            target_id=str(s.id),
+            request=self.request,
+            metadata={"interval_hours": s.interval_hours, "enabled": s.enabled},
+        )

@@ -107,6 +107,11 @@ services:
       timeout: 15s
       retries: 3
 
+  beat:
+    <<: *app
+    # Single scheduler instance. Duplicate dispatches are also suppressed by the DB (one execution per slot).
+    command: ["celery", "-A", "config", "beat", "-l", "info", "-s", "/tmp/celerybeat-schedule"]
+
   proxy:
     build: ./frontend
     image: okp-frontend:${OKP_VERSION:-local}

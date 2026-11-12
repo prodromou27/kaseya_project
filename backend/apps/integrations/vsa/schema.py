@@ -6,6 +6,7 @@ Only allowlisted fields are kept (see ``capabilities.json``). In particular, ``A
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -33,6 +34,23 @@ class InstalledSoftwareItem:
 
 
 @dataclass(frozen=True)
+class OsUpdateItem:
+    """One entry of ``AvailableUpdates`` / ``InstalledUpdates`` (fields per the documented examples)."""
+
+    update_id: str
+    revision_number: int | None
+    title: str
+    kb_article: str = ""
+    severity: str = ""
+    category: str = ""
+    cvss_score: float | None = None
+    cve_codes: tuple[str, ...] = ()
+    release_date: str = ""
+    installed_at_raw: str = ""  # documented without timezone — never assumed UTC
+    installed_by_agent: bool | None = None
+
+
+@dataclass(frozen=True)
 class VsaAsset:
     identifier: str
     organization_id: str
@@ -53,6 +71,10 @@ class VsaAsset:
     tags: tuple[str, ...] = ()
     # None means the InstalledSoftware section was absent ("not collected"), [] means "collected, empty".
     installed_software: tuple[InstalledSoftwareItem, ...] | None = None
+    # Same convention for OS update sections: None = section absent (not collected), () = collected, empty.
+    update_counts: dict[str, int] | None = None
+    available_updates: tuple[OsUpdateItem, ...] | None = None
+    installed_updates: tuple[OsUpdateItem, ...] | None = None
     sections: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -158,6 +180,75 @@ def _software(value: Any) -> tuple[InstalledSoftwareItem, ...]:
     return tuple(items)
 
 
+_KB = re.compile(r"^(?:KB)?([0-9]{4,10})$", re.IGNORECASE)
+_DATE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+_INSTALLED_AT = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})?$"
+)
+
+
+def _update_counts(value: Any) -> dict[str, int]:
+    if not isinstance(value, dict):
+        raise RecordInvalid("invalid_update_counts")
+    out: dict[str, int] = {}
+    for key, count in list(value.items())[:10]:
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            raise RecordInvalid("invalid_update_counts")
+        out[_text(key)[:32]] = count
+    return out
+
+
+def _os_updates(value: Any, *, installed: bool) -> tuple[OsUpdateItem, ...]:
+    if not isinstance(value, list):
+        raise RecordInvalid("invalid_os_updates")
+    items = []
+    for entry in value[:5000]:
+        if not isinstance(entry, dict):
+            raise RecordInvalid("invalid_os_updates")
+        update_id = _id(entry.get("UpdateId"))
+        if not update_id:
+            raise RecordInvalid("os_update_missing_id")
+        rev = entry.get("RevisionNumber")
+        kb_match = _KB.match(_text(entry.get("KbArticle")))
+        cvss = entry.get("CvssScore")
+        cves = entry.get("CveCodes")
+        release = _text(entry.get("ReleaseDate"))
+        installed_at = _text(entry.get("InstalledAt")) if installed else ""
+        by_agent = entry.get("InstalledByAgent") if installed else None
+        items.append(
+            OsUpdateItem(
+                update_id=update_id,
+                revision_number=rev if isinstance(rev, int) and not isinstance(rev, bool) else None,
+                title=_text(entry.get("Title")),
+                kb_article=kb_match.group(1) if kb_match else "",
+                severity=_text(entry.get("Severity"))[:32],
+                category=_text(entry.get("Category"))[:64],
+                cvss_score=float(cvss)
+                if isinstance(cvss, int | float) and not isinstance(cvss, bool) and 0 <= cvss <= 10
+                else None,
+                cve_codes=tuple(_text(c)[:32] for c in cves[:50] if isinstance(c, str))
+                if isinstance(cves, list)
+                else (),
+                release_date=release if _DATE.match(release) else "",
+                installed_at_raw=installed_at if _INSTALLED_AT.match(installed_at) else "",
+                installed_by_agent=by_agent if isinstance(by_agent, bool) else None,
+            )
+        )
+    return tuple(items)
+
+
+def normalize_installed_updates(detail_body: Any, identifier: str) -> tuple[OsUpdateItem, ...] | None:
+    """Validate a ``GET /api/v3/assets/:id`` envelope and return its InstalledUpdates (None if section absent)."""
+    if not isinstance(detail_body, dict) or not isinstance(detail_body.get("Data"), dict):
+        raise RecordInvalid("invalid_detail_envelope")
+    data = detail_body["Data"]
+    if _id(data.get("Identifier")) != identifier:
+        raise RecordInvalid("detail_identifier_mismatch")
+    if "InstalledUpdates" not in data:
+        return None
+    return _os_updates(data["InstalledUpdates"], installed=True)
+
+
 def normalize_asset(item: dict[str, Any]) -> VsaAsset:
     identifier = _id(item.get("Identifier"))
     if not identifier:
@@ -184,6 +275,10 @@ def normalize_asset(item: dict[str, Any]) -> VsaAsset:
         site_id=_id(item.get("SiteId")),
         tags=tags,
         installed_software=_software(item["InstalledSoftware"]) if "InstalledSoftware" in item else None,
+        update_counts=_update_counts(item["Updates"]) if "Updates" in item else None,
+        available_updates=(
+            _os_updates(item["AvailableUpdates"], installed=False) if "AvailableUpdates" in item else None
+        ),
         sections=sections,
         **info,
     )

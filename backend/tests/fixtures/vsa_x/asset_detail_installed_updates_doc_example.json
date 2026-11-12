@@ -1,0 +1,20 @@
+{
+  "Data": {
+    "Identifier": "11111111-2222-3333-4444-555555555555",
+    "Name": "Computer1",
+    "OrganizationId": 6978,
+    "InstalledUpdates": [
+      {
+        "UpdateId": "990549e1-1115-4419-a51d-e10afd527660",
+        "RevisionNumber": 1,
+        "Title": "Intel Corporation - System - 4/8/2019 12:00:00 AM - 30.100.1915.1",
+        "Description": "Intel Corporation System driver update released in April 2019",
+        "Severity": "Unspecified",
+        "ReleaseDate": "2024-01-01",
+        "InstalledAt": "2024-01-07T00:00:00",
+        "InstalledByAgent": true
+      }
+    ]
+  },
+  "Meta": {"ResponseCode": 200}
+}

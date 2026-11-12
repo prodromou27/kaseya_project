@@ -13,6 +13,7 @@ import { PROVIDER_LABEL, type Integration, type Paginated, type PortalUser, type
 import { AuditTable } from "../customers/AuditTable";
 import { CatalogPanel } from "./CatalogPanel";
 import { QuarantinePanel } from "./QuarantinePanel";
+import { SyncSchedulesPanel } from "./SyncSchedulesPanel";
 import { mappingColumns } from "../customers/MappingsPanel";
 
 function UsersPanel() {
@@ -68,6 +69,7 @@ function IntegrationsPanel() {
   const [baseUrl, setBaseUrl] = useState("");
   const [credentialRef, setCredentialRef] = useState("");
   const [isFixture, setIsFixture] = useState(false);
+  const [budget, setBudget] = useState("0");
   const [discoverId, setDiscoverId] = useState<string | null>(null);
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => api.patch<Integration>(`/integrations/${id}/`, { enabled }),
@@ -75,7 +77,7 @@ function IntegrationsPanel() {
   });
   const create = useMutation({
     mutationFn: () =>
-      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture }),
+      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture, installed_updates_budget: Number(budget) }),
     onSuccess: () => {
       setName("");
       setBaseUrl("");
@@ -90,6 +92,7 @@ function IntegrationsPanel() {
     { header: "Credential", cell: ({ row }) => (row.original.credential_configured ? "Reference set" : "None") },
     { header: "TLS verify", cell: ({ row }) => (row.original.verify_tls ? "On (enforced)" : "OFF") },
     { header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
+    { header: "Detail budget", cell: ({ row }) => row.original.installed_updates_budget || "off" },
     { header: "Status", accessorKey: "status", cell: ({ getValue }) => <Badge tone={statusTone[String(getValue())]}>{String(getValue())}</Badge> },
     {
       header: "Actions",
@@ -135,6 +138,12 @@ function IntegrationsPanel() {
             {(id) => <input id={id} className="input w-56" value={credentialRef} onChange={(e) => setCredentialRef(e.target.value)} autoComplete="off" />}
           </Field>
         ) : null}
+        <Field label="InstalledUpdates budget / sync" hint="Per-device detail calls (0 = off; limit 3600 req/h)">
+          {(id, hint) => (
+            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
+                   onChange={(e) => setBudget(e.target.value)} />
+          )}
+        </Field>
         <label className="flex items-center gap-2 pb-1.5 text-sm">
           <input type="checkbox" checked={isFixture} onChange={(e) => setIsFixture(e.target.checked)} />
           Fixture (demo) instance
@@ -270,6 +279,7 @@ export function AdminPage() {
           { id: "integrations", label: "Integrations", content: <IntegrationsPanel /> },
           { id: "catalog", label: "Software catalog", content: <CatalogPanel /> },
           { id: "quarantine", label: "Sync quarantine", content: <QuarantinePanel /> },
+          { id: "sync-schedules", label: "Sync schedules", content: <SyncSchedulesPanel /> },
           { id: "users", label: "Users", content: <UsersPanel /> },
           { id: "audit", label: "Audit log", content: <AuditTable path="/audit-events/" caption="System audit events" /> },
         ]}

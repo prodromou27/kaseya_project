@@ -19,18 +19,26 @@ from typing import Any
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.accounts import scope
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
 from apps.customers.models import Customer, CustomerSourceMapping
+from apps.patching.ingest import (
+    carry_forward,
+    pending_installed,
+    record_installed,
+    record_installed_failure,
+    record_list_sections,
+)
 
 from .http import ConnectorError, VendorAuthError, VendorRateLimited, VendorUnavailable
 from .models import DatasetGeneration, IntegrationInstance, SyncQuarantine, SyncRun
 from .secrets import CredentialUnavailable
 from .vsa.adapter import AssetPage, VsaXAdapter, validate_org_id
-from .vsa.schema import PageInvalid, RecordInvalid, VsaAsset, normalize_asset
+from .vsa.schema import PageInvalid, RecordInvalid, VsaAsset, normalize_asset, normalize_installed_updates
 
 logger = logging.getLogger("portal.sync")
 
@@ -154,6 +162,7 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
         adapter = adapter_factory(run.integration_instance)
         for page in adapter.iter_asset_pages(run.mapping.external_org_id, start_skip=run.next_skip):
             _ingest_page(run, generation, page)
+        _collect_installed_updates(run, generation, adapter)
         _finalize(run, generation)
     except VendorAuthError:
         return _fail(run, "auth_failed", instance_status=IntegrationInstance.Status.FAILED)
@@ -310,6 +319,7 @@ def _ingest_page(run: SyncRun, generation: DatasetGeneration, page: AssetPage) -
             )
             if not created:
                 continue  # replayed page or duplicate across pages: idempotent
+            record_list_sections(observation, asset_data)
             if software:
                 seen: Counter[tuple[str, str, str]] = Counter()
                 rows = []
@@ -339,6 +349,29 @@ def _ingest_page(run: SyncRun, generation: DatasetGeneration, page: AssetPage) -
             initial_total_count=page.total_count if run.initial_total_count is None else run.initial_total_count,
             api_requests=run.api_requests + 1,
         )
+    run.refresh_from_db()
+
+
+def _collect_installed_updates(run: SyncRun, generation: DatasetGeneration, adapter: VsaXAdapter) -> None:
+    """Budgeted per-device ``GET /api/v3/assets/:id?include=InstalledUpdates`` (only documented source).
+
+    Auth/rate-limit/unavailable errors propagate (fail or pause the run); a per-device 4xx or malformed body
+    marks only that device ``failed``. Devices outside the budget keep ``not_requested`` and are carried forward.
+    """
+    from .http import VendorClientError
+
+    budget = run.integration_instance.installed_updates_budget
+    remaining = max(0, budget - run.installed_updates_requested)
+    for po in pending_installed(generation, remaining):
+        SyncRun.objects.filter(pk=run.pk).update(
+            installed_updates_requested=F("installed_updates_requested") + 1, api_requests=F("api_requests") + 1
+        )
+        try:
+            body = adapter.get_installed_updates(po.asset.external_id)
+            record_installed(po, normalize_installed_updates(body, po.asset.external_id))
+        except (VendorClientError, RecordInvalid, ValueError):
+            record_installed_failure(po)
+    carry_forward(generation)
     run.refresh_from_db()
 
 

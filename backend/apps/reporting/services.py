@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import csv
 import hashlib
-import io
 import json
 import logging
 import uuid
@@ -16,10 +14,10 @@ from django.utils import timezone
 
 from apps.accounts import scope
 from apps.audit.services import record_event
-from apps.core.csv_safety import neutralize_cell
 
 from .models import ReportArtifact, ReportRun
 from .registry import REPORT_TYPES, ReportType
+from .renderers import RENDERERS, RenderLimitError
 
 logger = logging.getLogger("portal.reporting")
 
@@ -56,7 +54,14 @@ def storage_path(storage_key: str) -> Path:
 
 
 def request_report(
-    user: Any, customer: Any, report_type_key: str, fmt: str, filters: dict[str, Any], request: Any
+    user: Any,
+    customer: Any,
+    report_type_key: str,
+    fmt: str,
+    filters: dict[str, Any],
+    request: Any,
+    *,
+    regenerated_from: ReportRun | None = None,
 ) -> ReportRun:
     report_type = REPORT_TYPES[report_type_key]
     run = ReportRun.objects.create(
@@ -67,6 +72,9 @@ def request_report(
         filters=filters,
         filters_hash=filters_hash(report_type.key, filters),
         data_basis=report_type.data_basis,
+        # A regeneration is pinned to the original snapshot IDs (validated against the customer at generation).
+        as_of_generation_ids=dict(regenerated_from.as_of_generation_ids) if regenerated_from else {},
+        regenerated_from=regenerated_from,
     )
     record_event(
         action="report.requested",
@@ -84,27 +92,22 @@ def request_report(
     return run
 
 
-def _write_csv(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tuple[bytes, int]:
+def _render(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tuple[bytes, int]:
     rows = list(_limited(report_type.rows(run.customer, run.filters, pins)))
-    buffer = io.StringIO(newline="")
-    writer = csv.writer(buffer, quoting=csv.QUOTE_MINIMAL)
     provenance = {
         "Report": report_type.title,
         "Customer": f"{run.customer.name} ({run.customer.code})",
         "Generated": timezone.now().isoformat(),
         "Report run": str(run.id),
+        **({"Regenerated from run": str(run.regenerated_from_id)} if run.regenerated_from_id else {}),
         "Data basis": run.data_basis,
         **pins.get("provenance", {}),
         "Filters": json.dumps(run.filters, sort_keys=True) if run.filters else "none",
         "Records included": str(len(rows)),
         "Limitations": report_type.limitations or "none",
     }
-    for key, value in provenance.items():
-        writer.writerow([f"# {key}: {value}"])
-    writer.writerow(report_type.columns)
-    for row in rows:
-        writer.writerow([neutralize_cell(v) for v in row])
-    return buffer.getvalue().encode("utf-8-sig"), len(rows)
+    renderer = RENDERERS[run.format]
+    return renderer(report_type.title, provenance, report_type.columns, rows), len(rows)
 
 
 def _limited(rows: Any) -> Any:
@@ -131,16 +134,21 @@ def generate(run_id: str) -> ReportRun:
     if report_type is None:
         return _fail(run, "unknown_report_type")
 
+    if run.format not in report_type.formats or run.format not in RENDERERS:
+        return _fail(run, "unsupported_format")
     pins: dict[str, Any] = {}
     if report_type.pin is not None:
-        pins = report_type.pin(run.customer)
+        pinned = run.as_of_generation_ids or None
+        pins = report_type.pin(run.customer, pinned)
         run.as_of_generation_ids = {"generations": pins["generation_ids"], "evaluations": pins["evaluation_ids"]}
         run.data_basis = pins["data_basis"]
         run.save(update_fields=["as_of_generation_ids", "data_basis"])
     try:
-        content, count = _write_csv(report_type, run, pins)
+        content, count = _render(report_type, run, pins)
     except OverflowError:
         return _fail(run, "row_limit_exceeded")
+    except RenderLimitError as exc:
+        return _fail(run, exc.code)
     except Exception:
         logger.exception("report_generation_failed", extra={"report_run_id": str(run.id)})
         return _fail(run, "generation_failed")
@@ -185,3 +193,30 @@ def _fail(run: ReportRun, code: str, outcome: str = "failure") -> ReportRun:
         metadata={"error_code": code},
     )
     return run
+
+
+def purge_expired_artifacts(now: Any = None) -> int:
+    """Delete expired report files from private storage. Rows are kept (purged_at set) as audit evidence."""
+    now = now or timezone.now()
+    purged = 0
+    for artifact in ReportArtifact.objects.filter(expires_at__lte=now, purged_at__isnull=True).select_related(
+        "report_run", "report_run__customer"
+    ):
+        try:
+            storage_path(artifact.storage_key).unlink(missing_ok=True)
+        except (OSError, ValueError):
+            logger.exception("artifact_purge_failed", extra={"artifact_id": str(artifact.id)})
+            continue
+        artifact.purged_at = now
+        artifact.save(update_fields=["purged_at"])
+        record_event(
+            action="report.artifact_purged",
+            outcome="success",
+            actor_label="system:retention",
+            customer=artifact.report_run.customer,
+            target_type="report_run",
+            target_id=str(artifact.report_run_id),
+            metadata={"sha256": artifact.sha256, "expired_at": artifact.expires_at.isoformat()},
+        )
+        purged += 1
+    return purged

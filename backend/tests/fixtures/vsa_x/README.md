@@ -4,3 +4,6 @@
   documentation at https://api.vsax.net/ (retrieved 2026-11-12). Placeholder values (e.g. the `XXXXX` product
   key) are the vendor's own example placeholders. **Documentation-derived, not a live capture.**
 * Other test data is generated synthetically in the tests. No customer data, no live API responses.
+
+* `asset_detail_installed_updates_doc_example.json` — the `InstalledUpdates` portion of the documented
+  `GET /api/v3/assets/:id` example (other sections omitted). Documentation-derived, not a live capture.

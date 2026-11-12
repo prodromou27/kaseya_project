@@ -167,8 +167,23 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             from apps.software.queries import installation_rows
 
             software = installation_rows(asset.customer_id, asset_id=asset.id)
+        os_updates: dict[str, Any] | None = None
+        if current is not None:
+            from apps.patching.models import PatchObservation
+            from apps.patching.views import DeviceOsUpdateSerializer, DevicePatchStatusSerializer
+
+            po = PatchObservation.objects.filter(observation=current).select_related("observation").first()
+            if po is not None:
+                updates = po.updates.select_related("os_update", "patch_observation__observation").order_by(
+                    "state", "-os_update__kb_article"
+                )[:1000]
+                os_updates = {
+                    "status": DevicePatchStatusSerializer(po).data,
+                    "updates": DeviceOsUpdateSerializer(updates, many=True).data,
+                }
         return Response(
             {
+                "os_updates": os_updates,
                 "asset": AssetRowSerializer(current, context={"offline_days": 7}).data if current else None,
                 "id": str(asset.id),
                 "external_id": asset.external_id,

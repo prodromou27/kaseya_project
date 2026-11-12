@@ -12,6 +12,7 @@ import { formatUtc } from "../../lib/format";
 import type { AssetRow, Customer, Paginated } from "../../lib/types";
 import { ExportButton } from "../reports/ExportButton";
 import { DataSources } from "./DataSources";
+import { SavedViews } from "./SavedViews";
 
 const PAGE_SIZE = 50;
 
@@ -108,6 +109,8 @@ function AssetTable({ customer }: { customer: Customer }) {
             <option value="group_name">Group</option>
           </select>
         </label>
+        <SavedViews customer={customer} viewType="assets" current={filters}
+                    onLoad={(f) => { setFilters({ search: "", group: "", os: "", offline: "", ordering: "hostname", ...f }); setPage(1); }} />
         {customer.my_capabilities.includes("customer.export") ? (
           <ExportButton customer={customer} reportType="asset_inventory" label="Export inventory CSV"
                         filters={{ search: filters.search, group: filters.group, os: filters.os }} />

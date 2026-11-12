@@ -54,7 +54,7 @@ test("engineer exports a scoped inventory CSV with provenance", async ({ page })
   await login(page, "demo.engineer.a@demo.invalid");
   await page.getByRole("link", { name: "Assets" }).click();
   await page.getByRole("button", { name: "Export inventory CSV" }).click();
-  const link = page.getByRole("link", { name: /Download \(130 rows\)/ });
+  const link = page.getByRole("link", { name: /Download CSV \(130 rows\)/ });
   await expect(link).toBeVisible({ timeout: 15_000 });
   const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);
   const path = await download.path();

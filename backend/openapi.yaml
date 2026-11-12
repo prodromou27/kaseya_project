@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Odyssey Kaseya Analytics & Reporting Portal API
-  version: 0.1.0
+  version: 0.3.0
 paths:
   /api/v1/assets/{id}/:
     get:
@@ -852,6 +852,411 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/customers/{customer_pk}/os-updates/:
+    get:
+      operationId: customers_os_updates_list
+      description: '``/customers/{id}/os-updates/`` — device-by-update rows from the
+        current published generation.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDeviceOsUpdateList'
+          description: ''
+  /api/v1/customers/{customer_pk}/os-updates/devices/:
+    get:
+      operationId: customers_os_updates_devices_list
+      description: '``/customers/{id}/os-updates/`` — device-by-update rows from the
+        current published generation.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDevicePatchStatusList'
+          description: ''
+  /api/v1/customers/{customer_pk}/os-updates/summary/:
+    get:
+      operationId: customers_os_updates_summary_retrieve
+      description: '``/customers/{id}/os-updates/`` — device-by-update rows from the
+        current published generation.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/report-definitions/:
+    get:
+      operationId: customers_report_definitions_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReportDefinitionList'
+          description: ''
+    post:
+      operationId: customers_report_definitions_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportDefinition'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDefinition'
+          description: ''
+  /api/v1/customers/{customer_pk}/report-definitions/{id}/:
+    get:
+      operationId: customers_report_definitions_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report definition.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDefinition'
+          description: ''
+    patch:
+      operationId: customers_report_definitions_partial_update
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report definition.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReportDefinition'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDefinition'
+          description: ''
+    delete:
+      operationId: customers_report_definitions_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report definition.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/customers/{customer_pk}/report-schedules/:
+    get:
+      operationId: customers_report_schedules_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReportScheduleList'
+          description: ''
+    post:
+      operationId: customers_report_schedules_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportSchedule'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSchedule'
+          description: ''
+  /api/v1/customers/{customer_pk}/report-schedules/{id}/:
+    get:
+      operationId: customers_report_schedules_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report schedule.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSchedule'
+          description: ''
+    patch:
+      operationId: customers_report_schedules_partial_update
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report schedule.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReportSchedule'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSchedule'
+          description: ''
+    delete:
+      operationId: customers_report_schedules_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report schedule.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/customers/{customer_pk}/reports/:
     get:
       operationId: customers_reports_list
@@ -917,6 +1322,163 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReportRun'
           description: ''
+  /api/v1/customers/{customer_pk}/saved-views/:
+    get:
+      operationId: customers_saved_views_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSavedViewList'
+          description: ''
+    post:
+      operationId: customers_saved_views_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavedView'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedView'
+          description: ''
+  /api/v1/customers/{customer_pk}/saved-views/{id}/:
+    get:
+      operationId: customers_saved_views_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this saved view.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedView'
+          description: ''
+    patch:
+      operationId: customers_saved_views_partial_update
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this saved view.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSavedView'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedView'
+          description: ''
+    delete:
+      operationId: customers_saved_views_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this saved view.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/customers/{customer_pk}/software/:
     get:
       operationId: customers_software_list
@@ -1132,6 +1694,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedSyncRunList'
+          description: ''
+  /api/v1/customers/{customer_pk}/trends/:
+    get:
+      operationId: customers_trends_retrieve
+      description: '``/customers/{id}/trends/?days=90`` — history from retained generations
+        (P2-06).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/customers/{id}/:
     get:
@@ -1521,6 +2106,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/SourceMapping'
           description: ''
+  /api/v1/report-templates/:
+    get:
+      operationId: report_templates_retrieve
+      tags:
+      - report-templates
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/reports/{id}/:
     get:
       operationId: reports_retrieve
@@ -1565,10 +2165,63 @@ paths:
       responses:
         '200':
           content:
-            text/csv:
+            application/octet-stream:
               schema:
                 type: string
                 format: binary
+          description: ''
+  /api/v1/reports/{id}/regenerate/:
+    post:
+      operationId: reports_regenerate_create
+      description: Re-create the file from the run's *pinned* snapshot (P2-06). Requires
+        the same capabilities.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this report run.
+        required: true
+      tags:
+      - reports
+      security:
+      - sessionAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportRun'
+          description: ''
+  /api/v1/reports/inbox/:
+    get:
+      operationId: reports_inbox_list
+      description: Scheduled reports delivered to me (in-portal delivery), filtered
+        by *current* authorisation.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - reports
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReportRunList'
           description: ''
   /api/v1/roles/:
     get:
@@ -1615,6 +2268,104 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedSyncQuarantineList'
           description: ''
+  /api/v1/sync-schedules/:
+    get:
+      operationId: sync_schedules_list
+      description: Scheduled read-only collection (super admin). Dispatched by Celery
+        Beat.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - sync-schedules
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSyncScheduleList'
+          description: ''
+    post:
+      operationId: sync_schedules_create
+      description: Scheduled read-only collection (super admin). Dispatched by Celery
+        Beat.
+      tags:
+      - sync-schedules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncSchedule'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSchedule'
+          description: ''
+  /api/v1/sync-schedules/{id}/:
+    patch:
+      operationId: sync_schedules_partial_update
+      description: Scheduled read-only collection (super admin). Dispatched by Celery
+        Beat.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this sync schedule.
+        required: true
+      tags:
+      - sync-schedules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSyncSchedule'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSchedule'
+          description: ''
+    delete:
+      operationId: sync_schedules_destroy
+      description: Scheduled read-only collection (super admin). Dispatched by Celery
+        Beat.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this sync schedule.
+        required: true
+      tags:
+      - sync-schedules
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/users/:
     get:
       operationId: users_list
@@ -1984,6 +2735,122 @@ components:
         * `active` - Active
         * `suspended` - Suspended
         * `archived` - Archived
+    DeviceOsUpdate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        asset_id:
+          type: string
+          format: uuid
+        hostname:
+          type: string
+        state:
+          $ref: '#/components/schemas/DeviceOsUpdateStateEnum'
+        kb_article:
+          type: string
+        title:
+          type: string
+        update_id:
+          type: string
+        revision_number:
+          type: integer
+        severity:
+          type: string
+          maxLength: 32
+        category:
+          type: string
+          maxLength: 64
+        cvss_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          nullable: true
+        cve_codes: {}
+        release_date:
+          type: string
+        installed_at_raw:
+          type: string
+          description: Vendor value verbatim; documented without timezone.
+          maxLength: 40
+        installed_by_agent:
+          type: boolean
+          nullable: true
+        installed_status:
+          type: string
+        installed_collected_at:
+          type: string
+          format: date-time
+      required:
+      - asset_id
+      - hostname
+      - id
+      - installed_collected_at
+      - installed_status
+      - kb_article
+      - release_date
+      - revision_number
+      - state
+      - title
+      - update_id
+    DeviceOsUpdateStateEnum:
+      enum:
+      - available
+      - installed
+      type: string
+      description: |-
+        * `available` - Available (not installed)
+        * `installed` - Installed
+    DevicePatchStatus:
+      type: object
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        hostname:
+          type: string
+        device_type:
+          type: string
+        os_name:
+          type: string
+        last_seen_online:
+          type: string
+          format: date-time
+        update_counts:
+          nullable: true
+          description: Source 'Updates' object; null if absent.
+        available_status:
+          $ref: '#/components/schemas/UpdateStatusEnum'
+        available_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        installed_status:
+          $ref: '#/components/schemas/UpdateStatusEnum'
+        installed_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        installed_collected_at:
+          type: string
+          format: date-time
+          nullable: true
+        collected_at:
+          type: string
+          format: date-time
+      required:
+      - asset_id
+      - available_status
+      - collected_at
+      - device_type
+      - hostname
+      - installed_status
+      - last_seen_online
+      - os_name
     Exception:
       type: object
       properties:
@@ -2041,6 +2908,26 @@ components:
       description: |-
         * `active` - Active
         * `revoked` - Revoked
+    FormatEnum:
+      enum:
+      - csv
+      - xlsx
+      - pdf
+      type: string
+      description: |-
+        * `csv` - csv
+        * `xlsx` - xlsx
+        * `pdf` - pdf
+    FrequencyEnum:
+      enum:
+      - daily
+      - weekly
+      - monthly
+      type: string
+      description: |-
+        * `daily` - Daily
+        * `weekly` - Weekly
+        * `monthly` - Monthly
     Import:
       type: object
       properties:
@@ -2124,6 +3011,12 @@ components:
           readOnly: true
         enabled:
           type: boolean
+        installed_updates_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/assets/:id calls per sync for InstalledUpdates
+            (0 = disabled). Documented limit is 3600 requests/hour per token+endpoint.
         verify_tls:
           type: boolean
           readOnly: true
@@ -2380,6 +3273,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Customer'
+    PaginatedDeviceOsUpdateList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceOsUpdate'
+    PaginatedDevicePatchStatusList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DevicePatchStatus'
     PaginatedExceptionList:
       type: object
       required:
@@ -2495,6 +3434,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Product'
+    PaginatedReportDefinitionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportDefinition'
     PaginatedReportRunList:
       type: object
       required:
@@ -2518,6 +3480,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReportRun'
+    PaginatedReportScheduleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportSchedule'
     PaginatedRevisionList:
       type: object
       required:
@@ -2541,6 +3526,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Revision'
+    PaginatedSavedViewList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SavedView'
     PaginatedSourceMappingList:
       type: object
       required:
@@ -2610,6 +3618,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SyncRun'
+    PaginatedSyncScheduleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncSchedule'
     PaginatedUserList:
       type: object
       required:
@@ -2700,6 +3731,12 @@ components:
           readOnly: true
         enabled:
           type: boolean
+        installed_updates_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/assets/:id calls per sync for InstalledUpdates
+            (0 = disabled). Documented limit is 3600 requests/hour per token+endpoint.
         verify_tls:
           type: boolean
           readOnly: true
@@ -2805,6 +3842,161 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+    PatchedReportDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        report_type:
+          $ref: '#/components/schemas/ReportTypeEnum'
+        format:
+          allOf:
+          - $ref: '#/components/schemas/FormatEnum'
+          default: csv
+        filters: {}
+        owner:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedReportSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        definition:
+          type: string
+          format: uuid
+        frequency:
+          $ref: '#/components/schemas/FrequencyEnum'
+        time_of_day:
+          type: string
+          format: time
+          description: Local time in ``timezone``.
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+          nullable: true
+          description: 0=Monday (weekly only).
+        day_of_month:
+          type: integer
+          maximum: 32767
+          minimum: 0
+          nullable: true
+          description: 1-28 (monthly only).
+        timezone:
+          type: string
+          maxLength: 64
+        recipients:
+          type: array
+          items:
+            type: string
+            format: email
+          writeOnly: true
+        recipient_emails:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        enabled:
+          type: boolean
+        next_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedSavedView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        view_type:
+          $ref: '#/components/schemas/ViewTypeEnum'
+        filters: {}
+        shared:
+          type: boolean
+          description: Visible to everyone with read access to the customer.
+        owner:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedSyncSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        mapping:
+          type: string
+          format: uuid
+        customer:
+          type: object
+          additionalProperties:
+            type: string
+          readOnly: true
+        integration:
+          type: string
+          readOnly: true
+        external_org_id:
+          type: string
+          readOnly: true
+        interval_hours:
+          type: integer
+          maximum: 168
+          minimum: 1
+        enabled:
+          type: boolean
+        next_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedUser:
       type: object
       description: Super-admin user management. No password hash, OIDC subject or
@@ -2904,15 +4096,51 @@ components:
         * `vsa_x` - Kaseya VSA X
         * `itglue` - IT Glue
         * `autotask` - Autotask PSA
+    ReportDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        report_type:
+          $ref: '#/components/schemas/ReportTypeEnum'
+        format:
+          allOf:
+          - $ref: '#/components/schemas/FormatEnum'
+          default: csv
+        filters: {}
+        owner:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - owner
+      - report_type
+      - updated_at
     ReportRequest:
       type: object
       properties:
         report_type:
           $ref: '#/components/schemas/ReportTypeEnum'
         format:
-          type: string
+          allOf:
+          - $ref: '#/components/schemas/FormatEnum'
           default: csv
-          maxLength: 8
         filters:
           type: object
           additionalProperties: {}
@@ -2939,6 +4167,9 @@ components:
         report_type:
           type: string
           readOnly: true
+        title:
+          type: string
+          readOnly: true
         format:
           type: string
           readOnly: true
@@ -2956,6 +4187,15 @@ components:
           type: string
           readOnly: true
           description: fixture|live|portal_internal
+        as_of_generation_ids:
+          readOnly: true
+        regenerated_from:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Set when this run reproduces an earlier run from the same pinned
+            snapshot.
         error_code:
           type: string
           readOnly: true
@@ -2977,6 +4217,7 @@ components:
           type: boolean
           readOnly: true
       required:
+      - as_of_generation_ids
       - completed_at
       - created_at
       - customer
@@ -2987,11 +4228,13 @@ components:
       - filters
       - format
       - id
+      - regenerated_from
       - report_type
       - requested_by
       - row_count
       - started_at
       - state
+      - title
     ReportRunStateEnum:
       enum:
       - queued
@@ -3004,16 +4247,89 @@ components:
         * `running` - Running
         * `completed` - Completed
         * `failed` - Failed
+    ReportSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        definition:
+          type: string
+          format: uuid
+        frequency:
+          $ref: '#/components/schemas/FrequencyEnum'
+        time_of_day:
+          type: string
+          format: time
+          description: Local time in ``timezone``.
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+          nullable: true
+          description: 0=Monday (weekly only).
+        day_of_month:
+          type: integer
+          maximum: 32767
+          minimum: 0
+          nullable: true
+          description: 1-28 (monthly only).
+        timezone:
+          type: string
+          maxLength: 64
+        recipients:
+          type: array
+          items:
+            type: string
+            format: email
+          writeOnly: true
+        recipient_emails:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        enabled:
+          type: boolean
+        next_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - definition
+      - frequency
+      - id
+      - last_run_at
+      - next_run_at
+      - recipient_emails
+      - time_of_day
     ReportTypeEnum:
       enum:
       - asset_inventory
       - customer_audit_log
+      - os_updates
       - software_compliance
+      - software_distribution
+      - stale_devices
       type: string
       description: |-
         * `asset_inventory` - asset_inventory
         * `customer_audit_log` - customer_audit_log
+        * `os_updates` - os_updates
         * `software_compliance` - software_compliance
+        * `software_distribution` - software_distribution
+        * `stale_devices` - stale_devices
     Review:
       type: object
       properties:
@@ -3138,6 +4454,41 @@ components:
       - capabilities
       - key
       - name
+    SavedView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        view_type:
+          $ref: '#/components/schemas/ViewTypeEnum'
+        filters: {}
+        shared:
+          type: boolean
+          description: Visible to everyone with read access to the customer.
+        owner:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - owner
+      - updated_at
+      - view_type
     SoftwareStatusEnum:
       enum:
       - collected
@@ -3348,6 +4699,55 @@ components:
         * `partial` - Partial (resumable)
         * `failed` - Failed
         * `completed` - Completed
+    SyncSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        mapping:
+          type: string
+          format: uuid
+        customer:
+          type: object
+          additionalProperties:
+            type: string
+          readOnly: true
+        integration:
+          type: string
+          readOnly: true
+        external_org_id:
+          type: string
+          readOnly: true
+        interval_hours:
+          type: integer
+          maximum: 168
+          minimum: 1
+        enabled:
+          type: boolean
+        next_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_run_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - customer
+      - external_org_id
+      - id
+      - integration
+      - last_run_at
+      - mapping
+      - next_run_at
     TriggerEnum:
       enum:
       - manual
@@ -3356,6 +4756,22 @@ components:
       description: |-
         * `manual` - Manual
         * `schedule` - Schedule
+    UpdateStatusEnum:
+      enum:
+      - collected
+      - not_collected
+      - not_supported
+      - not_requested
+      - failed
+      - carried_forward
+      type: string
+      description: |-
+        * `collected` - Collected
+        * `not_collected` - Not collected (section absent)
+        * `not_supported` - Not supported (non-Windows)
+        * `not_requested` - Not requested (disabled or outside budget)
+        * `failed` - Collection failed
+        * `carried_forward` - Carried forward from an earlier collection
     User:
       type: object
       description: Super-admin user management. No password hash, OIDC subject or
@@ -3428,6 +4844,16 @@ components:
       - dotted_numeric
       type: string
       description: '* `dotted_numeric` - Dotted numeric (e.g. 131.0.6778.86)'
+    ViewTypeEnum:
+      enum:
+      - assets
+      - software
+      - os_updates
+      type: string
+      description: |-
+        * `assets` - Assets
+        * `software` - Software versions
+        * `os_updates` - Windows updates
   securitySchemes:
     sessionAuth:
       type: apiKey

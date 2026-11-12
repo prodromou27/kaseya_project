@@ -19,3 +19,8 @@
   outline: 2px solid #0369a1;
   outline-offset: 2px;
 }
+
+/* Validated categorical slots 1-3 (dataviz validator: light surface #ffffff). */
+.legend-swatch-0, .legend-dot-0 { background-color: #2a78d6; }
+.legend-swatch-1, .legend-dot-1 { background-color: #eb6834; }
+.legend-swatch-2, .legend-dot-2 { background-color: #1baf7a; }

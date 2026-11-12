@@ -9,7 +9,7 @@ import { Tabs } from "../../components/Tabs";
 import { Badge, Notice, PageHeader, statusTone } from "../../components/ui";
 import { api } from "../../lib/api";
 import { formatUtc } from "../../lib/format";
-import { STATE_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
+import { STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
 
 export const softwareColumns: ColumnDef<SoftwareRow, unknown>[] = [
   { header: "Installed software", cell: ({ row }) => (
@@ -50,6 +50,42 @@ function Overview({ detail }: { detail: AssetDetail }) {
   );
 }
 
+function OsUpdates({ detail }: { detail: AssetDetail }) {
+  const o = detail.os_updates;
+  if (!o) return <Notice tone="warn">No OS update record for this device in the current dataset.</Notice>;
+  const s = o.status;
+  return (
+    <div className="space-y-3">
+      <dl className="grid max-w-3xl grid-cols-[14rem_1fr] gap-y-1 text-sm">
+        <dt className="text-slate-500">Available updates section</dt>
+        <dd>
+          <Badge tone={statusTone[s.available_status]}>{UPDATE_STATUS_LABEL[s.available_status]}</Badge>
+          {s.available_count !== null ? ` · ${s.available_count} available` : ""}
+        </dd>
+        <dt className="text-slate-500">Source severity counts</dt>
+        <dd>{s.update_counts ? Object.entries(s.update_counts).map(([k, v]) => `${k}: ${v}`).join(" · ") : "not reported"}</dd>
+        <dt className="text-slate-500">Installed updates</dt>
+        <dd>
+          <Badge tone={statusTone[s.installed_status]}>{UPDATE_STATUS_LABEL[s.installed_status]}</Badge>
+          {s.installed_count !== null ? ` · ${s.installed_count} installed` : ""}
+          {s.installed_collected_at ? ` · collected ${formatUtc(s.installed_collected_at)}` : ""}
+        </dd>
+      </dl>
+      <p className="text-xs text-slate-500">
+        The VSA X API documents no update-scan time; InstalledAt values are shown as reported (no timezone).
+      </p>
+      <DataTable caption="OS updates for this device" rows={o.updates} getRowId={(r) => r.id} emptyTitle="No update records."
+        columns={[
+          { header: "State", cell: ({ row }) => <Badge tone={row.original.state === "available" ? "warn" : "good"}>{row.original.state}</Badge> },
+          { header: "KB", cell: ({ row }) => (row.original.kb_article ? `KB${row.original.kb_article}` : "—") },
+          { header: "Title", accessorKey: "title" },
+          { header: "Severity", accessorKey: "severity" },
+          { header: "Installed at (as reported)", cell: ({ row }) => row.original.installed_at_raw || "—" },
+        ]} />
+    </div>
+  );
+}
+
 export function AssetDetailPage() {
   const { assetId = "" } = useParams();
   const [tab, setTab] = useState("overview");
@@ -72,6 +108,7 @@ export function AssetDetailPage() {
                 : <DataTable caption="Installed software" columns={softwareColumns} rows={detail.software} getRowId={(r) => r.id}
                              emptyTitle="The source reported no installed software for this device." />
             ) },
+            { id: "os-updates", label: "OS updates", content: <OsUpdates detail={detail} /> },
             { id: "history", label: "Observation history", content: (
               <DataTable caption="Observation history" getRowId={(h) => h.generation_id} rows={detail.history} columns={[
                 { header: "Dataset published", cell: ({ row }) => formatUtc(row.original.published_at) },

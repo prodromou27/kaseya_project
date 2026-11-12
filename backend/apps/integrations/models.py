@@ -49,6 +49,12 @@ class IntegrationInstance(models.Model):
         validators=[MinValueValidator(Decimal("0.01")), MaxValueValidator(Decimal("20"))],
     )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.IDLE)
+    installed_updates_budget = models.PositiveIntegerField(
+        default=0,
+        validators=[MaxValueValidator(3000)],
+        help_text="Max per-device GET /api/v3/assets/:id calls per sync for InstalledUpdates (0 = disabled). "
+        "Documented limit is 3600 requests/hour per token+endpoint.",
+    )
     is_fixture = models.BooleanField(
         default=False, help_text="True for demo/fixture-backed instances. Never mixed with live data."
     )
@@ -161,6 +167,7 @@ class SyncRun(models.Model):
     accepted_count = models.PositiveIntegerField(default=0)
     quarantined_count = models.PositiveIntegerField(default=0)
     source_total_count = models.PositiveIntegerField(null=True, blank=True)
+    installed_updates_requested = models.PositiveIntegerField(default=0)
     initial_total_count = models.PositiveIntegerField(
         null=True, blank=True, help_text="TotalCount reported by the first page; every later page must match."
     )
@@ -216,3 +223,23 @@ class SyncQuarantine(models.Model):
 
     def __str__(self) -> str:
         return f"{self.external_id} ({self.reason})"
+
+
+class SyncSchedule(models.Model):
+    """Periodic read-only collection for one approved mapping (Celery Beat dispatcher, P2-05)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    mapping = models.OneToOneField("customers.CustomerSourceMapping", on_delete=models.PROTECT, related_name="schedule")
+    interval_hours = models.PositiveSmallIntegerField(
+        default=24, validators=[MinValueValidator(1), MaxValueValidator(168)]
+    )
+    enabled = models.BooleanField(default=True)
+    next_run_at = models.DateTimeField()
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["enabled", "next_run_at"], name="integrations_sync_sched_due")]
+
+    def __str__(self) -> str:
+        return f"sync {self.mapping_id} every {self.interval_hours}h"

@@ -61,6 +61,17 @@ class FixtureVsaTransport:
             if isinstance(item, Exception):
                 raise item
             return item
+        detail = re.fullmatch(r"/api/v3/assets/([A-Za-z0-9-]+)", path)
+        if detail:
+            if params.get("include") != "InstalledUpdates":
+                return FakeResponse(400)
+            asset = next((a for a in self.assets if str(a.get("Identifier")) == detail.group(1)), None)
+            if asset is None:
+                return FakeResponse(404)
+            data = {k: v for k, v in asset.items() if k in ("Identifier", "Name", "OrganizationId")}
+            if "InstalledUpdates" in asset:
+                data["InstalledUpdates"] = asset["InstalledUpdates"]
+            return FakeResponse(200, {"Data": data, "Meta": {"ResponseCode": 200}})
         try:
             top = int(params.get("$top", "100"))
             skip = int(params.get("$skip", "0"))
@@ -80,6 +91,8 @@ class FixtureVsaTransport:
             if params.get("$orderby") not in (None, "Identifier"):
                 return FakeResponse(400)
             rows = sorted(rows, key=lambda a: str(a.get("Identifier", "")))
+            # InstalledUpdates is documented only on the per-device endpoint; never return it from the list.
+            rows = [{k: v for k, v in r.items() if k != "InstalledUpdates"} for r in rows]
             return FakeResponse(
                 200, {"Data": rows[skip : skip + top], "Meta": {"TotalCount": len(rows), "ResponseCode": 200}}
             )

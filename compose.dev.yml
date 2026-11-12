@@ -74,6 +74,11 @@ services:
       timeout: 10s
       retries: 3
 
+  beat:
+    <<: *backend
+    # Single scheduler instance. Duplicate dispatches are also suppressed by the DB (one execution per slot).
+    command: ["celery", "-A", "config", "beat", "-l", "info", "-s", "/tmp/celerybeat-schedule"]
+
   frontend:
     image: node:22-alpine
     working_dir: /app

@@ -73,6 +73,7 @@ class Command(BaseCommand):
                     "is_fixture": True,
                     "enabled": True,
                     "max_rps": 20,
+                    "installed_updates_budget": 60,  # rotate per-device InstalledUpdates over the 130-device demo org
                 },
             )
             reviewer = User.objects.get(email="demo.reviewer@demo.invalid")
