@@ -1,6 +1,6 @@
 # Product roadmap and delivery gates
 
-**State:** Design baseline as of 2026-11-12. **P0 foundation is implemented and tested (commit `d799241`). Its gate is open until a Docker boot, a green CI run and owner sign-off** ([PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md)). P1–P5 are planned. Use `TASKS.md` for implementation tracking.
+**State:** Design baseline as of 2026-11-12. **P0 foundation (`d799241`) and P1 VSA X inventory and software versions (`23550d1`) are implemented and fixture-tested.** Both gates stay open until a Docker boot, a green CI run and owner sign-off; P1 also has no live pilot yet ([PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md), [PHASE_ACCEPTANCE_P1.md](PHASE_ACCEPTANCE_P1.md)). P2–P5 are planned. Use `TASKS.md` for implementation tracking.
 
 ## Objectives
 

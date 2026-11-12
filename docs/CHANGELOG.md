@@ -16,6 +16,22 @@ All implementation claims require linked evidence. Use semantic versions for app
 - No source code for the Django/React application in this package.
 - No deployed portal, working vendor connector, live customer data, tests, or production sign-off.
 
+## [0.2.0-dev] — 2026-11-12 (unreleased; P1 VSA X + software versions, commit `23550d1`)
+
+Evidence: [PHASE_ACCEPTANCE_P1.md](PHASE_ACCEPTANCE_P1.md). **Fixture-tested only. No live VSA X validation.**
+
+### Added
+- A read-only VSA X adapter based on the documentation at https://api.vsax.net/ (assets, organizations), with a capability record.
+- A sync engine with checkpoints, quarantine, consistency checks and atomic publication of generations.
+- Inventory and installed-software views with freshness and fixture labelling.
+- A reviewed software catalog: import preview, separate-reviewer approval and immutable revisions.
+- A version comparator (current / outdated / newer / unknown / unsupported / excluded, each with a reason code) and approved exceptions.
+- Software version compliance view and RPT-01/RPT-03 CSV exports with a provenance block.
+- Admin tools: organisation discovery, sync quarantine and the catalog workflow.
+
+### Not claimed
+- Third-party patch applicability or vulnerability state. Classification is version comparison only.
+
 ## [0.1.0-dev] — 2026-11-12 (unreleased; P0 foundation, commit `d799241`)
 
 Evidence: [PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md).

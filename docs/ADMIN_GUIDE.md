@@ -86,3 +86,18 @@ A catalog update never means the portal is deploying a patch.
 ## 10. Operational governance
 
 Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: role membership and customer mapping review, catalog source review, backup health and report-retention audit. Quarterly: access review, restore exercise, vulnerability/dependency scans, least privilege validation and capacity trends (frequency subject to internal policy).
+
+
+## Implemented operations (P0–P1, 2026-11-12)
+
+1. **Bootstrap:** `python manage.py bootstrap_admin --email <you>` (one-time; the password comes from `BOOTSTRAP_ADMIN_PASSWORD`).
+2. **Connector:** Administration → Integrations. Set the host in `CONNECTOR_ALLOWED_HOSTS_VSA_X` first, then add the instance
+   with `credential_ref = env:VSA_TOKEN_<NAME>` (the environment or secret file holds `TOKEN_ID:TOKEN_SECRET`), then enable it.
+   TLS verification cannot be disabled.
+3. **Mapping:** use "Discover orgs" to list source organisations. A customer admin proposes a mapping using the **organisation ID**,
+   and a super admin approves it under Administration → Mapping review. Unmapped organisations are never collected.
+4. **Sync:** Assets → "Sync now (read-only)". Check freshness under Data sources. Investigate quarantined records under
+   Administration → Sync quarantine.
+5. **Catalog:** Administration → Software catalog. Paste the JSON rows, run the dry-run preview, then submit. A **different**
+   administrator approves. Published revisions are immutable.
+6. **Exceptions:** customer admins add time-limited, justified exceptions on the Software versions page.

@@ -1,6 +1,6 @@
 # Implementation task backlog (agent-ready)
 
-**Status (2026-11-12):** P0-01 and P0-03 to P0-08 are implemented and tested at commit `d799241`. P0-02 is implemented but has not been booted (no Docker host). P0-09 is open. Evidence: [PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md). Update only after tested code is merged/reviewed.
+**Status (2026-11-12):** P0-01 and P0-03 to P0-08 are done (`d799241`). P1-01 to P1-09 are done and fixture-tested (`23550d1`); there has been **no live VSA X validation**. P0-02 has not been booted, and the gates P0-09 and P1-10 are open. Evidence: [PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md), [PHASE_ACCEPTANCE_P1.md](PHASE_ACCEPTANCE_P1.md). Update only after tested code is merged/reviewed.
 
 **Convention:** `P<phase>-<task>` task ID; C=critical, H=high, M=medium. Finish dependencies and acceptance conditions before marking checked.
 
@@ -18,16 +18,16 @@
 
 ## P1 — VSA X inventory and software versions
 
-- [ ] **P1-01 [C] Documented VSA adapter:** Basic token auth; `GET /api/v3/assets`; `$top/$skip` and response normalization. **AC:** doc/fixture contract tests.
-- [ ] **P1-02 [C] Safe sync engine:** rate budget, 429, Retry-After, checkpoint, idempotency, stage/promote. **AC:** interrupted sync retains last good dataset.
-- [ ] **P1-03 [C] Organization mapping & quarantine:** source IDs to approved customers. **AC:** unmapped assets never leak into other customer.
-- [ ] **P1-04 [H] Assets UI:** device list/detail, site/group/OS/last seen, search/filter/pagination, freshness. **AC:** UI/API tests.
-- [ ] **P1-05 [C] Installed software:** normalize `Name/Publisher/Version`; preserve provenance and histories. **AC:** fixtures and counts reconcile.
-- [ ] **P1-06 [C] Software catalog:** product/alias/channels/architecture/reference revisions, import preview/review. **AC:** approved revision stored immutably.
-- [ ] **P1-07 [C] Comparator:** current/outdated/newer/unknown/unsupported/excluded + reason codes. **AC:** edge-case comparison tests.
-- [ ] **P1-08 [H] Compliance UI:** product distribution, customer/site filters, drilldown and catalog evidence. **AC:** metric reconciliation.
-- [ ] **P1-09 [C] Scoped CSV:** report provenance and spreadsheet formula injection defense. **AC:** negative security tests.
-- [ ] **P1-10 [C] MVP gate:** demo data, fixture completeness, read-only vendor allowlist, optional approved live pilot. **AC:** phase record.
+- [x] **P1-01 [C] Documented VSA adapter:** Basic token auth; `GET /api/v3/assets`; `$top/$skip` and response normalization. **AC:** doc/fixture contract tests. — *Done `23550d1`: verified against the api.vsax.net docs; 50 contract tests; fixture-only, not live-tested.*
+- [x] **P1-02 [C] Safe sync engine:** rate budget, 429, Retry-After, checkpoint, idempotency, stage/promote. **AC:** interrupted sync retains last good dataset. — *Done `23550d1`: checkpointed, atomic publication; interrupted/replay/changing-source tests.*
+- [x] **P1-03 [C] Organization mapping & quarantine:** source IDs to approved customers. **AC:** unmapped assets never leak into other customer. — *Done `23550d1`: per-org filtered collection, quarantine, DB customer-consistency triggers.*
+- [x] **P1-04 [H] Assets UI:** device list/detail, site/group/OS/last seen, search/filter/pagination, freshness. **AC:** UI/API tests. — *Done `23550d1`.*
+- [x] **P1-05 [C] Installed software:** normalize `Name/Publisher/Version`; preserve provenance and histories. **AC:** fixtures and counts reconcile. — *Done `23550d1`: counts reconcile across generation, API and CSV.*
+- [x] **P1-06 [C] Software catalog:** product/alias/channels/architecture/reference revisions, import preview/review. **AC:** approved revision stored immutably. — *Done `23550d1`: separate-reviewer approval; revisions immutable (ORM and DB trigger).*
+- [x] **P1-07 [C] Comparator:** current/outdated/newer/unknown/unsupported/excluded + reason codes. **AC:** edge-case comparison tests. — *Done `23550d1`: 32 edge-case tests.*
+- [x] **P1-08 [H] Compliance UI:** product distribution, customer/site filters, drilldown and catalog evidence. **AC:** metric reconciliation. — *Done `23550d1`: metric reconciliation test.*
+- [x] **P1-09 [C] Scoped CSV:** report provenance and spreadsheet formula injection defense. **AC:** negative security tests. — *Done `23550d1`: RPT-01/RPT-03 with pinned snapshot and provenance; injection tests.*
+- [ ] **P1-10 [C] MVP gate:** demo data, fixture completeness, read-only vendor allowlist, optional approved live pilot. **AC:** phase record. — *Open: demo data, fixture completeness and read-only allowlist are done; needs the P0 gate, sign-off and an optional approved live pilot.*
 
 ## P2 — Windows updates, reports, history
 

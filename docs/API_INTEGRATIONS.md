@@ -51,6 +51,16 @@ curl --fail --silent --show-error \
 
 **Third-party patch applicability is not confirmed:** `InstalledSoftware` + reference catalog supports only **version comparison**. Do **not** label this as actual pending third-party patch deployments or verified vulnerabilities. Public documentation reviewed here does not establish a general per-device third-party missing-patch feed. Investigation of other official APIs must produce an evidence-backed capability record before feature activation.
 
+### 2.1 Implementation status (2026-11-12, commit `23550d1`)
+
+* Implemented: `GET /api/v3/assets` (per approved org, `$top=100`, `$skip`, `$filter=OrganizationId eq <int>`,
+  `$orderby=Identifier`, `include=Tags,AssetInfo,InstalledSoftware`) and `GET /api/v3/organizations` (admin discovery).
+  Evidence record: `backend/apps/integrations/vsa/capabilities.json`.
+* **Fixture-tested only.** No live tenant has been called. Live pilot pending DEC-04/DEC-10.
+* Credentials: `credential_ref = env:NAME`, where `NAME` (or `NAME_FILE`) holds `TOKEN_ID:TOKEN_SECRET`. Vault support is P5-02.
+* Not used yet: `GET /api/v3/assets/:id` and the `Updates`/`AvailableUpdates`/`InstalledUpdates` sections (P2).
+* Residual risk: `$skip` paging cannot detect equal numbers of inserts and deletes between pages (see ADR-019).
+
 ## 3. IT Glue
 
 **Official reference:** <https://api.itglue.com/developer>

@@ -22,6 +22,12 @@
 | ADR-014 | Customers are archived, users disabled, integrations disabled — never hard-deleted | Preserves audit, report and mapping history; FKs use `PROTECT` | Implemented (P0) |
 | ADR-015 | Fixture integration instances must use `https://*.invalid` and may not hold credential references | A fixture record can never resolve to a real endpoint or be mistaken for live data | Implemented (P0) |
 | ADR-016 | OIDC users matched by (issuer, subject) only; auto-provisioned users get no grants; email collisions need admin linking | Prevents account takeover by email; least privilege | Implemented (P0, mock IdP) |
+| ADR-018 | Collect VSA X per approved mapping with `$filter=OrganizationId eq <int>`; quarantine any other org | Unmapped organisations are never fetched; integer-only IDs rule out OData injection | Implemented (P1) |
+| ADR-019 | Publish a generation only when `TotalCount` is stable across pages and unique records reconcile | `$skip` paging over a changing source can silently miss records | Implemented (P1) |
+| ADR-020 | Architecture-specific catalog references are classified `unknown` for VSA X data | `InstalledSoftware` has no architecture field (docs-verified) | Implemented (P1) |
+| ADR-021 | Catalog imports and aliases need a reviewer other than the submitter (`CATALOG_REQUIRE_SEPARATE_REVIEWER`) | Poisoned reference versions are a listed threat | Implemented (P1) |
+| ADR-022 | Revoking a mapping immediately hides its published data from customer views and reports | A wrong mapping is a leak; revocation must be effective at once | Implemented (P1) |
+| ADR-023 | Alias matching is exact or prefix only (no regex) | Avoids ReDoS and over-broad, hard-to-review matches | Implemented (P1) |
 | ADR-017 | Frontend pinned to proven majors (React Router 7, TanStack Table 8, Vite 7, TypeScript 5.9, ESLint 9) instead of the newest majors | Avoids building on APIs that are not yet verified; upgrade deliberately later | Implemented (P0) |
 
 ## Open decisions requiring authorized owners
