@@ -145,6 +145,17 @@ class SourceMappingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Required.")
         return value
 
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        instance = attrs.get("integration_instance")
+        if instance is not None and instance.provider == "vsa_x":
+            from apps.integrations.vsa.adapter import validate_org_id
+
+            try:
+                validate_org_id(attrs.get("external_org_id", ""))
+            except ValueError as exc:
+                raise serializers.ValidationError({"external_org_id": "VSA X organization IDs are integers."}) from exc
+        return attrs
+
 
 class ReviewSerializer(serializers.Serializer):
     note = serializers.CharField(required=False, allow_blank=True, max_length=2000)

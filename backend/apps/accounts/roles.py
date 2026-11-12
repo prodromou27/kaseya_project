@@ -16,6 +16,7 @@ class Cap:
     CUSTOMER_AUDIT_READ: Final = "customer.audit.read"
     CUSTOMER_MANAGE_MEMBERS: Final = "customer.manage_members"
     CUSTOMER_PROPOSE_MAPPINGS: Final = "customer.propose_mappings"
+    CUSTOMER_MANAGE_EXCEPTIONS: Final = "customer.manage_exceptions"
     # Global-only capabilities (never granted by a customer membership):
     SYSTEM_MANAGE: Final = "system.manage"  # customers, users, integrations, mapping approval
     SYSTEM_CROSS_CUSTOMER: Final = "system.cross_customer"  # multi-customer analysis
@@ -40,6 +41,7 @@ ROLE_DEFINITIONS: Final[dict[str, dict[str, object]]] = {
                 Cap.CUSTOMER_AUDIT_READ,
                 Cap.CUSTOMER_MANAGE_MEMBERS,
                 Cap.CUSTOMER_PROPOSE_MAPPINGS,
+                Cap.CUSTOMER_MANAGE_EXCEPTIONS,
                 Cap.SYSTEM_MANAGE,
                 Cap.SYSTEM_CROSS_CUSTOMER,
                 Cap.SYSTEM_AUDIT_READ,
@@ -58,6 +60,7 @@ ROLE_DEFINITIONS: Final[dict[str, dict[str, object]]] = {
                 Cap.CUSTOMER_AUDIT_READ,
                 Cap.CUSTOMER_MANAGE_MEMBERS,
                 Cap.CUSTOMER_PROPOSE_MAPPINGS,
+                Cap.CUSTOMER_MANAGE_EXCEPTIONS,
             }
         ),
     },

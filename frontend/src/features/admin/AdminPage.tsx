@@ -11,6 +11,8 @@ import { useMe } from "../../lib/auth";
 import { formatUtc } from "../../lib/format";
 import { PROVIDER_LABEL, type Integration, type Paginated, type PortalUser, type Provider, type SourceMapping } from "../../lib/types";
 import { AuditTable } from "../customers/AuditTable";
+import { CatalogPanel } from "./CatalogPanel";
+import { QuarantinePanel } from "./QuarantinePanel";
 import { mappingColumns } from "../customers/MappingsPanel";
 
 function UsersPanel() {
@@ -66,6 +68,11 @@ function IntegrationsPanel() {
   const [baseUrl, setBaseUrl] = useState("");
   const [credentialRef, setCredentialRef] = useState("");
   const [isFixture, setIsFixture] = useState(false);
+  const [discoverId, setDiscoverId] = useState<string | null>(null);
+  const toggle = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => api.patch<Integration>(`/integrations/${id}/`, { enabled }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["integrations"] }),
+  });
   const create = useMutation({
     mutationFn: () =>
       api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture }),
@@ -84,6 +91,17 @@ function IntegrationsPanel() {
     { header: "TLS verify", cell: ({ row }) => (row.original.verify_tls ? "On (enforced)" : "OFF") },
     { header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { header: "Status", accessorKey: "status", cell: ({ getValue }) => <Badge tone={statusTone[String(getValue())]}>{String(getValue())}</Badge> },
+    {
+      header: "Actions",
+      cell: ({ row }) => (
+        <span className="flex gap-1">
+          <button type="button" className="btn-secondary" onClick={() => toggle.mutate({ id: row.original.id, enabled: !row.original.enabled })}>
+            {row.original.enabled ? "Disable" : "Enable"}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => setDiscoverId(row.original.id)}>Discover orgs</button>
+        </span>
+      ),
+    },
   ];
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -126,10 +144,47 @@ function IntegrationsPanel() {
         </button>
         {create.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(create.error)}</p> : null}
       </form>
+      {toggle.isError ? <p role="alert" className="text-sm text-red-700">{describeError(toggle.error)}</p> : null}
+      {discoverId ? <DiscoveryResult id={discoverId} onClose={() => setDiscoverId(null)} /> : null}
       <QueryBoundary query={query}>
         {(data) => <DataTable caption="Integration instances" columns={columns} rows={data.results} total={data.count} getRowId={(i) => i.id} emptyTitle="No integrations configured." />}
       </QueryBoundary>
     </div>
+  );
+}
+
+type Discovery = {
+  data_basis: string;
+  invalid_records: number;
+  organizations: { external_org_id: string; name: string; type: string;
+                   mapping: null | { id: string; status: string; customer: { id: string; code: string } } }[];
+};
+
+function DiscoveryResult({ id, onClose }: { id: string; onClose: () => void }) {
+  const query = useQuery({ queryKey: ["discovery", id], queryFn: () => api.get<Discovery>(`/integrations/${id}/organizations/`) });
+  return (
+    <section aria-label="Discovered source organisations" className="rounded border border-sky-200 bg-sky-50 p-3">
+      <div className="mb-2 flex justify-between">
+        <h3 className="text-sm font-semibold">Source organisations (read-only discovery)</h3>
+        <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+      </div>
+      <QueryBoundary query={query}>
+        {(d) => (
+          <>
+            <p className="mb-2 text-xs">Data basis: {d.data_basis}{d.invalid_records ? ` · ${d.invalid_records} invalid records skipped` : ""}.
+              Unmapped organisations are never collected. Propose a mapping from the customer's Source mappings tab.</p>
+            <DataTable caption="Source organisations" rows={d.organizations} getRowId={(o) => o.external_org_id} columns={[
+              { header: "Org ID", cell: ({ row }) => <code className="text-xs">{row.original.external_org_id}</code> },
+              { header: "Name", accessorKey: "name" },
+              { header: "Type", accessorKey: "type" },
+              { header: "Mapping", cell: ({ row }) => row.original.mapping
+                  ? <span>{row.original.mapping.customer.code} <Badge tone={statusTone[row.original.mapping.status]}>{row.original.mapping.status}</Badge></span>
+                  : <Badge tone="warn">unmapped</Badge> },
+            ]} />
+          </>
+        )}
+      </QueryBoundary>
+    </section>
   );
 }
 
@@ -213,6 +268,8 @@ export function AdminPage() {
         tabs={[
           { id: "mappings", label: "Mapping review", content: <MappingReviewPanel /> },
           { id: "integrations", label: "Integrations", content: <IntegrationsPanel /> },
+          { id: "catalog", label: "Software catalog", content: <CatalogPanel /> },
+          { id: "quarantine", label: "Sync quarantine", content: <QuarantinePanel /> },
           { id: "users", label: "Users", content: <UsersPanel /> },
           { id: "audit", label: "Audit log", content: <AuditTable path="/audit-events/" caption="System audit events" /> },
         ]}

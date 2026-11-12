@@ -80,3 +80,139 @@ class IntegrationInstance(models.Model):
             self.base_url = validate_connector_base_url(self.base_url, self.provider)
         except ValidationError as exc:
             raise ValidationError({"base_url": exc.messages}) from exc
+
+
+class DatasetGeneration(models.Model):
+    """One complete, validated snapshot of a dataset for one customer from one integration instance.
+
+    Rows are staged under a new generation; only after every page is fetched and consistency checks pass is
+    the generation atomically flipped to ``is_current`` (one current generation per scope, DB-enforced). A
+    failed or interrupted sync leaves the previous current generation untouched.
+    """
+
+    class State(models.TextChoices):
+        STAGED = "staged", "Staged"
+        PUBLISHED = "published", "Published (current)"
+        SUPERSEDED = "superseded", "Superseded"
+        DISCARDED = "discarded", "Discarded"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    integration_instance = models.ForeignKey(IntegrationInstance, on_delete=models.PROTECT, related_name="generations")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="generations")
+    mapping = models.ForeignKey("customers.CustomerSourceMapping", on_delete=models.PROTECT, related_name="generations")
+    dataset = models.CharField(max_length=32)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.STAGED)
+    is_current = models.BooleanField(default=False)
+    data_basis = models.CharField(max_length=16, help_text="fixture | live")
+    row_count = models.PositiveIntegerField(default=0)
+    software_row_count = models.PositiveIntegerField(default=0)
+    source_total_count = models.PositiveIntegerField(null=True, blank=True)
+    validation_hash = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["integration_instance", "customer", "dataset"],
+                condition=Q(is_current=True),
+                name="integrations_one_current_generation_per_scope",
+            ),
+            models.CheckConstraint(
+                condition=~Q(is_current=True) | Q(state="published"), name="integrations_current_is_published"
+            ),
+        ]
+        indexes = [models.Index(fields=["customer", "dataset", "is_current"], name="integrations_gen_cur_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.dataset}:{self.id} ({self.state})"
+
+
+class SyncRun(models.Model):
+    class State(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        RUNNING = "running", "Running"
+        PARTIAL = "partial", "Partial (resumable)"
+        FAILED = "failed", "Failed"
+        COMPLETED = "completed", "Completed"
+
+    ACTIVE_STATES = (State.QUEUED, State.RUNNING, State.PARTIAL)
+
+    class Trigger(models.TextChoices):
+        MANUAL = "manual", "Manual"
+        SCHEDULE = "schedule", "Schedule"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    integration_instance = models.ForeignKey(IntegrationInstance, on_delete=models.PROTECT, related_name="sync_runs")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="sync_runs")
+    mapping = models.ForeignKey("customers.CustomerSourceMapping", on_delete=models.PROTECT, related_name="sync_runs")
+    dataset = models.CharField(max_length=32)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.QUEUED)
+    trigger = models.CharField(max_length=16, choices=Trigger.choices, default=Trigger.MANUAL)
+    requested_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    idempotency_key = models.CharField(max_length=128, unique=True)
+    generation = models.OneToOneField(
+        DatasetGeneration, null=True, blank=True, on_delete=models.PROTECT, related_name="sync_run"
+    )
+    next_skip = models.PositiveIntegerField(default=0, help_text="Checkpoint: next $skip to fetch.")
+    pages_fetched = models.PositiveIntegerField(default=0)
+    fetched_count = models.PositiveIntegerField(default=0)
+    accepted_count = models.PositiveIntegerField(default=0)
+    quarantined_count = models.PositiveIntegerField(default=0)
+    source_total_count = models.PositiveIntegerField(null=True, blank=True)
+    initial_total_count = models.PositiveIntegerField(
+        null=True, blank=True, help_text="TotalCount reported by the first page; every later page must match."
+    )
+    api_requests = models.PositiveIntegerField(default=0)
+    attempts = models.PositiveIntegerField(default=0)
+    error_code = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # One active run per (instance, customer, dataset) scope.
+            models.UniqueConstraint(
+                fields=["integration_instance", "customer", "dataset"],
+                condition=Q(state__in=["queued", "running", "partial"]),
+                name="integrations_one_active_run_per_scope",
+            ),
+            # Per-instance concurrency cap: one run actively calling a vendor instance at a time.
+            models.UniqueConstraint(
+                fields=["integration_instance"],
+                condition=Q(state="running"),
+                name="integrations_one_running_run_per_instance",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["integration_instance", "customer", "dataset", "-created_at"], name="integrations_run_scope_idx"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.dataset} {self.customer_id} {self.state}"
+
+
+class SyncQuarantine(models.Model):
+    """Source records that could not be safely attributed or validated. Visible to super admins only."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sync_run = models.ForeignKey(SyncRun, on_delete=models.PROTECT, related_name="quarantined")
+    integration_instance = models.ForeignKey(IntegrationInstance, on_delete=models.PROTECT, related_name="+")
+    external_id = models.CharField(max_length=128, blank=True)
+    external_org_id = models.CharField(max_length=128, blank=True)
+    reason = models.CharField(max_length=64)
+    snapshot = models.JSONField(default=dict, help_text="Minimal redacted identifiers only.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["integration_instance", "reason"], name="integrations_quar_reason_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.external_id} ({self.reason})"

@@ -100,7 +100,7 @@ services:
 
   worker:
     <<: *app
-    command: ["celery", "-A", "config", "worker", "-Q", "maintenance,reports", "-l", "info", "--concurrency", "2"]
+    command: ["celery", "-A", "config", "worker", "-Q", "maintenance,reports,sync_vsa", "-l", "info", "--concurrency", "2"]
     healthcheck:
       test: ["CMD", "celery", "-A", "config", "inspect", "ping", "--timeout", "5"]
       interval: 60s

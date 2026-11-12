@@ -129,4 +129,176 @@ export const CAP = {
   auditRead: "customer.audit.read",
   manageMembers: "customer.manage_members",
   proposeMappings: "customer.propose_mappings",
+  sync: "customer.sync",
+  manageExceptions: "customer.manage_exceptions",
 } as const;
+
+// ---------------------------------------------------------------- P1: inventory, sync, software
+
+export type AssetRow = {
+  id: string;
+  external_id: string;
+  hostname: string;
+  description: string;
+  device_type: string;
+  group_name: string;
+  site_external_id: string;
+  organization_external_id: string;
+  client_version: string;
+  last_seen_online: string | null;
+  last_seen_stale: boolean | null;
+  os_name: string;
+  os_version: string;
+  manufacturer: string;
+  model: string;
+  serial_number: string;
+  domain: string;
+  tags: string[];
+  software_status: "collected" | "not_collected";
+  software_count: number | null;
+  active: boolean;
+  source: string;
+  data_basis: "fixture" | "live";
+  generation_id: string;
+  as_of: string;
+};
+
+export type ComplianceState = "current" | "outdated" | "newer" | "unknown" | "unsupported" | "excluded";
+
+export type SoftwareRow = {
+  id: string;
+  asset_id: string;
+  hostname?: string | null;
+  name: string;
+  publisher: string;
+  installed_version: string;
+  product: string | null;
+  product_id: string | null;
+  channel: string | null;
+  state: ComplianceState;
+  reason_code: string;
+  reference_version: string | null;
+  catalog_revision_id: string | null;
+  catalog_source_url: string | null;
+  catalog_source_checked_at: string | null;
+  exception_id: string | null;
+};
+
+export type AssetDetail = {
+  id: string;
+  external_id: string;
+  active: boolean;
+  in_current_dataset: boolean;
+  asset: AssetRow | null;
+  software: SoftwareRow[];
+  history: { generation_id: string; published_at: string; hostname: string; last_seen_online: string | null;
+             os_name: string; software_count: number | null; current: boolean }[];
+};
+
+export type DatasetStatus = {
+  mapping_id: string;
+  integration: { id: string; name: string; provider: Provider; is_fixture: boolean; enabled: boolean };
+  external_org_id: string;
+  dataset: string;
+  status: "never_synced" | "stale" | "fresh";
+  as_of: string | null;
+  generation_id: string | null;
+  row_count: number | null;
+  data_basis: "fixture" | "live" | null;
+  last_run: null | { id: string; state: string; error_code: string; created_at: string; ended_at: string | null;
+                     fetched: number; quarantined: number };
+};
+
+export type ProductSummary = {
+  product_id: string;
+  label: string;
+  channel: string;
+  states: Record<ComplianceState, number>;
+  installations: number;
+  unique_assets: number;
+  versions: { version: string; state: ComplianceState; installations: number; unique_assets: number }[];
+};
+
+export type SoftwareSummary = {
+  as_of: string[];
+  generation_ids: string[];
+  evaluation_ids: string[];
+  catalog_revision_ids: string[];
+  algorithm_version: string;
+  data_basis: string[];
+  totals: Record<ComplianceState, number>;
+  eligible_installations: number;
+  comparable_installations: number;
+  comparable_coverage_pct: number | null;
+  version_compliance_pct: number | null;
+  unique_assets_with_outdated: number;
+  unique_assets_evaluated: number;
+  products: ProductSummary[];
+  top_unsupported: { name: string; publisher: string; installations: number; unique_assets: number }[];
+  disclaimer: string;
+};
+
+export type SoftwareExceptionRow = {
+  id: string;
+  product: string;
+  product_label: string;
+  asset: string | null;
+  reason: string;
+  approved_by: string;
+  approved_at: string;
+  expires_at: string;
+  status: "active" | "revoked";
+};
+
+export type CatalogProduct = {
+  id: string;
+  vendor: string;
+  product: string;
+  edition: string;
+  channel: string;
+  architecture: string;
+  active: boolean;
+  current_reference: null | { id: string; reference_version: string; effective_at: string; vendor_url: string };
+};
+
+export type CatalogAlias = {
+  id: string;
+  product: string;
+  name_pattern: string;
+  publisher_pattern: string;
+  match_type: "exact" | "prefix";
+  review_status: "proposed" | "approved" | "rejected";
+  created_by: string;
+  reviewed_by: string | null;
+};
+
+export type CatalogImport = {
+  id: string;
+  state: "pending" | "approved" | "rejected";
+  rows: unknown[];
+  preview: { index: number; status: string; change?: string; warnings?: string[]; product?: string;
+             current_reference?: string | null; new_reference?: string; errors?: unknown }[];
+  created_by: string;
+  created_at: string;
+  reviewed_by: string | null;
+};
+
+export type QuarantineRow = {
+  id: string;
+  sync_run: string;
+  integration: string;
+  external_id: string;
+  external_org_id: string;
+  reason: string;
+  snapshot: Record<string, string>;
+  created_at: string;
+};
+
+export const STATE_LABEL: Record<ComplianceState, string> = {
+  current: "Current",
+  outdated: "Outdated",
+  newer: "Newer than reference",
+  unknown: "Unknown",
+  unsupported: "Not catalogued",
+  excluded: "Excluded",
+};

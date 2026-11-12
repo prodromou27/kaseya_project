@@ -3,6 +3,31 @@ info:
   title: Odyssey Kaseya Analytics & Reporting Portal API
   version: 0.1.0
 paths:
+  /api/v1/assets/{id}/:
+    get:
+      operationId: assets_retrieve
+      description: '``/assets/{id}/``: customer resolved from the asset row, then
+        authorised.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this asset.
+        required: true
+      tags:
+      - assets
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/audit-events/:
     get:
       operationId: audit_events_list
@@ -123,6 +148,360 @@ paths:
       responses:
         '302':
           description: No response body
+  /api/v1/catalog/aliases/:
+    get:
+      operationId: catalog_aliases_list
+      description: Aliases are proposed, then approved by a (separate) reviewer before
+        they influence classification.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAliasList'
+          description: ''
+    post:
+      operationId: catalog_aliases_create
+      description: Aliases are proposed, then approved by a (separate) reviewer before
+        they influence classification.
+      tags:
+      - catalog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Alias'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alias'
+          description: ''
+  /api/v1/catalog/aliases/{id}/approve/:
+    post:
+      operationId: catalog_aliases_approve_create
+      description: Aliases are proposed, then approved by a (separate) reviewer before
+        they influence classification.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this software alias.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alias'
+          description: ''
+  /api/v1/catalog/aliases/{id}/reject/:
+    post:
+      operationId: catalog_aliases_reject_create
+      description: Aliases are proposed, then approved by a (separate) reviewer before
+        they influence classification.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this software alias.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alias'
+          description: ''
+  /api/v1/catalog/imports/:
+    get:
+      operationId: catalog_imports_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedImportList'
+          description: ''
+    post:
+      operationId: catalog_imports_create
+      tags:
+      - catalog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Import'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Import'
+          description: ''
+  /api/v1/catalog/imports/{id}/:
+    get:
+      operationId: catalog_imports_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this catalog import.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Import'
+          description: ''
+  /api/v1/catalog/imports/{id}/approve/:
+    post:
+      operationId: catalog_imports_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this catalog import.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Import'
+          description: ''
+  /api/v1/catalog/imports/{id}/reject/:
+    post:
+      operationId: catalog_imports_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this catalog import.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Import'
+          description: ''
+  /api/v1/catalog/imports/preview/:
+    post:
+      operationId: catalog_imports_preview_create
+      description: 'Dry run: validates rows and shows the effect, saves nothing.'
+      tags:
+      - catalog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Import'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/catalog/products/:
+    get:
+      operationId: catalog_products_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProductList'
+          description: ''
+    post:
+      operationId: catalog_products_create
+      tags:
+      - catalog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/v1/catalog/products/{id}/:
+    patch:
+      operationId: catalog_products_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this software product.
+        required: true
+      tags:
+      - catalog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProduct'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/v1/catalog/revisions/:
+    get:
+      operationId: catalog_revisions_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRevisionList'
+          description: ''
+  /api/v1/catalog/revisions/{id}/retire/:
+    post:
+      operationId: catalog_revisions_retire_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this catalog revision.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revision'
+          description: ''
   /api/v1/customers/:
     get:
       operationId: customers_list
@@ -169,6 +548,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
           description: ''
+  /api/v1/customers/{customer_pk}/assets/:
+    get:
+      operationId: customers_assets_list
+      description: Current published inventory (RPT-01 basis). Server-side search,
+        filters, ordering and pagination.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAssetRowList'
+          description: ''
+  /api/v1/customers/{customer_pk}/assets/facets/:
+    get:
+      operationId: customers_assets_facets_retrieve
+      description: Current published inventory (RPT-01 basis). Server-side search,
+        filters, ordering and pagination.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/audit-events/:
     get:
       operationId: customers_audit_events_list
@@ -204,6 +640,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedAuditEventList'
+          description: ''
+  /api/v1/customers/{customer_pk}/datasets/:
+    get:
+      operationId: customers_datasets_retrieve
+      description: 'Freshness per approved source mapping: as-of, last run, staleness
+        (never silently dropped).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/customers/{customer_pk}/mappings/:
     get:
@@ -458,6 +917,222 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReportRun'
           description: ''
+  /api/v1/customers/{customer_pk}/software/:
+    get:
+      operationId: customers_software_list
+      description: '``/customers/{id}/software/`` — installations with classification
+        and catalog evidence (RPT-02/03).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/customers/{customer_pk}/software-exceptions/:
+    get:
+      operationId: customers_software_exceptions_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExceptionList'
+          description: ''
+    post:
+      operationId: customers_software_exceptions_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Exception'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exception'
+          description: ''
+  /api/v1/customers/{customer_pk}/software-exceptions/{id}/:
+    delete:
+      operationId: customers_software_exceptions_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this software exception.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/customers/{customer_pk}/software/summary/:
+    get:
+      operationId: customers_software_summary_retrieve
+      description: '``/customers/{id}/software/`` — installations with classification
+        and catalog evidence (RPT-02/03).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/sync-runs/:
+    get:
+      operationId: customers_sync_runs_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSyncRunList'
+          description: ''
+    post:
+      operationId: customers_sync_runs_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSyncRunList'
+          description: ''
   /api/v1/customers/{id}/:
     get:
       operationId: customers_retrieve
@@ -663,6 +1338,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
+  /api/v1/integrations/{id}/organizations/:
+    get:
+      operationId: integrations_organizations_retrieve
+      description: Live (or fixture) list of source organisations with their mapping
+        status. One read-only API crawl.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/integrations/options/:
     get:
@@ -886,6 +1586,35 @@ paths:
                 items:
                   $ref: '#/components/schemas/Role'
           description: ''
+  /api/v1/sync-quarantine/:
+    get:
+      operationId: sync_quarantine_list
+      description: Quarantined source records — cross-customer by nature, therefore
+        super admin only.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - sync-quarantine
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSyncQuarantineList'
+          description: ''
   /api/v1/users/:
     get:
       operationId: users_list
@@ -990,6 +1719,153 @@ paths:
           description: ''
 components:
   schemas:
+    Alias:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        product:
+          type: string
+          format: uuid
+        name_pattern:
+          type: string
+          maxLength: 255
+        publisher_pattern:
+          type: string
+          description: Exact publisher; blank = any.
+          maxLength: 255
+        match_type:
+          $ref: '#/components/schemas/MatchTypeEnum'
+        review_status:
+          allOf:
+          - $ref: '#/components/schemas/ReviewStatusEnum'
+          readOnly: true
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - name_pattern
+      - product
+      - review_status
+      - reviewed_at
+      - reviewed_by
+    ArchitectureEnum:
+      enum:
+      - any
+      - x64
+      - x86
+      - arm64
+      type: string
+      description: |-
+        * `any` - Any / not architecture-specific
+        * `x64` - x64
+        * `x86` - x86
+        * `arm64` - ARM64
+    AssetRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        external_id:
+          type: string
+        hostname:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 255
+        device_type:
+          type: string
+          maxLength: 64
+        group_name:
+          type: string
+          maxLength: 255
+        site_external_id:
+          type: string
+          maxLength: 64
+        organization_external_id:
+          type: string
+          maxLength: 64
+        client_version:
+          type: string
+          maxLength: 64
+        last_seen_online:
+          type: string
+          format: date-time
+          nullable: true
+        last_seen_stale:
+          type: boolean
+          nullable: true
+          readOnly: true
+        os_name:
+          type: string
+          maxLength: 255
+        os_version:
+          type: string
+          maxLength: 64
+        manufacturer:
+          type: string
+          maxLength: 255
+        model:
+          type: string
+          maxLength: 255
+        serial_number:
+          type: string
+          maxLength: 255
+        domain:
+          type: string
+          maxLength: 255
+        tags: {}
+        software_status:
+          $ref: '#/components/schemas/SoftwareStatusEnum'
+        software_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        active:
+          type: boolean
+        source:
+          type: string
+        data_basis:
+          type: string
+        generation_id:
+          type: string
+          format: uuid
+        as_of:
+          type: string
+          format: date-time
+      required:
+      - active
+      - as_of
+      - data_basis
+      - external_id
+      - generation_id
+      - id
+      - last_seen_stale
+      - organization_external_id
+      - software_status
+      - source
     AuditEvent:
       type: object
       properties:
@@ -1108,6 +1984,117 @@ components:
         * `active` - Active
         * `suspended` - Suspended
         * `archived` - Archived
+    Exception:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        product:
+          type: string
+          format: uuid
+        product_label:
+          type: string
+          readOnly: true
+        asset:
+          type: string
+          format: uuid
+          nullable: true
+        reason:
+          type: string
+        approved_by:
+          type: string
+          format: email
+          readOnly: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ExceptionStatusEnum'
+          readOnly: true
+        revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - approved_at
+      - approved_by
+      - expires_at
+      - id
+      - product
+      - product_label
+      - reason
+      - revoked_at
+      - status
+    ExceptionStatusEnum:
+      enum:
+      - active
+      - revoked
+      type: string
+      description: |-
+        * `active` - Active
+        * `revoked` - Revoked
+    Import:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/ImportStateEnum'
+          readOnly: true
+        rows: {}
+        preview:
+          readOnly: true
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        review_note:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - preview
+      - review_note
+      - reviewed_at
+      - reviewed_by
+      - rows
+      - state
+    ImportStateEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending review
+        * `approved` - Approved
+        * `rejected` - Rejected
     IntegrationInstance:
       type: object
       description: '``credential_ref`` is write-only: responses only say whether one
@@ -1234,6 +2221,14 @@ components:
         * `approved` - Approved
         * `rejected` - Rejected
         * `revoked` - Revoked
+    MatchTypeEnum:
+      enum:
+      - exact
+      - prefix
+      type: string
+      description: |-
+        * `exact` - Exact (case-insensitive)
+        * `prefix` - Prefix (case-insensitive)
     Membership:
       type: object
       properties:
@@ -1293,6 +2288,52 @@ components:
         * `success` - Success
         * `denied` - Denied
         * `failure` - Failure
+    PaginatedAliasList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alias'
+    PaginatedAssetRowList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetRow'
     PaginatedAuditEventList:
       type: object
       required:
@@ -1339,6 +2380,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Customer'
+    PaginatedExceptionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Exception'
+    PaginatedImportList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Import'
     PaginatedIntegrationInstanceList:
       type: object
       required:
@@ -1385,6 +2472,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Membership'
+    PaginatedProductList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
     PaginatedReportRunList:
       type: object
       required:
@@ -1408,6 +2518,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReportRun'
+    PaginatedRevisionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Revision'
     PaginatedSourceMappingList:
       type: object
       required:
@@ -1431,6 +2564,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SourceMapping'
+    PaginatedSyncQuarantineList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncQuarantine'
+    PaginatedSyncRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRun'
     PaginatedUserList:
       type: object
       required:
@@ -1584,6 +2763,48 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedProduct:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        vendor:
+          type: string
+          maxLength: 120
+        product:
+          type: string
+          maxLength: 160
+        edition:
+          type: string
+          default: ''
+          maxLength: 64
+        platform:
+          type: string
+          default: windows
+          maxLength: 32
+        channel:
+          type: string
+          default: stable
+          maxLength: 32
+        architecture:
+          allOf:
+          - $ref: '#/components/schemas/ArchitectureEnum'
+          default: any
+        notes:
+          type: string
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        current_reference:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
     PatchedUser:
       type: object
       description: Super-admin user management. No password hash, OIDC subject or
@@ -1625,6 +2846,54 @@ components:
           type: string
           writeOnly: true
           maxLength: 256
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        vendor:
+          type: string
+          maxLength: 120
+        product:
+          type: string
+          maxLength: 160
+        edition:
+          type: string
+          default: ''
+          maxLength: 64
+        platform:
+          type: string
+          default: windows
+          maxLength: 32
+        channel:
+          type: string
+          default: stable
+          maxLength: 32
+        architecture:
+          allOf:
+          - $ref: '#/components/schemas/ArchitectureEnum'
+          default: any
+        notes:
+          type: string
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        current_reference:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+      required:
+      - created_at
+      - current_reference
+      - id
+      - product
+      - vendor
     ProviderEnum:
       enum:
       - vsa_x
@@ -1677,7 +2946,7 @@ components:
           readOnly: true
         state:
           allOf:
-          - $ref: '#/components/schemas/StateEnum'
+          - $ref: '#/components/schemas/ReportRunStateEnum'
           readOnly: true
         row_count:
           type: integer
@@ -1723,17 +2992,130 @@ components:
       - row_count
       - started_at
       - state
+    ReportRunStateEnum:
+      enum:
+      - queued
+      - running
+      - completed
+      - failed
+      type: string
+      description: |-
+        * `queued` - Queued
+        * `running` - Running
+        * `completed` - Completed
+        * `failed` - Failed
     ReportTypeEnum:
       enum:
+      - asset_inventory
       - customer_audit_log
+      - software_compliance
       type: string
-      description: '* `customer_audit_log` - customer_audit_log'
+      description: |-
+        * `asset_inventory` - asset_inventory
+        * `customer_audit_log` - customer_audit_log
+        * `software_compliance` - software_compliance
     Review:
       type: object
       properties:
         note:
           type: string
           maxLength: 2000
+    ReviewStatusEnum:
+      enum:
+      - proposed
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `proposed` - Proposed
+        * `approved` - Approved
+        * `rejected` - Rejected
+    Revision:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        product:
+          type: string
+          format: uuid
+          readOnly: true
+        product_label:
+          type: string
+          readOnly: true
+        reference_version:
+          type: string
+          readOnly: true
+        version_scheme:
+          allOf:
+          - $ref: '#/components/schemas/VersionSchemeEnum'
+          readOnly: true
+        vendor_url:
+          type: string
+          format: uri
+          readOnly: true
+        source_type:
+          type: string
+          readOnly: true
+          description: e.g. vendor_release_notes, vendor_feed, manual
+        source_checked_at:
+          type: string
+          format: date-time
+          readOnly: true
+        effective_at:
+          type: string
+          format: date-time
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/RevisionStateEnum'
+          readOnly: true
+        catalog_import:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - catalog_import
+      - created_at
+      - created_by
+      - effective_at
+      - id
+      - product
+      - product_label
+      - reference_version
+      - reviewed_at
+      - reviewed_by
+      - source_checked_at
+      - source_type
+      - state
+      - vendor_url
+      - version_scheme
+    RevisionStateEnum:
+      enum:
+      - published
+      - retired
+      type: string
+      description: |-
+        * `published` - Published
+        * `retired` - Retired
     Role:
       type: object
       properties:
@@ -1756,6 +3138,14 @@ components:
       - capabilities
       - key
       - name
+    SoftwareStatusEnum:
+      enum:
+      - collected
+      - not_collected
+      type: string
+      description: |-
+        * `collected` - Collected
+        * `not_collected` - Not collected (section absent)
     SourceMapping:
       type: object
       properties:
@@ -1825,18 +3215,147 @@ components:
       - reviewed_at
       - reviewed_by
       - updated_at
-    StateEnum:
+    SyncQuarantine:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sync_run:
+          type: string
+          format: uuid
+          readOnly: true
+        integration:
+          type: string
+          readOnly: true
+        external_id:
+          type: string
+          readOnly: true
+        external_org_id:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        snapshot:
+          readOnly: true
+          description: Minimal redacted identifiers only.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resolved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - external_id
+      - external_org_id
+      - id
+      - integration
+      - reason
+      - resolved_at
+      - snapshot
+      - sync_run
+    SyncRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        integration:
+          type: string
+        dataset:
+          type: string
+          maxLength: 32
+        state:
+          $ref: '#/components/schemas/SyncRunStateEnum'
+        trigger:
+          $ref: '#/components/schemas/TriggerEnum'
+        requested_by:
+          type: string
+          format: email
+          readOnly: true
+        pages_fetched:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        fetched_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        accepted_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        quarantined_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        source_total_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        api_requests:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        attempts:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        error_code:
+          type: string
+          maxLength: 64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        generation:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - created_at
+      - dataset
+      - id
+      - integration
+      - requested_by
+    SyncRunStateEnum:
       enum:
       - queued
       - running
-      - completed
+      - partial
       - failed
+      - completed
       type: string
       description: |-
         * `queued` - Queued
         * `running` - Running
-        * `completed` - Completed
+        * `partial` - Partial (resumable)
         * `failed` - Failed
+        * `completed` - Completed
+    TriggerEnum:
+      enum:
+      - manual
+      - schedule
+      type: string
+      description: |-
+        * `manual` - Manual
+        * `schedule` - Schedule
     User:
       type: object
       description: Super-admin user management. No password hash, OIDC subject or
@@ -1904,6 +3423,11 @@ components:
       required:
       - email
       - id
+    VersionSchemeEnum:
+      enum:
+      - dotted_numeric
+      type: string
+      description: '* `dotted_numeric` - Dotted numeric (e.g. 131.0.6778.86)'
   securitySchemes:
     sessionAuth:
       type: apiKey

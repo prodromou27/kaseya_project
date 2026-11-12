@@ -84,26 +84,34 @@ def request_report(
     return run
 
 
-def _write_csv(report_type: ReportType, run: ReportRun) -> tuple[bytes, int]:
+def _write_csv(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tuple[bytes, int]:
+    rows = list(_limited(report_type.rows(run.customer, run.filters, pins)))
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer, quoting=csv.QUOTE_MINIMAL)
-    writer.writerow([f"# {report_type.title}"])
-    writer.writerow(
-        [
-            f"# customer={run.customer.code}",
-            f"run={run.id}",
-            f"data_basis={run.data_basis}",
-            f"generated_at_utc={timezone.now().isoformat()}",
-        ]
-    )
+    provenance = {
+        "Report": report_type.title,
+        "Customer": f"{run.customer.name} ({run.customer.code})",
+        "Generated": timezone.now().isoformat(),
+        "Report run": str(run.id),
+        "Data basis": run.data_basis,
+        **pins.get("provenance", {}),
+        "Filters": json.dumps(run.filters, sort_keys=True) if run.filters else "none",
+        "Records included": str(len(rows)),
+        "Limitations": report_type.limitations or "none",
+    }
+    for key, value in provenance.items():
+        writer.writerow([f"# {key}: {value}"])
     writer.writerow(report_type.columns)
-    count = 0
-    for row in report_type.rows(run.customer, run.filters):
-        count += 1
+    for row in rows:
+        writer.writerow([neutralize_cell(v) for v in row])
+    return buffer.getvalue().encode("utf-8-sig"), len(rows)
+
+
+def _limited(rows: Any) -> Any:
+    for count, row in enumerate(rows, start=1):
         if count > settings.REPORT_MAX_ROWS:
             raise OverflowError("row_limit_exceeded")
-        writer.writerow([neutralize_cell(v) for v in row])
-    return buffer.getvalue().encode("utf-8-sig"), count
+        yield row
 
 
 def generate(run_id: str) -> ReportRun:
@@ -123,8 +131,14 @@ def generate(run_id: str) -> ReportRun:
     if report_type is None:
         return _fail(run, "unknown_report_type")
 
+    pins: dict[str, Any] = {}
+    if report_type.pin is not None:
+        pins = report_type.pin(run.customer)
+        run.as_of_generation_ids = {"generations": pins["generation_ids"], "evaluations": pins["evaluation_ids"]}
+        run.data_basis = pins["data_basis"]
+        run.save(update_fields=["as_of_generation_ids", "data_basis"])
     try:
-        content, count = _write_csv(report_type, run)
+        content, count = _write_csv(report_type, run, pins)
     except OverflowError:
         return _fail(run, "row_limit_exceeded")
     except Exception:

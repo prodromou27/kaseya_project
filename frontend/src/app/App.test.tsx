@@ -86,7 +86,7 @@ describe("application shell", () => {
 
   it("future modules show no figures", async () => {
     mockFetch({ "GET /api/v1/auth/me/": { body: makeMe() }, "GET /api/v1/customers/": { body: page([customerA]) } });
-    renderApp("/software");
+    renderApp("/windows-updates");
     expect(await screen.findByText("This module is not implemented yet.")).toBeInTheDocument();
     expect(screen.queryByText(/\b\d+\s*(devices|assets|outdated)/i)).not.toBeInTheDocument();
   });

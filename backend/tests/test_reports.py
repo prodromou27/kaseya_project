@@ -60,8 +60,10 @@ def test_audit_csv_report_end_to_end(world, django_capture_on_commit_callbacks):
     assert hashlib.sha256(body).hexdigest() == resp["X-Content-SHA256"] == run.artifact.sha256
     assert "attachment" in resp["Content-Disposition"] and "ACME_customer_audit_log" in resp["Content-Disposition"]
     rows = list(csv.reader(io.StringIO(body.decode("utf-8-sig"))))
-    assert rows[1][0] == "# customer=ACME"
-    data_rows = rows[3:]
+    assert ["# Customer: Acme Ltd (ACME)"] in rows
+    header = rows.index(["created_at_utc", "action", "outcome", "actor", "target_type", "target_id", "request_id"])
+    assert all(r[0].startswith("# ") for r in rows[:header])
+    data_rows = rows[header + 1 :]
     actions = [r[1] for r in data_rows]
     assert "'=cmd|' /C calc'!A0" in actions  # neutralised
     assert "other.customer" not in actions  # scoped

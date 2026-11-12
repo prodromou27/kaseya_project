@@ -18,7 +18,7 @@ from apps.accounts.permissions import IsSystemAdmin
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
 
-from .models import IntegrationInstance
+from .models import IntegrationInstance, SyncQuarantine
 
 
 class IntegrationInstanceSerializer(serializers.ModelSerializer):
@@ -113,6 +113,21 @@ class IntegrationInstanceViewSet(
         )
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["get"])
+    def organizations(self, request: Request, pk: str | None = None) -> Response:
+        """Live (or fixture) list of source organisations with their mapping status. One read-only API crawl."""
+        instance = self.get_object()
+        record_event(
+            action="integration.discovery",
+            outcome="success",
+            actor=request.user,
+            target_type="integration",
+            target_id=str(instance.id),
+            request=request,
+        )
+        return _discover_organizations(instance)
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="options")
     def options_list(self, request: Request) -> Response:
         """Minimal id/name/provider list for users who may propose source mappings."""
@@ -125,3 +140,79 @@ class IntegrationInstanceViewSet(
             for i in IntegrationInstance.objects.order_by("provider", "name")
         ]
         return Response(data)
+
+
+class SyncQuarantineSerializer(serializers.ModelSerializer):
+    integration = serializers.CharField(source="integration_instance.name", read_only=True)
+
+    class Meta:
+        model = SyncQuarantine
+        fields = [
+            "id",
+            "sync_run",
+            "integration",
+            "external_id",
+            "external_org_id",
+            "reason",
+            "snapshot",
+            "created_at",
+            "resolved_at",
+        ]
+        read_only_fields = fields
+
+
+class SyncQuarantineViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """Quarantined source records — cross-customer by nature, therefore super admin only."""
+
+    permission_classes = [IsSystemAdmin]
+    serializer_class = SyncQuarantineSerializer
+    queryset = SyncQuarantine.objects.select_related("integration_instance").all()
+
+    def get_queryset(self) -> Any:
+        qs = super().get_queryset()
+        reason = self.request.query_params.get("reason", "").strip()[:64]
+        return qs.filter(reason=reason) if reason else qs
+
+
+def _discover_organizations(instance: IntegrationInstance) -> Response:
+    from apps.customers.models import CustomerSourceMapping
+
+    from .http import ConnectorError
+    from .secrets import CredentialUnavailable
+    from .vsa.adapter import VsaXAdapter
+    from .vsa.schema import PageInvalid
+
+    if instance.provider != IntegrationInstance.Provider.VSA_X:
+        raise ValidationError({"detail": "Organisation discovery is implemented for VSA X only."})
+    try:
+        orgs, invalid = VsaXAdapter(instance).list_organizations()
+    except (ConnectorError, CredentialUnavailable, PageInvalid) as exc:
+        code = getattr(exc, "code", "credential_unavailable" if isinstance(exc, CredentialUnavailable) else "bad_page")
+        raise ValidationError({"detail": f"Discovery failed: {code}."}) from exc
+    mappings = {
+        m.external_org_id: m
+        for m in CustomerSourceMapping.objects.filter(
+            integration_instance=instance, mapping_status__in=["proposed", "approved"]
+        ).select_related("customer")
+    }
+    return Response(
+        {
+            "data_basis": "fixture" if instance.is_fixture else "live",
+            "invalid_records": len(invalid),
+            "organizations": [
+                {
+                    "external_org_id": o.id,
+                    "name": o.name,
+                    "type": o.type,
+                    "mapping": None
+                    if o.id not in mappings
+                    else {
+                        "id": str(mappings[o.id].id),
+                        "status": mappings[o.id].mapping_status,
+                        "customer": {"id": str(mappings[o.id].customer_id), "code": mappings[o.id].customer.code},
+                    },
+                }
+                for o in orgs
+            ],
+        }
+    )

@@ -1,0 +1,74 @@
+{
+  "provider": "vsa_x",
+  "reference": "https://api.vsax.net/",
+  "verified_on": "2026-11-12",
+  "verified_by": "coding agent (Claude) from the public documentation page; NOT live-tested",
+  "authentication": {
+    "scheme": "HTTP Basic, base64(TOKEN_ID:TOKEN_SECRET), HTTPS only",
+    "status": "docs-verified"
+  },
+  "endpoints": {
+    "GET /api/v3/assets": {
+      "status": "docs-verified; fixture-tested",
+      "query": {
+        "$top": "integer, max 100, default 100",
+        "$skip": "integer starting position",
+        "$filter": "OData; documented filterable: Identifier, Name, GroupName, Description, Type, ClientVersion, ComputerId, OrganizationId, SiteId",
+        "$orderby": "OData; same sortable properties",
+        "include": "comma list; default Tags,Updates,AssetInfo,IpAddresses,LocalIpAddresses,Disks,InstalledSoftware; 'None' = basic fields only"
+      },
+      "response": "{Data: [asset], Meta: {TotalCount, ResponseCode}}",
+      "rate_limit": "3600 requests/hour per token+endpoint"
+    },
+    "GET /api/v3/assets/:id": {
+      "status": "docs-verified; not used in P1 (InstalledUpdates is P2)",
+      "response": "{Data: asset, Meta: {ResponseCode}}"
+    },
+    "GET /api/v3/organizations": {
+      "status": "docs-verified; fixture-tested",
+      "query": {"$top": "max 100, default 100", "$skip": "starting position"},
+      "response": "{Data: [{Id:int, Name, Type: Internal|Customer, ...}], Meta: {TotalCount, ResponseCode}}"
+    }
+  },
+  "asset_fields_used": {
+    "Identifier": "string, always included — primary source key",
+    "Name": "string, always included",
+    "GroupName": "string 'Org - Site - Group', always included",
+    "Description": "string, always included",
+    "Type": "string, always included",
+    "ClientVersion": "string, always included",
+    "LastSeenOnline": "ISO-8601 string, always included",
+    "ComputerId": "int, always included",
+    "OrganizationId": "int, always included — mapped via approved CustomerSourceMapping",
+    "SiteId": "int, always included",
+    "Tags": "array of string (section Tags)",
+    "AssetInfo[System].Manufacturer/Model/Type/Domain": "section AssetInfo",
+    "AssetInfo[BIOS].Serial Number": "section AssetInfo (hardware serial)",
+    "AssetInfo[Operating System].Name/Version": "section AssetInfo",
+    "InstalledSoftware[].Name/Publisher/Version": "section InstalledSoftware"
+  },
+  "asset_fields_deliberately_dropped": [
+    "AssetInfo[Operating System].Product Key",
+    "AssetInfo[Operating System].Serial Number (OS product serial)",
+    "AssetInfo[Operating System].Registered User",
+    "AssetInfo[Operating System].Last Logged On User",
+    "AssetInfo[System].Owner Name",
+    "PublicIpAddress, IpAddresses, LocalIpAddresses (not needed for P1)",
+    "Security, EventLogs, Disks (not needed for P1)"
+  ],
+  "rate_limiting": {
+    "status": "docs-verified",
+    "429": "Too Many Requests with Retry-After (seconds)",
+    "headers": ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    "failed_requests_per_ip": "100/minute and 2000/hour count failed (non-2xx except 503) requests — auth failures must stop immediately"
+  },
+  "errors": {
+    "documented_status_codes": [200, 202, 400, 401, 403, 404, 429, 500, 502, 503, 504],
+    "error_body_shape": "NOT documented — adapter acts on status code only and never stores or logs error bodies"
+  },
+  "not_established": [
+    "Per-device third-party missing-patch applicability (InstalledSoftware is version inventory only)",
+    "Software architecture/channel per installation (InstalledSoftware has only Name, Publisher, Version)",
+    "Stable ordering guarantees for $skip paging; adapter uses $orderby=Identifier and verifies counts"
+  ]
+}

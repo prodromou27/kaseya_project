@@ -43,7 +43,7 @@ jobs:
           uv run python manage.py makemigrations --check --dry-run
       - name: Lock file export is current
         run: |
-          uv export --frozen --no-dev --no-emit-project --format requirements-txt -o /tmp/requirements.lock -q
+          uv export --frozen --no-dev --no-emit-project --no-header --format requirements-txt -o /tmp/requirements.lock -q
           diff -u requirements.lock /tmp/requirements.lock
       - name: OpenAPI schema is current
         run: |

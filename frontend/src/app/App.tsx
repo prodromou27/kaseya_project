@@ -4,6 +4,9 @@ import { BrowserRouter, Route, Routes } from "react-router";
 
 import { LoadingState } from "../components/States";
 import { AdminPage } from "../features/admin/AdminPage";
+import { AssetDetailPage } from "../features/inventory/AssetDetailPage";
+import { AssetsPage } from "../features/inventory/AssetsPage";
+import { SoftwarePage } from "../features/software/SoftwarePage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { CustomerDetailPage } from "../features/customers/CustomerDetailPage";
 import { CustomersPage } from "../features/customers/CustomersPage";
@@ -44,8 +47,9 @@ export function AppRoutes() {
         <Route path="customers/:customerId" element={<CustomerDetailPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="admin" element={<AdminPage />} />
-        <Route path="assets" element={<NotYetAvailablePage title="Assets" phase="P1" />} />
-        <Route path="software" element={<NotYetAvailablePage title="Software" phase="P1" />} />
+        <Route path="assets" element={<AssetsPage />} />
+        <Route path="assets/:assetId" element={<AssetDetailPage />} />
+        <Route path="software" element={<SoftwarePage />} />
         <Route path="windows-updates" element={<NotYetAvailablePage title="Windows Updates" phase="P2" />} />
         <Route path="itglue" element={<NotYetAvailablePage title="IT Glue" phase="P3" />} />
         <Route path="autotask" element={<NotYetAvailablePage title="Autotask PSA" phase="P4" />} />

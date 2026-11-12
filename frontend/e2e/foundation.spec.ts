@@ -61,12 +61,12 @@ test("super admin approves the demo source mapping and the audit trail records i
   await login(page, "demo.superadmin@demo.invalid");
   await page.getByRole("link", { name: "Administration" }).click();
   await expect(page.getByRole("tab", { name: "Mapping review" })).toHaveAttribute("aria-selected", "true");
-  const row = page.getByRole("row", { name: /demo-org-1001/ });
+  const row = page.getByRole("row", { name: /Demo Org A \(fixture\)/ });
   page.once("dialog", (d) => void d.accept());
   await row.getByRole("button", { name: "Approve" }).click();
-  await expect(page.getByRole("row", { name: /demo-org-1001/ })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: /Demo Org A \(fixture\)/ })).toHaveCount(0);
   await page.getByLabel("Status").selectOption("approved");
-  await expect(page.getByRole("row", { name: /demo-org-1001/ })).toContainText("approved");
+  await expect(page.getByRole("row", { name: /Demo Org A \(fixture\)/ })).toContainText("approved");
   await page.getByRole("tab", { name: "Audit log" }).click();
   await expect(page.getByRole("table", { name: "System audit events" })).toContainText("mapping.approved");
 });

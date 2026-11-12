@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     "apps.integrations",
     "apps.audit",
     "apps.reporting",
+    "apps.inventory",
+    "apps.software",
 ]
 
 MIDDLEWARE = [
@@ -200,7 +202,13 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_RESULT_BACKEND = None
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TASK_DEFAULT_QUEUE = "maintenance"
-CELERY_TASK_ROUTES = {"apps.reporting.tasks.*": {"queue": "reports"}}
+CELERY_TASK_ROUTES = {
+    "apps.reporting.tasks.*": {"queue": "reports"},
+    "apps.integrations.tasks.run_sync": {"queue": "sync_vsa"},
+}
+SYNC_MAX_DROP_RATIO = float(env_str("SYNC_MAX_DROP_RATIO", "0.5"))
+DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
+CATALOG_REQUIRE_SEPARATE_REVIEWER = env_bool("CATALOG_REQUIRE_SEPARATE_REVIEWER", default=True)
 
 # --- Report artifacts: private filesystem storage, never served directly by the proxy ---
 REPORT_STORAGE_DIR = Path(env_str("REPORT_STORAGE_DIR", str(BASE_DIR / "var" / "reports")))

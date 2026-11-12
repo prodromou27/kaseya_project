@@ -104,7 +104,7 @@ def test_customer_supplied_in_body_is_ignored(world):
     inst = MappingFactory(customer=world.customer_a).integration_instance
     resp = world.client(world.admin_a).post(
         f"/api/v1/customers/{world.customer_a.id}/mappings/",
-        {"integration_instance": str(inst.id), "external_org_id": "x-1", "customer": str(world.customer_b.id)},
+        {"integration_instance": str(inst.id), "external_org_id": "4242", "customer": str(world.customer_b.id)},
     )
     assert resp.status_code == 201
     assert resp.json()["customer"]["id"] == str(world.customer_a.id)

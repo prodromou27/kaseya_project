@@ -7,6 +7,7 @@ import { Badge, Notice, statusTone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import { formatUtc } from "../../lib/format";
 import { CAP, type Customer, type Paginated, type ReportRun } from "../../lib/types";
+import { ExportButton } from "./ExportButton";
 
 const columns: ColumnDef<ReportRun, unknown>[] = [
   { header: "Requested", accessorKey: "created_at", cell: ({ getValue }) => formatUtc(String(getValue())) },
@@ -55,9 +56,13 @@ export function CustomerReports({ customer }: { customer: Customer }) {
   return (
     <div className="space-y-3">
       <Notice tone="info">
-        Inventory, software and OS-update reports arrive with P1/P2. The audit-log export below exercises the same
-        customer-scoped job, private storage and re-authorised download path.
+        Reports are generated asynchronously for exactly one customer from pinned dataset snapshots, include a provenance
+        header, and are re-authorised on every download. OS-update and PDF/XLSX reports arrive with P2.
       </Notice>
+      <div className="flex flex-wrap gap-3">
+        <ExportButton customer={customer} reportType="asset_inventory" label="Asset inventory CSV (RPT-01)" filters={{}} />
+        <ExportButton customer={customer} reportType="software_compliance" label="Software compliance CSV (RPT-03)" filters={{}} />
+      </div>
       {canAuditReport ? (
         <div className="flex items-center gap-3">
           <button type="button" className="btn-primary" disabled={request.isPending} onClick={() => request.mutate()}>
