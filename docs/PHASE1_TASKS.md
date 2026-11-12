@@ -2,47 +2,49 @@
 
 **Initial status:** all tasks unchecked in this documentation package. Check only after actual implementation + tests. Log commit/test evidence per task in `docs/IMPLEMENTATION_EVIDENCE.md`.
 
+**Status 2026-11-13:** Items are checked only where `docs/VSA_PHASE1_CROSSWALK.md` says DONE_VERIFIED. PARTIAL and blocked items carry an inline note. "Done" means automated tests on PostgreSQL plus fixture E2E; **no live VSA X validation has been performed for any item.**
+
 ## VSA0 — Foundation
 
-- [ ] **VSA0-01 [P0]** Inspect repo; build monorepo (Django/React/TS), pinned dependencies, lint/typing, Git CI. AC: checks/build/health endpoint pass.
-- [ ] **VSA0-02 [P0]** Dev/prod Compose, PostgreSQL, Redis, Celery, proxy, nonroot containers, health & `.env.example`. AC: clean demo boot; DB/Redis not publicly exposed.
-- [ ] **VSA0-03 [P0]** User/customer/membership/role, authorization service, bootstrap admin + OIDC-ready. AC: anonymous/foreign-customer routes denied.
-- [ ] **VSA0-04 [P0]** IntegrationInstance, CustomerVsaScope, protected credential refs, admin mapping UI. AC: unknown org quarantined.
-- [ ] **VSA0-05 [P0]** Immutable audit events, access changes, export authorization, protected demo seeds. AC: redaction/IDOR tests.
+- [x] **VSA0-01 [P0]** Inspect repo; build monorepo (Django/React/TS), pinned dependencies, lint/typing, Git CI. AC: checks/build/health endpoint pass. — *Done locally (`d799241`…`ea26682`): lint, typecheck, tests, build and health checks pass from a clean clone. CI workflows written but **never executed** (no remote).*
+- [ ] **VSA0-02 [P0]** Dev/prod Compose, PostgreSQL, Redis, Celery, proxy, nonroot containers, health & `.env.example`. AC: clean demo boot; DB/Redis not publicly exposed. — *PARTIAL: Compose dev/prod files exist, never booted (no Docker host).*
+- [x] **VSA0-03 [P0]** User/customer/membership/role, authorization service, bootstrap admin + OIDC-ready. AC: anonymous/foreign-customer routes denied. — *Done (`d799241`): `test_auth.py`, `test_oidc.py` (mock IdP), `test_tenant_isolation.py`.*
+- [x] **VSA0-04 [P0]** IntegrationInstance, CustomerVsaScope, protected credential refs, admin mapping UI. AC: unknown org quarantined. — *Done (`d799241`/`23550d1`): IntegrationInstance, CustomerSourceMapping (approval + quarantine), `env:` credential refs; `test_admin_api.py`, `test_sync.py`.*
+- [x] **VSA0-05 [P0]** Immutable audit events, access changes, export authorization, protected demo seeds. AC: redaction/IDOR tests. — *Done (`d799241`): append-only audit (incl. DB trigger), redaction, export authz, demo seeds; `test_audit_and_errors.py`, `test_reports.py`.*
 
 ## VSA1 — Inventory + groups
 
-- [ ] **VSA1-01 [P0]** Verify official API and capability matrix, connection test, rate-limit budget, TLS, error handling. AC: fixture and invalid-token cases.
-- [ ] **VSA1-02 [P0]** Adapter: organizations/sites/groups/devices/assets, include sections, paging, stable ID link. AC: source fixture contracts.
-- [ ] **VSA1-03 [P0]** SyncRun/Generation/checkpoint; atomic publish, partial state, quarantine and stale flag. AC: restart/429/partial tests.
-- [ ] **VSA1-04 [P0]** Asset and detailed observation schema, NIC/disks, software, agent, OS and security. AC: migrations and multi-NIC tests.
-- [ ] **VSA1-05 [P0]** Device list/search/saved views & detailed tabs, source provenance, scoped UI. AC: frontend+API tests.
-- [ ] **VSA1-06 [P0]** Customer > org > site > group explorer with counts and status. AC: scoped tree; names not global keys.
+- [ ] **VSA1-01 [P0]** Verify official API and capability matrix, connection test, rate-limit budget, TLS, error handling. AC: fixture and invalid-token cases. — *PARTIAL: docs verified, TLS/rate-limit/error handling tested; no `/ratelimits` connection-test action yet.*
+- [x] **VSA1-02 [P0]** Adapter: organizations/sites/groups/devices/assets, include sections, paging, stable ID link. AC: source fixture contracts. — *Done `ea26682` (fixture): assets, organizations, sites, groups, devices with paging and integer org filters; `test_vsa_adapter.py`, `test_vsa1_hierarchy_network.py`. LIVE_VALIDATION_PENDING.*
+- [x] **VSA1-03 [P0]** SyncRun/Generation/checkpoint; atomic publish, partial state, quarantine and stale flag. AC: restart/429/partial tests. — *Done (`23550d1`): checkpoint, quarantine, TotalCount stability, atomic publish, stale flag; `test_sync.py` (26).*
+- [x] **VSA1-04 [P0]** Asset and detailed observation schema, NIC/disks, software, agent, OS and security. AC: migrations and multi-NIC tests. — *Done `ea26682` (fixture): NIC/IP (multi-NIC, IPv6 zone, virtual), disks (raw units), security tri-state, agent installed, OS, software; migrations with DB triggers; `test_vsa1_hierarchy_network.py`.*
+- [ ] **VSA1-05 [P0]** Device list/search/saved views & detailed tabs, source provenance, scoped UI. AC: frontend+API tests. — *PARTIAL `ea26682`: list/search (incl. MAC/IP)/saved views; detail tabs Overview, Software, OS updates, Network, Hardware & security, History. Policy, notifications and reconciliation tabs pending.*
+- [x] **VSA1-06 [P0]** Customer > org > site > group explorer with counts and status. AC: scoped tree; names not global keys. — *Done `ea26682` (fixture): `/customers/{id}/hierarchy/` + Groups & network UI; stable IDs, counts with stated populations, scoping tests and E2E `vsa1.spec.ts`.*
 
 ## VSA2 — Excel, network
 
 - [ ] **VSA2-01 [P0]** Secure XLSX/CSV importer, sheet selection/mapping/template/preview. AC: malicious/big/formula upload tests.
 - [ ] **VSA2-02 [P0]** Deterministic match engine and classifications, human review; invalid/duplicate/ambiguous. AC: 100-row fixture matches totals.
 - [ ] **VSA2-03 [P0]** Compare against pinned complete VSA generation, history, inverse unexpected set. AC: stale/incomplete/cross-customer blocked.
-- [ ] **VSA2-04 [P0]** Multi-tab XLSX and CSV export; filtering; private artifact retention. AC: correct row totals, formula safety.
-- [ ] **VSA2-05 [P0]** Group network view, derived CIDRs, duplicate IP review and threshold flags. AC: dual-stack/multi-NIC/virtual NIC tests.
+- [ ] **VSA2-04 [P0]** Multi-tab XLSX and CSV export; filtering; private artifact retention. AC: correct row totals, formula safety. — *PARTIAL: CSV/XLSX/PDF exist (`c483a8f`); multi-tab onboarding workbook pending (VSA2-01..03).*
+- [ ] **VSA2-05 [P0]** Group network view, derived CIDRs, duplicate IP review and threshold flags. AC: dual-stack/multi-NIC/virtual NIC tests. — *PARTIAL `ea26682`: group network view, derived CIDRs, duplicate-IP and MAC-reuse review flags, dual-stack/multi-NIC/virtual tests. Expected-subnet policy and threshold flags pending.*
 
 ## VSA3 — Patch/software/reporting
 
-- [ ] **VSA3-01 [P0]** Reviewed software catalog, aliases/edition/channel, version comparator and admin approvals. AC: non-standard version tests.
-- [ ] **VSA3-02 [P0]** Version classification and device/product dashboards with unknown/excluded. AC: no false pending patch.
-- [ ] **VSA3-03 [P0]** Available/installed **OS** updates in device and customer views, report definitions. AC: missing/empty/stale not conflated.
+- [x] **VSA3-01 [P0]** Reviewed software catalog, aliases/edition/channel, version comparator and admin approvals. AC: non-standard version tests. — *Done (`23550d1`): catalog, aliases, separate-reviewer approval, comparator; `test_comparator.py` (32), `test_p1_api.py`.*
+- [x] **VSA3-02 [P0]** Version classification and device/product dashboards with unknown/excluded. AC: no false pending patch. — *Done (`23550d1`): classification dashboards with unknown/excluded; no pending-patch claim; `test_p1_api.py`, E2E p1.*
+- [x] **VSA3-03 [P0]** Available/installed **OS** updates in device and customer views, report definitions. AC: missing/empty/stale not conflated. — *Done (`c483a8f`, fixture): available/installed OS updates with explicit not-collected/non-Windows states; `test_patching.py` (21), E2E p2.*
 - [ ] **VSA3-04 [P1]** Applied patch policies, policy definitions and expected-policy drift. AC: no-policy vs unknown vs applied.
-- [ ] **VSA3-05 [P0]** Report builder, CSV/XLSX/PDF, saved filters, source provenance, scoped artifact downloads. AC: totals/reproducibility/security.
-- [ ] **VSA3-06 [P1]** Scheduled reports, mail delivery only with approved recipient policy; async status/history. AC: no cross-customer recipient leak.
-- [ ] **VSA3-07 [GATED]** Investigate actual third-party patch pending/failed/reboot statuses and Advanced Reporting supported API/export. AC: recorded source evidence OR explicit unavailable UI.
+- [x] **VSA3-05 [P0]** Report builder, CSV/XLSX/PDF, saved filters, source provenance, scoped artifact downloads. AC: totals/reproducibility/security. — *Done (`c483a8f`): templates, CSV/XLSX/PDF, saved views/definitions, provenance, pinned regeneration, scoped downloads; `test_p2_reporting.py`, E2E p2.*
+- [ ] **VSA3-06 [P1]** Scheduled reports, mail delivery only with approved recipient policy; async status/history. AC: no cross-customer recipient leak. — *PARTIAL (`c483a8f`): schedules with in-portal delivery and recipient re-authorisation; mail delivery BLOCKED_APPROVAL (DEC-09).*
+- [x] **VSA3-07 [GATED]** Investigate actual third-party patch pending/failed/reboot statuses and Advanced Reporting supported API/export. AC: recorded source evidence OR explicit unavailable UI. — *Done as **explicit unavailable UI** `ea26682`: public API v3 route census (2026-11-13) shows no device-level third-party patch status route; API returns `THIRD_PARTY_PATCH_STATUS=UNAVAILABLE`; UI notice on Software and device pages. Installed-version confirmation is LIVE_VALIDATION_PENDING (BLOCKED_VENDOR).*
 
 ## VSA4 — Deep operations
 
-- [ ] **VSA4-01 [P1]** Agent health thresholds, offline/old version/stale, complete cohort denominators. AC: source timestamps.
+- [ ] **VSA4-01 [P1]** Agent health thresholds, offline/old version/stale, complete cohort denominators. AC: source timestamps. — *PARTIAL: offline filter, stale-devices report, per-group stale/never-seen/no-agent counts; thresholds/old-agent cohorts pending.*
 - [ ] **VSA4-02 [P1]** Hardware, disk threshold, security status tri-state. AC: not-live telemetry clearly labelled.
 - [ ] **VSA4-03 [P1]** Notifications + approved custom fields; sensitive-field allowlist. AC: audit/PII minimization.
-- [ ] **VSA4-04 [P1]** Historical snapshot diff: group/IP/software/agent/OS changes. AC: no fabricated actor/time.
+- [ ] **VSA4-04 [P1]** Historical snapshot diff: group/IP/software/agent/OS changes. AC: no fabricated actor/time. — *PARTIAL (`c483a8f`): retained generations, trends, per-device observation history; generation diff pending.*
 - [ ] **VSA4-05 [P2]** Software/OS lifecycle catalog + sources/end dates; confidence. AC: unverified entries unknown.
 - [ ] **VSA4-06 [P2]** Performance, 100k asset load fixture, sync health, cache/indexes. AC: documented load and query results.
 
@@ -55,9 +57,9 @@
 
 ## VSAP — Operational readiness
 
-- [ ] **VSAP-01 [P0]** Entra OIDC/MFA and roles, TLS/cookies, secrets vault/rotation and SSRF protection validated.
+- [ ] **VSAP-01 [P0]** Entra OIDC/MFA and roles, TLS/cookies, secrets vault/rotation and SSRF protection validated. — *PARTIAL: OIDC tested against mock IdP; SSRF/TLS controls tested; Entra and vault BLOCKED_APPROVAL.*
 - [ ] **VSAP-02 [P0]** PostgreSQL backups + encrypted off-host copies + isolated restore evidence, retention and secure reports.
-- [ ] **VSAP-03 [P0]** Threat review, SAST/dependency scan, security/IDOR/tenant regression tests, deployment runbooks.
+- [ ] **VSAP-03 [P0]** Threat review, SAST/dependency scan, security/IDOR/tenant regression tests, deployment runbooks. — *PARTIAL: IDOR/tenant suites, pip-audit and npm audit clean; SAST and threat review pending.*
 - [ ] **VSAP-04 [P0]** Approved VSA pilot with representative data, cross-check with VSA UI, API capability sign-off.
 - [ ] **VSAP-05 [P0]** Final acceptance checklist, reports/coverage/recovery/reliability metrics and runbook handoff.
 

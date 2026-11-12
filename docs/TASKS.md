@@ -4,6 +4,8 @@
 
 **Convention:** `P<phase>-<task>` task ID; C=critical, H=high, M=medium. Finish dependencies and acceptance conditions before marking checked.
 
+> **VSA Phase 1 (2026-11-13):** Current release tracking moved to `PHASE1_TASKS.md` and `VSA_PHASE1_CROSSWALK.md`. This register is kept unchanged as history. P3 (IT Glue) and P4 (Autotask) are deferred.
+
 ## P0 — Application foundation
 
 - [x] **P0-01 [C] Repository & quality setup:** Create Django/React monorepo, lock files, Ruff/ESLint/TypeScript strict, pytest/Vitest/Playwright, CI. **AC:** clean clone runs basic checks. — *Done `d799241`: clean clone ran lint, typecheck, 146 backend and 23 frontend tests, and the build. CI workflows written, not yet run (no remote).*
