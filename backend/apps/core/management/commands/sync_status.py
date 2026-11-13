@@ -99,12 +99,21 @@ class Command(BaseCommand):
             latest = runs[0]
             if latest.state in ("failed", "partial") and latest.error_code:
                 findings.append(f"Latest run {latest.state}: {HINTS.get(latest.error_code, latest.error_code)}")
-            stuck = [r for r in runs if r.state in ("queued", "running") and (now - r.created_at).total_seconds() > 900]
-            if stuck:
+            waiting = [r for r in runs if r.state == "queued" and (now - r.created_at).total_seconds() > 900]
+            if waiting:
                 findings.append(
-                    f"{len(stuck)} run(s) queued/running for over 15 minutes: the worker may be down "
-                    "(docker compose ps; logs worker)."
+                    f"{len(waiting)} run(s) queued for over 15 minutes without starting: the worker may be down "
+                    "(docker compose ps; logs worker). Pressing Sync now re-sends it."
                 )
+            running = [r for r in runs if r.state == "running" and r.started_at]
+            for r in running:
+                minutes = int((now - r.started_at).total_seconds() // 60)
+                out(f"  run for {r.customer.code} has been running {minutes} min (started {r.started_at:%H:%M} UTC)")
+                if minutes > 120:
+                    findings.append(
+                        f"Run for {r.customer.code} has been running for {minutes} minutes; check the worker log for "
+                        "rate limiting or errors."
+                    )
 
         if not options["no_worker_check"]:
             out("== Worker")
