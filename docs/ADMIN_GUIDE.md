@@ -122,3 +122,9 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
 12. **Snapshot requirement:** a comparison needs a current sync with a complete site/group crawl. If the hierarchy step
     failed, re-run the sync. The previous good generation stays current meanwhile, but it cannot be compared until the
     hierarchy is complete.
+13. **Applied policies budget:** Administration → Integrations, "Applied policies budget / sync". Each unit is one
+    `GET /devices/:id/appliedpolicies` call (documented limit 3600 per hour). Start at 0 until the pilot has measured
+    the API budget. Devices outside the budget carry forward their last response, or stay *unknown*.
+14. **Expected patch policies:** Patch policies → *Expected policies*. A customer administrator proposes an
+    expectation for an organisation, site or group, and a **different** administrator approves it. Retire an
+    expectation to stop it driving drift. Every step is audited.

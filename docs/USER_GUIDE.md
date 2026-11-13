@@ -67,6 +67,19 @@ Exports can contain sensitive operational data. Use approved storage and recipie
 6. Download the workbook (XLSX) or CSV. Wrong-group devices must be moved in VSA X through the approved change process;
    the portal does not move devices.
 
+## 8b. Patch policies
+
+**Patch policies** shows which VSA X Patch Management policy each device has. The page keeps these cases apart:
+
+* **assigned**: a policy is assigned to the device.
+* **No Policy (explicit)**: someone deliberately configured "No Policy".
+* **No Patch Management entry**: VSA X reported nothing for this device. This does not mean "no policy".
+* **unknown**: the policy data was not collected.
+
+Policy rules describe configuration, not what was installed. Drift appears only once an administrator-approved
+expectation covers the device. Each device's **Policies** tab shows its applied policies and the rules of its patch
+policy.
+
 ## 9. Interpretation reference
 
 | State | Meaning | Appropriate action |
