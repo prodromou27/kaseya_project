@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-LOGIC_VERSION = "onboarding-match-2"  # 2: NO_PATCH_POLICY evaluated from applied policies (VSA3-04)
+LOGIC_VERSION = "onboarding-match-3"  # 2: NO_PATCH_POLICY (VSA3-04); 3: OLD_AGENT + approved thresholds (VSA4-01)
 
 MATCHED = ("MATCHED_CORRECT", "MATCHED_WRONG_GROUP", "MATCHED_WRONG_SITE", "REVIEW_WRONG_ORGANIZATION")
 
@@ -125,6 +125,7 @@ class Device:
     is_agent_installed: bool | None = None
     network_status: str = "not_collected"
     patch_policy_state: str = "unknown"  # assigned | explicit_none | not_reported | unknown
+    client_version: str = ""
 
     @property
     def fqdn(self) -> str:
@@ -150,15 +151,19 @@ class Params:
     offline_hours: int = 24
     stale_agent_days: int = 7
     stale_source: bool = False
+    minimum_agent_version: str = ""
+    thresholds_source: str = "default"
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "offline_hours": self.offline_hours,
             "stale_agent_days": self.stale_agent_days,
             "stale_source": self.stale_source,
-            "flags_not_evaluated": {
-                "OLD_AGENT": "no approved agent-version baseline is configured",
-            },
+            "minimum_agent_version": self.minimum_agent_version,
+            "thresholds_source": self.thresholds_source,
+            "flags_not_evaluated": {}
+            if self.minimum_agent_version
+            else {"OLD_AGENT": "no approved minimum agent version is configured"},
         }
 
 
@@ -314,6 +319,13 @@ def _secondary_flags(device: Device, params: Params) -> list[str]:
         flags.append("STALE_SOURCE")
     if device.network_status != "collected":
         flags.append("MISSING_NETWORK_DATA")
+    if params.minimum_agent_version:
+        from apps.software.comparator import compare_versions, parse_dotted
+
+        if parse_dotted(device.client_version) is not None and (
+            compare_versions(device.client_version, params.minimum_agent_version) < 0
+        ):
+            flags.append("OLD_AGENT")  # unparseable/missing versions are never flagged as old
     if device.patch_policy_state == "explicit_none":
         flags.append("NO_PATCH_POLICY")  # only the explicit rule; unknown/not reported is never "no policy"
     return flags

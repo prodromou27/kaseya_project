@@ -75,6 +75,15 @@ class AssetObservation(models.Model):
     network_status = models.CharField(max_length=16, default="not_collected")
     disks_status = models.CharField(max_length=16, default="not_collected")
     security_status = models.CharField(max_length=16, default="not_collected")
+    # VSA4-02: hardware inventory and aggregate security flags as reported (units/encodings kept verbatim).
+    memory_total_raw = models.CharField(max_length=32, blank=True, help_text="VSA MemoryTotal; units undocumented.")
+    cpu_name = models.CharField(max_length=255, blank=True)
+    cpu_cores_raw = models.CharField(max_length=16, blank=True)
+    logical_processors_raw = models.CharField(max_length=16, blank=True)
+    firewall_enabled = models.BooleanField(null=True)
+    uac_enabled = models.BooleanField(null=True)
+    antivirus_enabled_raw = models.CharField(max_length=32, blank=True)
+    antivirus_up_to_date_raw = models.CharField(max_length=32, blank=True)
     collected_at = models.DateTimeField()
 
     class Meta:
@@ -233,3 +242,55 @@ class SecurityObservation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.type}: {self.name}"
+
+
+# ---------------------------------------------------------------------------------------------- VSA4-01 / VSA4-02
+
+
+class HealthThresholds(models.Model):
+    """Per-customer device-health thresholds. Proposed by a customer admin, approved by a *different* admin.
+
+    Until a row is approved the documented defaults apply (and are labelled as defaults). ``minimum_agent_version``
+    blank = agent-version age is *not evaluated* (no baseline is ever assumed).
+    """
+
+    class State(models.TextChoices):
+        PROPOSED = "proposed", "Proposed"
+        APPROVED = "approved", "Approved (in effect)"
+        SUPERSEDED = "superseded", "Superseded"
+        REJECTED = "rejected", "Rejected"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="health_thresholds")
+    offline_hours = models.PositiveIntegerField(default=24)
+    stale_days = models.PositiveIntegerField(default=7)
+    disk_warning_free_pct = models.PositiveSmallIntegerField(default=15)
+    disk_critical_free_pct = models.PositiveSmallIntegerField(default=5)
+    minimum_agent_version = models.CharField(max_length=32, blank=True)
+    reason = models.CharField(max_length=500)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PROPOSED)
+    proposed_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="+")
+    reviewed_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer"], condition=models.Q(state="approved"), name="inventory_one_approved_thresholds"
+            ),
+            models.UniqueConstraint(
+                fields=["customer"], condition=models.Q(state="proposed"), name="inventory_one_proposed_thresholds"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(disk_critical_free_pct__lt=models.F("disk_warning_free_pct"))
+                & models.Q(disk_warning_free_pct__lte=100)
+                & models.Q(offline_hours__gte=1)
+                & models.Q(stale_days__gte=1),
+                name="inventory_thresholds_sane",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.customer_id} thresholds ({self.state})"

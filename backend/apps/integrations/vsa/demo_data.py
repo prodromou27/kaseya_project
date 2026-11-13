@@ -98,7 +98,8 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
         "Description": "Windows Server 2022 Standard" if "SRV" in name else "Windows 11 Enterprise",
         "Tags": ["demo"],
         "Type": "mac" if index % 29 == 0 else "windows",
-        "ClientVersion": "5.1.2",
+        # VSA4-01: a few older agents and one unparseable value (deterministic).
+        "ClientVersion": "5.0.7" if index % 9 == 0 else ("dev-build" if index == 50 else "5.1.2"),
         "LastSeenOnline": (FIXTURE_NOW - timedelta(hours=rng.choice([1, 2, 5, 30, 24 * 20]))).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         ),
@@ -112,6 +113,9 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
                     "Manufacturer": "Fictional Hardware Co",
                     "Model": "FX-200",
                     "Domain": "demo.invalid",
+                    "CPU": "Fictional CPU 8-core (fixture)",
+                    "Number of Cores": "8",
+                    "Number of Logical Processors": "16",
                     "Owner Name": "should-not-be-stored",
                 },
             },
@@ -205,6 +209,12 @@ def _add_network_and_hardware(rng: random.Random, asset: dict[str, Any], org_id:
         {"Type": "Antivirus", "Name": "Fictional AV (fixture)", "Enabled": index % 13 != 0, "UpToDate": index % 7 != 0},
         {"Type": "Firewall", "Name": "Windows Firewall - Domain Profile", "Enabled": True},
     ]
+    # VSA4-02 documented always-included aggregates (deterministic, no RNG draws so other fixtures stay stable).
+    asset["MemoryTotal"] = 17179869184 if index % 5 else 8589398016
+    asset["FirewallEnabled"] = index % 19 != 0
+    asset["UacEnabled"] = True
+    asset["AntivirusEnabled"] = "enabled" if index % 13 else "disabled"
+    asset["AntivirusUpToDate"] = "yes" if index % 7 else "no"
 
 
 def _applied_policies(index: int, kind: str) -> list[dict[str, Any]]:

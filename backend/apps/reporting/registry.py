@@ -396,6 +396,80 @@ def _policy_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -
         ]
 
 
+# ---------------------------------------------------------------------------------------------- R09/R13/R14 (VSA4)
+
+
+class HealthFilters(serializers.Serializer):
+    group_id = serializers.RegexField(r"^[0-9]{1,18}$", required=False)
+
+
+def _health_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> list[dict[str, Any]]:
+    from apps.inventory.health import device_rows
+
+    rows = device_rows(customer.id, generation_ids=pins["generation_ids"])
+    if filters.get("group_id"):
+        rows = [r for r in rows if r["group_external_id"] == filters["group_id"]]
+    return rows
+
+
+def _agent_health_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    for r in _health_rows(customer, filters, pins):
+        yield [
+            r["hostname"],
+            r["site_name"] or r["site_external_id"],
+            r["group_name"] or r["group_external_id"],
+            r["last_seen_online"] or "unknown",
+            "" if r["days_since_seen"] is None else r["days_since_seen"],
+            r["connectivity"],
+            r["agent_installed"],
+            r["client_version"],
+            r["agent_version"],
+            r["patch_policy"],
+            r["snapshot_at"],
+        ]
+
+
+def _capacity_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    for r in _health_rows(customer, filters, pins):
+        h = r["hardware"]
+        yield [
+            r["hostname"],
+            r["group_name"] or r["group_external_id"],
+            r["disk"],
+            "" if r["worst_disk_free_pct"] is None else r["worst_disk_free_pct"],
+            h["cpu"],
+            h["cores"],
+            h["logical_processors"],
+            h["memory_total_raw"],
+            r["snapshot_at"],
+        ]
+
+
+def _security_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    def tri(v: Any) -> str:
+        return "unknown" if v is None else str(v).lower()
+
+    for r in _health_rows(customer, filters, pins):
+        a = r["reported_aggregates"]
+        yield [
+            r["hostname"],
+            r["group_name"] or r["group_external_id"],
+            r["antivirus"],
+            r["firewall"],
+            tri(a["AntivirusEnabled"]),
+            tri(a["AntivirusUpToDate"]),
+            tri(a["FirewallEnabled"]),
+            tri(a["UacEnabled"]),
+            r["snapshot_at"],
+        ]
+
+
+SNAPSHOT_NOTE = (
+    "Inventory snapshot at the generation publish time, not live monitoring telemetry. 'unknown', 'not_reported' "
+    "and 'not_collected' are neither healthy nor unhealthy. Thresholds are those approved at generation time "
+    "(or documented defaults)."
+)
+
 # ---------------------------------------------------------------------------------------------- registry
 
 SNAPSHOT_CAPS = frozenset({Cap.CUSTOMER_EXPORT, Cap.CUSTOMER_READ})
@@ -554,6 +628,74 @@ REPORT_TYPES: dict[str, ReportType] = {
         limitations="Assignment is configuration, not deployment: an assigned policy is not evidence that patches "
         "were installed. 'unknown' = not collected; 'not_reported' = no Patch Management entry in the response. "
         "Drift uses the expectations approved at report generation time.",
+    ),
+    "agent_health": ReportType(
+        key="agent_health",
+        title="Agent health (R09)",
+        description="Last seen, offline/stale cohort, agent installed, client version vs approved minimum.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=HealthFilters,
+        columns=(
+            "hostname",
+            "site",
+            "group",
+            "last_seen_online_utc",
+            "days_since_seen",
+            "connectivity",
+            "agent_installed",
+            "client_version",
+            "agent_version_state",
+            "patch_policy",
+            "source_as_of_utc",
+        ),
+        rows=_agent_health_rows,
+        pin=_pin_generations,
+        limitations=SNAPSHOT_NOTE + " agent_version_state is 'not_evaluated' until a minimum version is approved.",
+    ),
+    "disk_hardware": ReportType(
+        key="disk_hardware",
+        title="Disk and hardware capacity (R13)",
+        description="Worst system-disk free %, disk state vs thresholds, CPU and memory as reported.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=HealthFilters,
+        columns=(
+            "hostname",
+            "group",
+            "disk_state",
+            "worst_disk_free_pct",
+            "cpu",
+            "cores",
+            "logical_processors",
+            "memory_total_raw",
+            "source_as_of_utc",
+        ),
+        rows=_capacity_rows,
+        pin=_pin_generations,
+        limitations=SNAPSHOT_NOTE + " MemoryTotal and disk TotalValue units are not documented and are shown raw.",
+    ),
+    "security_observations": ReportType(
+        key="security_observations",
+        title="Security observations (R14)",
+        description="Antivirus and firewall state from the Security section plus the reported aggregate flags.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=HealthFilters,
+        columns=(
+            "hostname",
+            "group",
+            "antivirus_state",
+            "firewall_state",
+            "reported_AntivirusEnabled",
+            "reported_AntivirusUpToDate",
+            "reported_FirewallEnabled",
+            "reported_UacEnabled",
+            "source_as_of_utc",
+        ),
+        rows=_security_rows,
+        pin=_pin_generations,
+        limitations=SNAPSHOT_NOTE + " A disabled or unknown state is an observation, not a confirmed incident.",
     ),
 }
 

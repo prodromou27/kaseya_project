@@ -255,9 +255,15 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
                 "definition": definition,
                 "note": POLICY_NOTE,
             }
+        device_health = None
+        if current is not None:
+            from .health import device_for
+
+            device_health = device_for(current)
         return Response(
             {
                 "details": details,
+                "health": device_health,
                 "policies": policies,
                 "third_party_patch_status": THIRD_PARTY_PATCH_STATUS,
                 "os_updates": os_updates,

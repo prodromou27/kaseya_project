@@ -44,15 +44,37 @@ function Overview({ detail }: { detail: AssetDetail }) {
     ["Agent version", a.client_version], ["Last seen online", formatUtc(a.last_seen_online)],
     ["Source", `${a.source} (${a.data_basis})`], ["Dataset as of", formatUtc(a.as_of)],
   ];
+  const h = detail.health;
   return (
-    <dl className="grid max-w-3xl grid-cols-[12rem_1fr] gap-y-1 text-sm">
-      {fields.map(([k, v]) => (
-        <div key={k} className="contents">
-          <dt className="text-slate-500">{k}</dt>
-          <dd className="break-all">{v || "—"}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="space-y-4">
+      <dl className="grid max-w-3xl grid-cols-[12rem_1fr] gap-y-1 text-sm">
+        {fields.map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt className="text-slate-500">{k}</dt>
+            <dd className="break-all">{v || "—"}</dd>
+          </div>
+        ))}
+      </dl>
+      {h ? (
+        <section aria-label="Device health" className="max-w-3xl rounded border border-slate-200 bg-white p-3 text-sm">
+          <h3 className="mb-1 font-semibold">Health (snapshot {formatUtc(h.snapshot_at)}, {h.thresholds.source} thresholds)</h3>
+          <p className="mb-2 text-xs text-slate-500">Derived from the inventory snapshot, not live monitoring. Unknown states are not healthy or unhealthy.</p>
+          <dl className="grid grid-cols-[12rem_1fr] gap-y-1">
+            {([
+              ["Connectivity", h.connectivity + (h.days_since_seen !== null ? ` (${h.days_since_seen} days since seen)` : "")],
+              ["Agent version", `${h.agent_version}${h.thresholds.minimum_agent_version ? ` (minimum ${h.thresholds.minimum_agent_version})` : ""}`],
+              ["System disk", h.disk + (h.worst_disk_free_pct !== null ? ` (${h.worst_disk_free_pct}% free)` : "")],
+              ["Antivirus", h.antivirus],
+              ["Firewall", h.firewall],
+              ["CPU", [h.hardware.cpu, h.hardware.cores && `${h.hardware.cores} cores`, h.hardware.logical_processors && `${h.hardware.logical_processors} logical`].filter(Boolean).join(" · ") || "not reported"],
+              ["Memory (raw, units undocumented)", h.hardware.memory_total_raw || "not reported"],
+            ] as [string, string][]).map(([k, v]) => (
+              <div key={k} className="contents"><dt className="text-slate-500">{k}</dt><dd>{v.replace(/_/g, " ")}</dd></div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+    </div>
   );
 }
 

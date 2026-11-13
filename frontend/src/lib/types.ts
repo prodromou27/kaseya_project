@@ -195,6 +195,7 @@ export type AssetDetail = {
   third_party_patch_status: ThirdPartyPatchStatus;
   os_updates: null | { status: DevicePatchStatus; updates: DeviceOsUpdateRow[] };
   policies: DevicePolicies | null;
+  health?: (HealthRow & { thresholds: HealthThresholdValues }) | null;
   id: string;
   external_id: string;
   active: boolean;
@@ -689,4 +690,63 @@ export const PATCH_STATE_LABEL: Record<PatchPolicyState, string> = {
   explicit_none: "No Policy (explicitly configured)",
   not_reported: "No Patch Management entry reported",
   unknown: "Unknown (not collected)",
+};
+
+// ---------------------------------------------------------------- VSA4-01/02: device health
+
+export type HealthDimension = "connectivity" | "agent_installed" | "agent_version" | "disk" | "antivirus" | "firewall";
+
+export type HealthThresholdValues = {
+  offline_hours: number;
+  stale_days: number;
+  disk_warning_free_pct: number;
+  disk_critical_free_pct: number;
+  minimum_agent_version: string;
+  source: "default" | "approved";
+  approved_id: string;
+};
+
+export type HealthRow = {
+  asset_id: string;
+  hostname: string;
+  site_external_id: string;
+  site_name: string;
+  group_external_id: string;
+  group_name: string;
+  device_type: string;
+  last_seen_online: string | null;
+  days_since_seen: number | null;
+  snapshot_at: string;
+  client_version: string;
+  connectivity: string;
+  agent_installed: string;
+  agent_version: string;
+  disk: string;
+  worst_disk_free_pct: number | null;
+  antivirus: string;
+  firewall: string;
+  patch_policy: string;
+  reported_aggregates: Record<string, boolean | string | null>;
+  hardware: { cpu: string; cores: string; logical_processors: string; memory_total_raw: string };
+};
+
+export type HealthSummary = {
+  as_of: (string | null)[];
+  data_basis: string[];
+  devices: number;
+  thresholds: HealthThresholdValues;
+  dimensions: Record<HealthDimension, Record<string, number>>;
+  labels: Record<HealthDimension, Record<string, string>>;
+  by_group: ({ group_external_id: string; group_name: string; site: string; devices: number } & Record<string, number | string>)[];
+  notes: string[];
+};
+
+export type HealthThresholdsRow = Omit<HealthThresholdValues, "source" | "approved_id"> & {
+  id: string;
+  reason: string;
+  state: "proposed" | "approved" | "superseded" | "rejected";
+  proposed_by: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 };

@@ -141,6 +141,16 @@ class VsaAsset:
     public_ip: str = ""
     disks: tuple[DiskItem, ...] | None = None
     security: tuple[SecurityItem, ...] | None = None
+    # VSA4-02: documented always-included asset fields. MemoryTotal units are not documented -> raw text.
+    # Aggregates are kept verbatim/tri-state: None = absent or not a documented type (never coerced to False).
+    memory_total_raw: str = ""
+    cpu_name: str = ""
+    cpu_cores_raw: str = ""
+    logical_processors_raw: str = ""
+    firewall_enabled: bool | None = None
+    uac_enabled: bool | None = None
+    antivirus_enabled_raw: str = ""
+    antivirus_up_to_date_raw: str = ""
     sections: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -205,7 +215,15 @@ def parse_page(body: Any) -> Page:
 
 
 _ASSET_INFO_ALLOWLIST: dict[str, dict[str, str]] = {
-    "System": {"Manufacturer": "manufacturer", "Model": "model", "Domain": "domain"},
+    "System": {
+        "Manufacturer": "manufacturer",
+        "Model": "model",
+        "Domain": "domain",
+        # VSA4-02 hardware inventory (documented AssetInfo[System] keys; values kept verbatim as text).
+        "CPU": "cpu_name",
+        "Number of Cores": "cpu_cores_raw",
+        "Number of Logical Processors": "logical_processors_raw",
+    },
     "BIOS": {"Serial Number": "serial_number"},
     "Operating System": {"Name": "os_name", "Version": "os_version"},
 }
@@ -321,6 +339,13 @@ _MAC = re.compile(r"[^0-9A-Fa-f]")
 def _mac(value: Any) -> str:
     raw = _MAC.sub("", _text(value)).upper()
     return raw if len(raw) == 12 and raw != "000000000000" else ""
+
+
+def _raw_number(value: Any) -> str:
+    """Non-negative integer verbatim as text ('' when absent/invalid). Units are not assumed."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return ""
+    return str(value)[:32]
 
 
 def _bool(value: Any) -> bool | None:
@@ -521,6 +546,15 @@ def normalize_asset(item: dict[str, Any]) -> VsaAsset:
         public_ip=_text(item.get("PublicIpAddress"))[:64],
         disks=_disks(item["Disks"]) if "Disks" in item else None,
         security=_security(item["Security"]) if "Security" in item else None,
+        memory_total_raw=_raw_number(item.get("MemoryTotal")),
+        firewall_enabled=_bool(item.get("FirewallEnabled")),
+        uac_enabled=_bool(item.get("UacEnabled")),
+        antivirus_enabled_raw=_text(item.get("AntivirusEnabled"))[:32]
+        if isinstance(item.get("AntivirusEnabled"), str)
+        else "",
+        antivirus_up_to_date_raw=(
+            _text(item.get("AntivirusUpToDate"))[:32] if isinstance(item.get("AntivirusUpToDate"), str) else ""
+        ),
         sections=sections,
         **info,
     )

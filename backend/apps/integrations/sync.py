@@ -311,6 +311,14 @@ def _ingest_page(run: SyncRun, generation: DatasetGeneration, page: AssetPage) -
                     "serial_number": asset_data.serial_number,
                     "domain": asset_data.domain,
                     "tags": list(asset_data.tags),
+                    "memory_total_raw": asset_data.memory_total_raw,
+                    "cpu_name": asset_data.cpu_name,
+                    "cpu_cores_raw": asset_data.cpu_cores_raw,
+                    "logical_processors_raw": asset_data.logical_processors_raw,
+                    "firewall_enabled": asset_data.firewall_enabled,
+                    "uac_enabled": asset_data.uac_enabled,
+                    "antivirus_enabled_raw": asset_data.antivirus_enabled_raw,
+                    "antivirus_up_to_date_raw": asset_data.antivirus_up_to_date_raw,
                     "software_status": (
                         AssetObservation.SoftwareStatus.NOT_COLLECTED
                         if software is None

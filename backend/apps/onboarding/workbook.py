@@ -184,6 +184,11 @@ def _recommendations(counts: Counter[str], run: ReconciliationRun) -> list[list[
     )
     add(flags.get("MISSING_NETWORK_DATA", 0), "Matched device(s) have no reported network data in the snapshot.")
     add(
+        flags.get("OLD_AGENT", 0),
+        f"Matched device(s) run an agent older than the approved minimum "
+        f"{s.get('parameters', {}).get('minimum_agent_version', '')}.",
+    )
+    add(
         flags.get("NO_PATCH_POLICY", 0),
         "Matched device(s) have VSA's explicitly configured No Policy for Patch Management. Confirm this is intended.",
     )

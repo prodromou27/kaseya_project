@@ -287,6 +287,7 @@ def load_devices(customer_id: Any, generation: DatasetGeneration) -> list[matchi
                 is_agent_installed=o.is_agent_installed,
                 network_status=o.network_status,
                 patch_policy_state=policy_states.get(o.pk, "unknown"),
+                client_version=o.client_version,
             )
         )
     return devices
@@ -311,7 +312,17 @@ def execute(run_id: str) -> ReconciliationRun:
         rows = importer.mapped_rows(ws, run.header_row, {k: int(v) for k, v in run.mapping.items()})
     except importer.ImportRejected as exc:
         return _fail(run, exc.code)
-    params = matching.Params(snapshot_at=gen.published_at or gen.created_at, stale_source=run.stale_source_acknowledged)
+    from apps.inventory.health import effective_thresholds
+
+    th = effective_thresholds(run.customer_id)
+    params = matching.Params(
+        snapshot_at=gen.published_at or gen.created_at,
+        offline_hours=th.offline_hours,
+        stale_agent_days=th.stale_days,
+        stale_source=run.stale_source_acknowledged,
+        minimum_agent_version=th.minimum_agent_version,
+        thresholds_source=th.source,
+    )
     try:
         outcome = matching.reconcile(rows, load_devices(run.customer_id, gen), params)
         _persist(run, outcome)

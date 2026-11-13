@@ -11,6 +11,7 @@ import { GroupsPage } from "../features/groups/GroupsPage";
 import { OnboardingPage } from "../features/onboarding/OnboardingPage";
 import { OnboardingRunPage } from "../features/onboarding/OnboardingRunPage";
 import { PatchPoliciesPage } from "../features/policies/PatchPoliciesPage";
+import { DeviceHealthPage } from "../features/health/DeviceHealthPage";
 import { WindowsUpdatesPage } from "../features/patching/WindowsUpdatesPage";
 import { SoftwarePage } from "../features/software/SoftwarePage";
 import { LoginPage } from "../features/auth/LoginPage";
@@ -61,6 +62,7 @@ export function AppRoutes() {
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="onboarding/:runId" element={<OnboardingRunPage />} />
         <Route path="patch-policies" element={<PatchPoliciesPage />} />
+        <Route path="device-health" element={<DeviceHealthPage />} />
         <Route path="windows-updates" element={<WindowsUpdatesPage />} />
         <Route path="itglue" element={<NotYetAvailablePage title="IT Glue" phase="P3" />} />
         <Route path="autotask" element={<NotYetAvailablePage title="Autotask PSA" phase="P4" />} />

@@ -111,7 +111,11 @@
     "LocalIpAddresses[].Name/PhysicalAddress/DhcpEnabled/Gateways/DnsServers/SubnetMask/IpV4/IpV6": "section LocalIpAddresses",
     "PublicIpAddress": "always included",
     "Disks[].Name/System/FreePercentage/TotalValue": "section Disks (TotalValue units NOT documented \u2014 stored raw)",
-    "Security[].Type/Name/Enabled/UpToDate": "section Security (reported observations, tri-state)"
+    "Security[].Type/Name/Enabled/UpToDate": "section Security (reported observations, tri-state)",
+    "MemoryTotal": "int, always included (units NOT documented) -- stored raw (VSA4-02)",
+    "FirewallEnabled/UacEnabled": "boolean aggregates, always included -- tri-state, non-boolean -> unknown (VSA4-02)",
+    "AntivirusEnabled/AntivirusUpToDate": "documented as string values (example \"enabled\"/\"yes\") -- stored verbatim (VSA4-02)",
+    "AssetInfo[System].CPU/Number of Cores/Number of Logical Processors": "stored verbatim as text (VSA4-02)"
   },
   "asset_fields_deliberately_dropped": [
     "AssetInfo[Operating System].Product Key",
@@ -120,7 +124,7 @@
     "AssetInfo[Operating System].Last Logged On User",
     "AssetInfo[System].Owner Name",
     "IpAddresses[].IPs[].Download/Upload (traffic counters)",
-    "EventLogs, CpuUsage, MemoryUsage (point-in-time telemetry, not inventory)"
+    "EventLogs, CpuUsage, MemoryUsage (point-in-time telemetry, not inventory; never presented as live)"
   ],
   "rate_limiting": {
     "status": "docs-verified",
