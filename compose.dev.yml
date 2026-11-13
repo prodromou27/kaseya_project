@@ -44,7 +44,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--protected-mode", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--protected-mode", "no"]  # see compose.prod.yml
     volumes: [redisdata:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

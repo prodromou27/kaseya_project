@@ -228,6 +228,8 @@ CELERY_TASK_ROUTES["apps.reporting.tasks.dispatch_schedules"] = {"queue": "maint
 SYNC_MAX_DROP_RATIO = float(env_str("SYNC_MAX_DROP_RATIO", "0.5"))
 # Approving a source mapping creates a sync schedule with this interval (editable under Admin -> Sync schedules).
 SYNC_DEFAULT_INTERVAL_HOURS = env_int("SYNC_DEFAULT_INTERVAL_HOURS", 24)
+# A run still queued (never started) after this long is re-sent to the worker on the next request or schedule tick.
+SYNC_REQUEUE_AFTER_MINUTES = env_int("SYNC_REQUEUE_AFTER_MINUTES", 10)
 DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
 # Two-person approval for catalog, lifecycle, thresholds, subnets, patch baselines and custom fields. Off by default
 # so a single administrator can approve their own changes (always audited). Set REQUIRE_SECOND_APPROVER=true to require

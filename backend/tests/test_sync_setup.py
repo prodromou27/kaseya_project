@@ -80,3 +80,50 @@ def test_sync_status_explains_what_blocks_syncing(world, env):  # noqa: F811
     assert "has no schedule" in text  # env mappings were created directly, without the approve endpoint
     assert "No sync has ever been requested" in text
     assert "token_secret" not in text and "password" not in text.lower()
+
+
+def test_a_lost_queued_run_is_resent_instead_of_blocking_sync_now(world, env, settings, monkeypatch):  # noqa: F811
+    """First host boot: the broker refused connections, the run stayed queued forever and every Sync now returned it."""
+    from apps.audit.models import AuditEvent
+    from apps.integrations import tasks
+    from apps.integrations.models import SyncRun
+    from apps.integrations.sync import request_sync
+
+    settings.SYNC_REQUEUE_AFTER_MINUTES = 10
+    sent = []
+    monkeypatch.setattr(tasks.run_sync, "delay", lambda run_id: sent.append(run_id))
+    run, created = request_sync(env["ma"], requested_by=world.engineer_a)
+    assert created
+    # Fresh queued run: returned as-is, not re-sent.
+    again, created = request_sync(env["ma"], requested_by=world.engineer_a)
+    assert again.pk == run.pk and not created and not AuditEvent.objects.filter(action="sync.requeued").exists()
+    # Queued for 30 minutes and never started: re-sent (on commit) and audited.
+    SyncRun.objects.filter(pk=run.pk).update(created_at=timezone.now() - timedelta(minutes=30))
+    from django.test import TestCase
+
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        again, created = request_sync(env["ma"], requested_by=world.engineer_a)
+    assert again.pk == run.pk and not created and sent[-1] == str(run.pk)
+    assert AuditEvent.objects.filter(action="sync.requeued", target_id=str(run.pk)).exists()
+    # A run that already started is never re-sent.
+    SyncRun.objects.filter(pk=run.pk).update(state="running", started_at=timezone.now())
+    sent.clear()
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        request_sync(env["ma"], requested_by=world.engineer_a)
+    assert sent == []
+
+
+def test_broker_outage_does_not_fail_the_request(world, env, monkeypatch):  # noqa: F811
+    from apps.integrations import tasks
+
+    def boom(run_id):
+        raise ConnectionError("broker unreachable")
+
+    monkeypatch.setattr(tasks.run_sync, "delay", boom)
+    from django.test import TestCase
+
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        resp = world.client(world.engineer_a).post(
+            f"/api/v1/customers/{world.customer_a.id}/sync-runs/", {}, format="json"
+        )
+    assert resp.status_code == 202

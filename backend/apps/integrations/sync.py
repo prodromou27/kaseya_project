@@ -15,6 +15,7 @@ import logging
 import uuid
 from collections import Counter
 from collections.abc import Callable
+from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
@@ -111,6 +112,7 @@ def request_sync(
         state__in=SyncRun.ACTIVE_STATES,
     ).first()
     if active is not None:
+        _requeue_if_lost(active, requested_by)
         return active, False
     try:
         with transaction.atomic():
@@ -142,8 +144,33 @@ def request_sync(
     )
     from .tasks import run_sync
 
-    transaction.on_commit(lambda: run_sync.delay(str(run.id)))
+    # robust: a broker outage must not turn the request into a 500; the run stays queued and is re-sent later.
+    transaction.on_commit(lambda: run_sync.delay(str(run.id)), robust=True)
     return run, True
+
+
+def _requeue_if_lost(run: SyncRun, requested_by: Any) -> None:
+    """A run still *queued* long after it was requested never reached a worker (e.g. the broker was unreachable when
+    it was published). Send it again; ``_begin`` locks the row and ignores duplicates, so this cannot run it twice."""
+    from django.conf import settings
+
+    if run.state != SyncRun.State.QUEUED or run.started_at is not None:
+        return
+    if timezone.now() - run.created_at < timedelta(minutes=settings.SYNC_REQUEUE_AFTER_MINUTES):
+        return
+    from .tasks import run_sync
+
+    record_event(
+        action="sync.requeued",
+        outcome="success",
+        actor=requested_by if getattr(requested_by, "is_authenticated", False) else None,
+        actor_label="" if getattr(requested_by, "is_authenticated", False) else "system:scheduler",
+        customer=run.customer,
+        target_type="sync_run",
+        target_id=str(run.id),
+        metadata={"queued_since": run.created_at.isoformat()},
+    )
+    transaction.on_commit(lambda: run_sync.delay(str(run.id)), robust=True)
 
 
 # ---------------------------------------------------------------------------------------------- executing

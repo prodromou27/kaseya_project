@@ -68,7 +68,10 @@ services:
     # Start directly as the image's non-root "redis" user. As root, the image entrypoint switches user with su-exec,
     # which needs SETUID/SETGID: those are removed by cap_drop below, so Redis would exit (found on first host boot).
     user: redis
-    command: ["redis-server", "--appendonly", "yes", "--protected-mode", "yes"]
+    # Protected mode must stay OFF here: with it on and no password, Redis refuses every connection that is not from
+    # localhost, i.e. the backend and worker containers (found on the first host boot: "Connection reset by peer").
+    # Redis is reachable only on the internal `data` network and is never published; a password is residual risk R5.
+    command: ["redis-server", "--appendonly", "yes", "--protected-mode", "no"]
     volumes: [redisdata:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
