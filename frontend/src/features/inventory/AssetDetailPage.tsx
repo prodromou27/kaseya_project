@@ -159,6 +159,23 @@ function Policies({ detail }: { detail: AssetDetail }) {
   );
 }
 
+function Reconciliation({ detail }: { detail: AssetDetail }) {
+  const rows = detail.reconciliation ?? [];
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-slate-500">Onboarding checks in which this device was matched, offered as a candidate, or listed as unexpected (newest first).</p>
+      <DataTable caption="Onboarding results for this device" rows={rows} getRowId={(r) => `${r.run_id}-${r.kind}-${r.row_number ?? ""}`}
+        emptyTitle="This device has not appeared in any onboarding check."
+        columns={[
+          { header: "Check", cell: ({ row }) => <Link className="text-sky-800 hover:underline" to={`/onboarding/${row.original.run_id}`}>{formatUtc(row.original.run_created_at)} · {row.original.upload_name}</Link> },
+          { header: "Role", cell: ({ row }) => row.original.kind === "unexpected" ? "unexpected in VSA" : `${row.original.role.replace(/_/g, " ")} (row ${row.original.row_number})` },
+          { header: "Result", cell: ({ row }) => <span>{row.original.classification || "—"}{row.original.reviewed_classification ? ` → reviewed ${row.original.reviewed_classification}` : ""}</span> },
+          { header: "Flags", cell: ({ row }) => row.original.flags.join(", ") || "—" },
+        ]} />
+    </div>
+  );
+}
+
 function OsUpdates({ detail }: { detail: AssetDetail }) {
   const o = detail.os_updates;
   if (!o) return <Notice tone="warn">No OS update record for this device in the current dataset.</Notice>;
@@ -220,6 +237,7 @@ export function AssetDetailPage() {
             { id: "os-updates", label: "OS updates", content: <OsUpdates detail={detail} /> },
             { id: "policies", label: "Policies", content: <Policies detail={detail} /> },
             { id: "network", label: "Network", content: <Network detail={detail} /> },
+            { id: "onboarding", label: "Onboarding", content: <Reconciliation detail={detail} /> },
             { id: "hardware", label: "Hardware & security", content: <HardwareSecurity detail={detail} /> },
             { id: "history", label: "Observation history", content: (
               <DataTable caption="Observation history" getRowId={(h) => h.generation_id} rows={detail.history} columns={[

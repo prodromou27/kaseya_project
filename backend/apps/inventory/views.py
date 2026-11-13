@@ -255,6 +255,28 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
                 "definition": definition,
                 "note": POLICY_NOTE,
             }
+        # VSA1-05 reconciliation tab: this device's onboarding results (matched, candidate or unexpected), newest first.
+        from apps.onboarding.models import ReconciliationResult
+
+        recon = [
+            {
+                "run_id": str(r.run_id),
+                "run_created_at": r.run.created_at,
+                "upload_name": r.run.upload_name,
+                "kind": r.kind,
+                "row_number": r.row_number,
+                "classification": r.classification,
+                "reviewed_classification": r.reviewed_classification,
+                "flags": r.flags,
+                "role": "matched"
+                if r.asset_id == asset.id
+                else ("candidate" if str(asset.id) in r.candidate_asset_ids else "reviewed_match"),
+            }
+            for r in ReconciliationResult.objects.filter(customer_id=asset.customer_id, run__state="completed")
+            .filter(Q(asset=asset) | Q(reviewed_asset=asset) | Q(candidate_asset_ids__contains=[str(asset.id)]))
+            .select_related("run")
+            .order_by("-run__created_at")[:20]
+        ]
         device_health = None
         if current is not None:
             from .health import device_for
@@ -264,6 +286,7 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             {
                 "details": details,
                 "health": device_health,
+                "reconciliation": recon,
                 "policies": policies,
                 "third_party_patch_status": THIRD_PARTY_PATCH_STATUS,
                 "os_updates": os_updates,

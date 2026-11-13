@@ -199,6 +199,7 @@ export type AssetDetail = {
   os_updates: null | { status: DevicePatchStatus; updates: DeviceOsUpdateRow[] };
   policies: DevicePolicies | null;
   health?: (HealthRow & { thresholds: HealthThresholdValues }) | null;
+  reconciliation?: DeviceReconciliation[];
   id: string;
   external_id: string;
   active: boolean;
@@ -790,4 +791,31 @@ export type ConnectionTestResult = {
   failed_request_limits?: RateRule[];
   endpoint_limits?: { endpoint: string; rules: RateRule[] }[];
   tested_at?: string;
+};
+
+// ---------------------------------------------------------------- VSA4-04 / VSA1-05: changes + device reconciliation
+
+export type ChangeKind = "device_added" | "device_removed" | "hostname" | "group" | "site" | "os" | "agent_version" | "agent_installed" | "ip_addresses" | "software";
+export type ChangeItem = { kind: ChangeKind; from?: unknown; to?: unknown; added?: string[]; removed?: string[] };
+export type SnapshotRef = { id: string; published_at: string | null; data_basis: string; devices: number };
+export type ChangeSummary = {
+  from: SnapshotRef;
+  to: SnapshotRef;
+  counts: Record<ChangeKind, number>;
+  devices_compared: number;
+  not_compared: { ip_addresses: number; software: number };
+  note: string;
+};
+export type ChangeDevice = { asset_id: string; external_id: string; hostname: string; group_external_id: string; changes: ChangeItem[] };
+export type ComparableSnapshot = { id: string; instance: string; published_at: string | null; state: string; is_current: boolean; row_count: number; data_basis: string };
+export type DeviceReconciliation = {
+  run_id: string;
+  run_created_at: string;
+  upload_name: string;
+  kind: "expected" | "unexpected";
+  row_number: number | null;
+  classification: string;
+  reviewed_classification: string;
+  flags: string[];
+  role: "matched" | "candidate" | "reviewed_match";
 };

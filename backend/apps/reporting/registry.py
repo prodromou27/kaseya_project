@@ -464,6 +464,65 @@ def _security_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any])
         ]
 
 
+def _change_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    """R16: pinned generation vs the complete snapshot immediately before it (same instance)."""
+    from apps.inventory import changes
+
+    for gen_id in pins["generation_ids"]:
+        try:
+            frm, to = changes.resolve_pair(customer.id, None, gen_id)
+        except changes.NotComparable:
+            continue
+        d = changes.diff(customer.id, frm, to)
+        start = frm.published_at.isoformat() if frm.published_at else "?"
+        end = to.published_at.isoformat() if to.published_at else "?"
+        window = f"{start} .. {end}"
+        for dev in d["devices"]:
+            for c in dev["changes"]:
+                if filters.get("kind") and c["kind"] != filters["kind"]:
+                    continue
+                detail = (
+                    f"{c.get('from', '')} -> {c.get('to', '')}"
+                    if "from" in c
+                    else "; ".join(
+                        p
+                        for p in (
+                            f"added: {', '.join(c.get('added', []))}" if c.get("added") else "",
+                            f"removed: {', '.join(c.get('removed', []))}" if c.get("removed") else "",
+                        )
+                        if p
+                    )
+                )
+                yield [
+                    dev["external_id"],
+                    dev["hostname"],
+                    dev["group_external_id"],
+                    c["kind"],
+                    detail,
+                    window,
+                    str(frm.pk),
+                    str(to.pk),
+                ]
+
+
+class ChangeFilters(serializers.Serializer):
+    kind = serializers.ChoiceField(
+        choices=[
+            "device_added",
+            "device_removed",
+            "hostname",
+            "group",
+            "site",
+            "os",
+            "agent_version",
+            "agent_installed",
+            "ip_addresses",
+            "software",
+        ],
+        required=False,
+    )
+
+
 SNAPSHOT_NOTE = (
     "Inventory snapshot at the generation publish time, not live monitoring telemetry. 'unknown', 'not_reported' "
     "and 'not_collected' are neither healthy nor unhealthy. Thresholds are those approved at generation time "
@@ -628,6 +687,30 @@ REPORT_TYPES: dict[str, ReportType] = {
         limitations="Assignment is configuration, not deployment: an assigned policy is not evidence that patches "
         "were installed. 'unknown' = not collected; 'not_reported' = no Patch Management entry in the response. "
         "Drift uses the expectations approved at report generation time.",
+    ),
+    "inventory_changes": ReportType(
+        key="inventory_changes",
+        title="Inventory changes (R16)",
+        description="Devices added/removed and hostname, group, site, OS, agent, IP and software differences "
+        "between the pinned snapshot and the complete snapshot before it.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=ChangeFilters,
+        columns=(
+            "device_id",
+            "hostname",
+            "group_id",
+            "change",
+            "detail",
+            "observed_between_utc",
+            "from_generation",
+            "to_generation",
+        ),
+        rows=_change_rows,
+        pin=_pin_generations,
+        limitations="Differences observed between two complete snapshots; the time is the snapshot window, not when "
+        "the change happened, and no person is attributed. IP/software sections are compared only when collected in "
+        "both snapshots.",
     ),
     "agent_health": ReportType(
         key="agent_health",
