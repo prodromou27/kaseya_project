@@ -190,6 +190,8 @@ SPECTACULAR_SETTINGS = {
         "UpdateStatusEnum": "apps.patching.models.UpdateStatus",
         "ReconciliationClassificationEnum": "apps.onboarding.models.Classification",
         "ReconciliationRunStateEnum": "apps.onboarding.models.ReconciliationRun.State",
+        "ReviewedExpectationStateEnum": "apps.inventory.models.ExpectedSubnet.State",
+        "HealthThresholdsStateEnum": "apps.inventory.models.HealthThresholds.State",
     },
 }
 

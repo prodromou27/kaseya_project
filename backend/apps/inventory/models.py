@@ -294,3 +294,45 @@ class HealthThresholds(models.Model):
 
     def __str__(self) -> str:
         return f"{self.customer_id} thresholds ({self.state})"
+
+
+class ExpectedSubnet(models.Model):
+    """Reviewed expected subnet for a site or group (VSA2-05). Drives *review* observations only, never topology.
+
+    Proposed by a customer admin and approved by a *different* admin; only approved rows are evaluated.
+    """
+
+    class ScopeType(models.TextChoices):
+        SITE = "site", "Site"
+        GROUP = "group", "Group"
+
+    class State(models.TextChoices):
+        PROPOSED = "proposed", "Proposed"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        RETIRED = "retired", "Retired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="expected_subnets")
+    scope_type = models.CharField(max_length=8, choices=ScopeType.choices)
+    scope_external_id = models.CharField(max_length=20)
+    cidr = models.CharField(max_length=49, help_text="Normalised network (strict), IPv4 or IPv6.")
+    reason = models.CharField(max_length=500)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PROPOSED)
+    proposed_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="+")
+    reviewed_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["scope_type", "scope_external_id", "cidr"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer", "scope_type", "scope_external_id", "cidr"],
+                condition=models.Q(state__in=["proposed", "approved"]),
+                name="inventory_expected_subnet_active_unique",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.scope_type}:{self.scope_external_id} {self.cidr}"

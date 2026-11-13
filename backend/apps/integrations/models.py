@@ -61,6 +61,10 @@ class IntegrationInstance(models.Model):
         help_text="Max per-device GET /api/v3/devices/:id/appliedpolicies calls per sync (0 = disabled). "
         "Documented limit is 3600 requests/hour.",
     )
+    # VSA1-01: result of the last administrator connection test (no credentials or raw bodies are stored).
+    last_test_at = models.DateTimeField(null=True, blank=True)
+    last_test_outcome = models.CharField(max_length=32, blank=True)
+    last_test_result = models.JSONField(default=dict, blank=True)
     is_fixture = models.BooleanField(
         default=False, help_text="True for demo/fixture-backed instances. Never mixed with live data."
     )

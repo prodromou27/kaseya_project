@@ -72,6 +72,9 @@ export type Integration = {
   max_rps: string;
   installed_updates_budget: number;
   applied_policies_budget: number;
+  last_test_at: string | null;
+  last_test_outcome: string;
+  last_test_result: Partial<ConnectionTestResult>;
   status: string;
   is_fixture: boolean;
 };
@@ -472,6 +475,29 @@ export type GroupNetwork = {
   devices: { asset_id: string; hostname: string; last_seen_online: string | null; network_status: string; public_ip: string; adapters: Adapter[] }[];
   note: string;
   flags_note: string;
+  expected_subnets?: { id: string; scope_type: "site" | "group"; scope_external_id: string; cidr: string }[];
+  outside_expected_subnet?: { asset_id: string; hostname: string; address: string; adapter: string; mac_locally_administered: boolean }[];
+  addresses_not_evaluated_against_expectation?: number;
+  address_changes?: {
+    previous_generation: null | { id: string; published_at: string };
+    compared_devices?: number;
+    not_evaluated_reason?: string;
+    devices: { asset_id: string; hostname: string; added: string[]; removed: string[] }[];
+  };
+  review_flags?: { flag: string; count: number; evaluated?: boolean }[];
+};
+
+export type ExpectedSubnet = {
+  id: string;
+  scope_type: "site" | "group";
+  scope_external_id: string;
+  cidr: string;
+  reason: string;
+  state: "proposed" | "approved" | "rejected" | "retired";
+  proposed_by: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 };
 
 export type AssetDetails = {
@@ -749,4 +775,19 @@ export type HealthThresholdsRow = Omit<HealthThresholdValues, "source" | "approv
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
+};
+
+// ---------------------------------------------------------------- VSA1-01: connection test
+
+export type RateRule = { limit: number; remaining: number | null; period_seconds: number; reset_seconds: number | null; retry_seconds: number | null };
+export type ConnectionTestResult = {
+  outcome: string;
+  message: string;
+  data_basis: "fixture" | "live";
+  latency_ms: number;
+  http_status?: number | null;
+  retry_after_seconds?: number;
+  failed_request_limits?: RateRule[];
+  endpoint_limits?: { endpoint: string; rules: RateRule[] }[];
+  tested_at?: string;
 };

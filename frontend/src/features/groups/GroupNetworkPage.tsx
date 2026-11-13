@@ -8,6 +8,7 @@ import { api } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import type { Adapter, Customer, GroupNetwork } from "../../lib/types";
+import { NetworkReview } from "./ExpectedSubnets";
 
 export function AdapterList({ adapters }: { adapters: Adapter[] }) {
   if (adapters.length === 0) return <span className="text-xs text-slate-400">no adapters reported</span>;
@@ -92,6 +93,7 @@ function View({ customer, groupId }: { customer: Customer; groupId: string }) {
               <p className="text-xs text-slate-600">Public IPs: {n.public_ips.map((g) => `${g.value} (${g.devices})`).join(", ") || "none reported"}</p>
             </section>
           </div>
+          <div className="mt-4"><NetworkReview customer={customer} groupId={groupId} net={n} /></div>
           <h2 className="mb-2 mt-4 text-sm font-semibold">Devices and reported adapters</h2>
           <DataTable caption="Group devices" rows={n.devices} getRowId={(d) => d.asset_id} emptyTitle="No devices in this group."
             columns={[

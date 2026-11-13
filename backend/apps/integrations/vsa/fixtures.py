@@ -30,6 +30,44 @@ class FakeResponse:
         return copy.deepcopy(self.body)
 
 
+# Documented example of GET /api/v3/ratelimits (abridged), https://api.vsax.net/ 2026-11-13. Fixture only.
+DOC_RATE_LIMITS: dict[str, Any] = {
+    "Data": {
+        "FailedRequestRateLimits": [
+            {"Limit": 100, "Remaining": 100, "PeriodInSeconds": 60},
+            {"Limit": 2000, "Remaining": 2000, "PeriodInSeconds": 3600},
+        ],
+        "EndpointRateLimits": [
+            {
+                "EndpointName": "Get Device Assets",
+                "Rules": [
+                    {
+                        "Limit": 3600,
+                        "Remaining": 0,
+                        "PeriodInSeconds": 3600,
+                        "ResetInSeconds": 3580,
+                        "RetryInSeconds": 122,
+                    }
+                ],
+            },
+            {
+                "EndpointName": "Get All Devices Assets",
+                "Rules": [{"Limit": 3600, "Remaining": 3600, "PeriodInSeconds": 3600}],
+            },
+            {
+                "EndpointName": "Get Devices",
+                "Rules": [{"Limit": 3600, "Remaining": 3205, "PeriodInSeconds": 3600, "ResetInSeconds": 1903}],
+            },
+            {
+                "EndpointName": "Get Rate Limits",
+                "Rules": [{"Limit": 3600, "Remaining": 3599, "PeriodInSeconds": 3600, "ResetInSeconds": 3599}],
+            },
+        ],
+    },
+    "Meta": {"ResponseCode": 200},
+}
+
+
 class FixtureVsaTransport:
     def __init__(
         self,
@@ -91,6 +129,8 @@ class FixtureVsaTransport:
             if "InstalledUpdates" in asset:
                 data["InstalledUpdates"] = asset["InstalledUpdates"]
             return FakeResponse(200, {"Data": data, "Meta": {"ResponseCode": 200}})
+        if path == "/api/v3/ratelimits":
+            return FakeResponse(200, copy.deepcopy(DOC_RATE_LIMITS))
         policy = re.fullmatch(r"/api/v3/patchmanagement/policies/([0-9]+)", path)
         if policy:
             definition = self.patch_policies.get(policy.group(1))

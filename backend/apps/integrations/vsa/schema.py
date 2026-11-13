@@ -673,3 +673,48 @@ def normalize_patch_policy(body: Any, policy_id: str) -> PatchPolicyDefinitionDa
             if isinstance(r, dict)
         ],
     )
+
+
+# ---------------------------------------------------------------------------------------------- VSA1-01 rate limits
+
+
+def _rate_rule(rule: Any) -> dict[str, int | None]:
+    if not isinstance(rule, dict):
+        raise RecordInvalid("invalid_rate_rule")
+    out: dict[str, int | None] = {}
+    for src, key in (
+        ("Limit", "limit"),
+        ("Remaining", "remaining"),
+        ("PeriodInSeconds", "period_seconds"),
+        ("ResetInSeconds", "reset_seconds"),
+        ("RetryInSeconds", "retry_seconds"),
+    ):
+        value = rule.get(src)
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+            raise RecordInvalid("invalid_rate_value")
+        out[key] = value
+    if out["limit"] is None or out["period_seconds"] is None:
+        raise RecordInvalid("incomplete_rate_rule")
+    return out
+
+
+def normalize_rate_limits(body: Any) -> dict[str, Any]:
+    """Validate the documented ``GET /api/v3/ratelimits`` envelope (per-IP failed-request and per-token limits)."""
+    if not isinstance(body, dict) or not isinstance(body.get("Data"), dict):
+        raise RecordInvalid("invalid_rate_limit_envelope")
+    data = body["Data"]
+    failed = data.get("FailedRequestRateLimits") or []
+    endpoints = data.get("EndpointRateLimits") or []
+    if not isinstance(failed, list) or not isinstance(endpoints, list):
+        raise RecordInvalid("invalid_rate_limit_lists")
+    return {
+        "failed_request_limits": [_rate_rule(r) for r in failed[:20]],
+        "endpoint_limits": [
+            {
+                "endpoint": _text(e.get("EndpointName"))[:120],
+                "rules": [_rate_rule(r) for r in (e.get("Rules") or [])[:10]],
+            }
+            for e in endpoints[:300]
+            if isinstance(e, dict)
+        ],
+    }

@@ -6,6 +6,7 @@ another customer's rows are unreachable. Counts always state their population; m
 
 from __future__ import annotations
 
+import ipaddress
 from collections import Counter, defaultdict
 from datetime import timedelta
 from typing import Any
@@ -185,6 +186,12 @@ def group_network(customer_id: Any, group_external_id: str) -> dict[str, Any] | 
         mac_rows[row["mac"]].add(row["asset_id"])
     mac_reuse = [{"mac": mac, "device_count": len(a)} for mac, a in sorted(mac_rows.items()) if len(a) > 1]
 
+    host_by_obs = {m.id: m.hostname for m in members}
+    expected, outside, not_evaluated = _expected_subnet_review(
+        customer_id, node, members, group_external_id, adapters, host_by_obs
+    )
+    changes = _address_changes(customer_id, gens, members)
+
     devices = []
     for m in members:
         nics = by_obs.get(m.id, [])
@@ -232,8 +239,136 @@ def group_network(customer_id: Any, group_external_id: str) -> dict[str, Any] | 
         ],
         "devices": devices,
         "note": NETWORK_NOTE,
+        "expected_subnets": expected,
+        "outside_expected_subnet": outside,
+        "addresses_not_evaluated_against_expectation": not_evaluated,
+        "address_changes": changes,
+        "review_flags": [
+            {"flag": "duplicate_ip", "count": len(duplicate_ips)},
+            {"flag": "mac_reuse", "count": len(mac_reuse)},
+            {"flag": "outside_expected_subnet", "count": len(outside), "evaluated": bool(expected)},
+            {
+                "flag": "address_changed_since_previous_snapshot",
+                "count": len(changes["devices"]),
+                "evaluated": changes["previous_generation"] is not None,
+            },
+            {"flag": "network_not_collected", "count": sum(1 for m in members if m.network_status == "not_collected")},
+            {"flag": "address_without_derived_subnet", "count": sum(unknown_prefix.values())},
+        ],
         "flags_note": "Duplicate addresses and MAC reuse are review flags (DHCP churn, VPN, cloned or virtual adapters "
         "are common causes), not proof of misconfiguration.",
+    }
+
+
+def _expected_subnet_review(
+    customer_id: Any,
+    node: GroupNode | None,
+    members: list[AssetObservation],
+    group_external_id: str,
+    adapters: list[NetworkAdapterObservation],
+    host_by_obs: dict[Any, str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], int]:
+    """VSA2-05: compare reported addresses with *approved* expected subnets of this group and its site.
+
+    Addresses are evaluated only against expectations of the same IP version; others are counted as not evaluated.
+    """
+    from .models import ExpectedSubnet
+
+    site_ids = {node.site_external_id} if node is not None and node.site_external_id else set()
+    site_ids |= {m.site_external_id for m in members if m.site_external_id}
+    rows = list(
+        ExpectedSubnet.objects.filter(customer_id=customer_id, state=ExpectedSubnet.State.APPROVED).filter(
+            Q(scope_type="group", scope_external_id=group_external_id)
+            | Q(scope_type="site", scope_external_id__in=site_ids)
+        )
+    )
+    nets = [ipaddress.ip_network(e.cidr) for e in rows]
+    outside: list[dict[str, Any]] = []
+    not_evaluated = 0
+    for a in adapters:
+        for ip in a.ips.all():
+            if not ip.address or not is_review_relevant(ip.kind):
+                continue
+            addr = ipaddress.ip_address(ip.address)
+            same_version = [n for n in nets if n.version == addr.version]
+            if not same_version:
+                not_evaluated += 1
+                continue
+            if not any(addr in n for n in same_version):
+                outside.append(
+                    {
+                        "asset_id": str(a.asset_id),
+                        "hostname": host_by_obs.get(a.observation_id, ""),
+                        "address": ip.address,
+                        "adapter": a.name,
+                        "mac_locally_administered": a.mac_locally_administered,
+                    }
+                )
+    expected = [
+        {"id": str(e.id), "scope_type": e.scope_type, "scope_external_id": e.scope_external_id, "cidr": e.cidr}
+        for e in rows
+    ]
+    return expected, sorted(outside, key=lambda o: (o["hostname"], o["address"])), not_evaluated
+
+
+def _address_changes(customer_id: Any, gens: list[Any], members: list[AssetObservation]) -> dict[str, Any]:
+    """NET-02: review-relevant addresses that differ from the previous *complete* snapshot of the same scope.
+
+    Only devices whose network section was collected in both snapshots are compared. Evaluated for a single current
+    generation (one VSA instance); otherwise reported as not evaluated rather than half-compared.
+    """
+    from apps.integrations.models import DatasetGeneration
+
+    if len(gens) != 1:
+        return {"previous_generation": None, "devices": [], "not_evaluated_reason": "several or no current snapshots"}
+    current_gen = gens[0]
+    previous = (
+        DatasetGeneration.objects.filter(
+            customer_id=customer_id,
+            integration_instance_id=current_gen.integration_instance_id,
+            dataset=current_gen.dataset,
+            state=DatasetGeneration.State.SUPERSEDED,
+            published_at__lt=current_gen.published_at,
+        )
+        .order_by("-published_at")
+        .first()
+    )
+    if previous is None:
+        return {"previous_generation": None, "devices": [], "not_evaluated_reason": "no previous complete snapshot"}
+    current = {m.asset_id: m for m in members if m.network_status == "collected"}
+    compared = set(
+        AssetObservation.objects.filter(
+            customer_id=customer_id, generation=previous, asset_id__in=current, network_status="collected"
+        ).values_list("asset_id", flat=True)
+    )
+
+    def addresses(gen_id: Any) -> dict[Any, set[str]]:
+        out: dict[Any, set[str]] = defaultdict(set)
+        for asset_id, address, kind in IpAddressObservation.objects.filter(
+            customer_id=customer_id, generation_id=gen_id, asset_id__in=compared
+        ).values_list("asset_id", "address", "kind"):
+            if address and is_review_relevant(kind):
+                out[asset_id].add(address)
+        return out
+
+    before, after = addresses(previous.id), addresses(current_gen.id)
+    devices = []
+    for asset_id in sorted(compared, key=str):
+        added = after.get(asset_id, set()) - before.get(asset_id, set())
+        removed = before.get(asset_id, set()) - after.get(asset_id, set())
+        if added or removed:
+            devices.append(
+                {
+                    "asset_id": str(asset_id),
+                    "hostname": current[asset_id].hostname,
+                    "added": sorted(added),
+                    "removed": sorted(removed),
+                }
+            )
+    return {
+        "previous_generation": {"id": str(previous.id), "published_at": previous.published_at},
+        "compared_devices": len(compared),
+        "devices": devices,
     }
 
 

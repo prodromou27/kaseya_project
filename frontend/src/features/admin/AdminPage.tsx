@@ -9,7 +9,7 @@ import { Badge, Field, Notice, PageHeader, statusTone } from "../../components/u
 import { api, describeError } from "../../lib/api";
 import { useMe } from "../../lib/auth";
 import { formatUtc } from "../../lib/format";
-import { PROVIDER_LABEL, type Integration, type Paginated, type PortalUser, type Provider, type SourceMapping } from "../../lib/types";
+import { PROVIDER_LABEL, type ConnectionTestResult, type Integration, type Paginated, type PortalUser, type Provider, type SourceMapping } from "../../lib/types";
 import { AuditTable } from "../customers/AuditTable";
 import { CatalogPanel } from "./CatalogPanel";
 import { QuarantinePanel } from "./QuarantinePanel";
@@ -72,6 +72,14 @@ function IntegrationsPanel() {
   const [budget, setBudget] = useState("0");
   const [policyBudget, setPolicyBudget] = useState("0");
   const [discoverId, setDiscoverId] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ name: string; result: ConnectionTestResult } | null>(null);
+  const testConn = useMutation({
+    mutationFn: (row: Integration) => api.post<ConnectionTestResult>(`/integrations/${row.id}/test-connection/`).then((result) => ({ name: row.name, result })),
+    onSuccess: (r) => {
+      setTestResult(r);
+      void queryClient.invalidateQueries({ queryKey: ["integrations"] });
+    },
+  });
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => api.patch<Integration>(`/integrations/${id}/`, { enabled }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["integrations"] }),
@@ -96,6 +104,9 @@ function IntegrationsPanel() {
     { header: "Detail budget", cell: ({ row }) => row.original.installed_updates_budget || "off" },
     { header: "Policy budget", cell: ({ row }) => row.original.applied_policies_budget || "off" },
     { header: "Status", accessorKey: "status", cell: ({ getValue }) => <Badge tone={statusTone[String(getValue())]}>{String(getValue())}</Badge> },
+    { header: "Last connection test", cell: ({ row }) => row.original.last_test_at
+        ? <span className="text-xs"><Badge tone={row.original.last_test_outcome === "ok" ? "good" : "bad"}>{row.original.last_test_outcome}</Badge> {formatUtc(row.original.last_test_at)}</span>
+        : <span className="text-xs text-slate-400">never</span> },
     {
       header: "Actions",
       cell: ({ row }) => (
@@ -104,6 +115,9 @@ function IntegrationsPanel() {
             {row.original.enabled ? "Disable" : "Enable"}
           </button>
           <button type="button" className="btn-secondary" onClick={() => setDiscoverId(row.original.id)}>Discover orgs</button>
+          {row.original.provider === "vsa_x" ? (
+            <button type="button" className="btn-secondary" disabled={testConn.isPending} onClick={() => testConn.mutate(row.original)}>Test connection</button>
+          ) : null}
         </span>
       ),
     },
@@ -162,6 +176,8 @@ function IntegrationsPanel() {
         {create.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(create.error)}</p> : null}
       </form>
       {toggle.isError ? <p role="alert" className="text-sm text-red-700">{describeError(toggle.error)}</p> : null}
+      {testConn.isError ? <p role="alert" className="text-sm text-red-700">{describeError(testConn.error)}</p> : null}
+      {testResult ? <ConnectionTestPanel name={testResult.name} result={testResult.result} onClose={() => setTestResult(null)} /> : null}
       {discoverId ? <DiscoveryResult id={discoverId} onClose={() => setDiscoverId(null)} /> : null}
       <QueryBoundary query={query}>
         {(data) => <DataTable caption="Integration instances" columns={columns} rows={data.results} total={data.count} getRowId={(i) => i.id} emptyTitle="No integrations configured." />}
@@ -293,5 +309,34 @@ export function AdminPage() {
         ]}
       />
     </>
+  );
+}
+
+function ConnectionTestPanel({ name, result, onClose }: { name: string; result: ConnectionTestResult; onClose: () => void }) {
+  const rules = (result.endpoint_limits ?? []).flatMap((e) => e.rules.map((r, i) => ({ id: `${e.endpoint}-${i}`, endpoint: e.endpoint, ...r })));
+  return (
+    <section aria-label={`Connection test: ${name}`} className="space-y-2 rounded border border-slate-200 bg-white p-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Connection test: {name}</h3>
+        <button type="button" className="btn-secondary py-0.5 text-xs" onClick={onClose}>Close</button>
+      </div>
+      <Notice tone={result.outcome === "ok" ? "good" : "bad"}>
+        {result.message} ({result.outcome}{result.http_status ? `, HTTP ${result.http_status}` : ""}, {result.latency_ms} ms, {result.data_basis})
+      </Notice>
+      {result.data_basis === "fixture" ? <p className="text-xs text-slate-500">Fixture instance: these limits are the documented example, not a live server.</p> : null}
+      {result.failed_request_limits?.length ? (
+        <p className="text-xs">Failed-request limits per IP: {result.failed_request_limits.map((r) => `${r.remaining ?? "?"}/${r.limit} per ${r.period_seconds}s`).join(" · ")}</p>
+      ) : null}
+      {rules.length ? (
+        <DataTable caption="Endpoint rate limits" rows={rules} getRowId={(r) => r.id}
+          columns={[
+            { header: "Endpoint", accessorKey: "endpoint" },
+            { header: "Remaining / limit", cell: ({ row }) => `${row.original.remaining ?? "?"} / ${row.original.limit}` },
+            { header: "Window", cell: ({ row }) => `${row.original.period_seconds}s` },
+            { header: "Reset in", cell: ({ row }) => (row.original.reset_seconds === null ? "—" : `${row.original.reset_seconds}s`) },
+            { header: "Retry in", cell: ({ row }) => (row.original.retry_seconds === null ? "—" : <Badge tone="warn">{row.original.retry_seconds}s</Badge>) },
+          ]} />
+      ) : null}
+    </section>
   );
 }

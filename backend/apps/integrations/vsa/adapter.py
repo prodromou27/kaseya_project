@@ -29,6 +29,8 @@ ALLOWED_PATHS = [
     # VSA3-04 (docs-verified 2026-11-13): per-device applied policies and patch policy configuration. GET only.
     re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/appliedpolicies"),
     re.compile(r"/api/v3/patchmanagement/policies/[0-9]{1,18}"),
+    # VSA1-01 connection test (docs-verified 2026-11-13): read-only rate-limit status for the token.
+    re.compile(r"/api/v3/ratelimits"),
 ]
 _DEVICE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
@@ -114,6 +116,10 @@ class VsaXAdapter:
         for page in self._paged(f"/api/v3/devices/{identifier}/appliedpolicies", {}, 100, max_pages=5):
             rows.extend(page.records)
         return rows
+
+    def get_rate_limits(self) -> Any:
+        """``GET /api/v3/ratelimits`` -> raw body. Used only by the administrator connection test."""
+        return self.client.get_json("/api/v3/ratelimits", {}).json
 
     def get_patch_policy(self, policy_id: str) -> Any:
         """``GET /api/v3/patchmanagement/policies/:id`` → raw body (policy *configuration*, not deployment state)."""

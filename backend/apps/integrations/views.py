@@ -4,6 +4,7 @@ from typing import Any
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import QuerySet
+from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, serializers, viewsets
@@ -40,6 +41,9 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "enabled",
             "installed_updates_budget",
             "applied_policies_budget",
+            "last_test_at",
+            "last_test_outcome",
+            "last_test_result",
             "verify_tls",
             "max_rps",
             "status",
@@ -129,6 +133,31 @@ class IntegrationInstanceViewSet(
         )
         return _discover_organizations(instance)
 
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["post"], url_path="test-connection")
+    def test_connection(self, request: Request, pk: str | None = None) -> Response:
+        """VSA1-01: one read-only ``GET /api/v3/ratelimits``. Records outcome, latency and reported limits only."""
+        instance = self.get_object()
+        result = _test_connection(instance)
+        instance.last_test_at = timezone.now()
+        instance.last_test_outcome = result["outcome"]
+        instance.last_test_result = result
+        instance.save(update_fields=["last_test_at", "last_test_outcome", "last_test_result"])
+        record_event(
+            action="integration.connection_test",
+            outcome="success" if result["outcome"] == "ok" else "failure",
+            actor=request.user,
+            target_type="integration",
+            target_id=str(instance.id),
+            request=request,
+            metadata={
+                "outcome": result["outcome"],
+                "latency_ms": result.get("latency_ms"),
+                "status": result.get("http_status"),
+            },
+        )
+        return Response({**result, "tested_at": instance.last_test_at})
+
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="options")
     def options_list(self, request: Request) -> Response:
@@ -174,6 +203,48 @@ class SyncQuarantineViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         qs = super().get_queryset()
         reason = self.request.query_params.get("reason", "").strip()[:64]
         return qs.filter(reason=reason) if reason else qs
+
+
+_TEST_MESSAGES = {
+    "ok": "Connected. The token can read the rate-limit endpoint.",
+    "auth_failed": "The VSA X server rejected the credentials (401/403). Check the token reference; not retried.",
+    "rate_limited": "The VSA X server reported the rate limit is exhausted (429). Try again after the reset time.",
+    "vendor_unavailable": "The VSA X server did not respond or returned a server error.",
+    "egress_blocked": "The host is not on the deployment allowlist, resolves to a blocked address, or redirected.",
+    "endpoint_not_allowed": "The request path is not on the read-only allowlist.",
+    "credential_unavailable": "The credential reference could not be resolved on this server.",
+    "bad_response": "The server answered, but not with the documented rate-limit response.",
+    "vendor_client_error": "The server rejected the request (4xx).",
+}
+
+
+def _test_connection(instance: IntegrationInstance) -> dict[str, Any]:
+    import time
+
+    from .http import ConnectorError
+    from .secrets import CredentialUnavailable
+    from .vsa.adapter import VsaXAdapter
+    from .vsa.schema import RecordInvalid, normalize_rate_limits
+
+    if instance.provider != IntegrationInstance.Provider.VSA_X:
+        raise ValidationError({"detail": "Connection tests are implemented for VSA X only."})
+    started = time.monotonic()
+    out: dict[str, Any] = {"data_basis": "fixture" if instance.is_fixture else "live"}
+    try:
+        limits = normalize_rate_limits(VsaXAdapter(instance).get_rate_limits())
+        out.update(outcome="ok", **limits)
+    except CredentialUnavailable:
+        out["outcome"] = "credential_unavailable"
+    except RecordInvalid:
+        out["outcome"] = "bad_response"
+    except ConnectorError as exc:
+        out["outcome"] = exc.code
+        out["http_status"] = exc.status
+        if exc.retry_after is not None:
+            out["retry_after_seconds"] = exc.retry_after
+    out["latency_ms"] = round((time.monotonic() - started) * 1000)
+    out["message"] = _TEST_MESSAGES.get(out["outcome"], "The connection test failed.")
+    return out
 
 
 def _discover_organizations(instance: IntegrationInstance) -> Response:

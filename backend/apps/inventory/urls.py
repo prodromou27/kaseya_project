@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
-from . import health_views, views
+from . import health_views, network_views, views
 
 router = SimpleRouter()
 router.register("assets", views.AssetDetailViewSet, basename="asset")
@@ -14,6 +14,7 @@ nested.register("hierarchy", views.CustomerHierarchyViewSet, basename="customer-
 nested.register("groups", views.CustomerGroupViewSet, basename="customer-group")
 nested.register("device-health", health_views.CustomerDeviceHealthViewSet, basename="customer-device-health")
 nested.register("health-thresholds", health_views.HealthThresholdsViewSet, basename="customer-health-thresholds")
+nested.register("expected-subnets", network_views.ExpectedSubnetViewSet, basename="customer-expected-subnet")
 
 urlpatterns = [
     path("", include(router.urls)),
