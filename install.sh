@@ -188,12 +188,16 @@ set_env OKP_VERSION "$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 set_env PORTAL_HOSTNAME "$HOSTNAME_ARG"
 set_env PORTAL_BIND_ADDRESS "0.0.0.0"
 set_env CONNECTOR_ALLOWED_HOSTS_VSA_X "$VSA_HOSTS"
+# Let the portal be opened by this server's IPv4 address(es) too (no DNS needed).
+SERVER_IPS=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+(\.[0-9]+){3}$' | paste -sd, - || true)
+set_env PORTAL_EXTRA_HOSTS "$SERVER_IPS"
 if [ "$FIRST_INSTALL" -eq 1 ]; then
   # No Entra ID app registration yet: local sign-in. Switch to OIDC later (docs/DEPLOYMENT.md §6).
   set_env LOCAL_LOGIN_ENABLED true
   set_env OIDC_ENABLED false
 fi
 info "hostname: $HOSTNAME_ARG"
+info "also reachable by IP: ${SERVER_IPS:-(none detected)}"
 info "VSA X hosts allowed: ${VSA_HOSTS:-(none yet: re-run with --vsa-host to add)}"
 info "sign-in: $( [ "$(get_env OIDC_ENABLED)" = "true" ] && echo "Entra ID (OIDC)" || echo "local accounts" )"
 
@@ -330,6 +334,7 @@ set -e
 cat <<EOF
 
 $(printf '\033[1m')Done.$(printf '\033[0m') Portal: https://$HOSTNAME_ARG/   (preflight failures: $pf)
+Also by IP: $(printf '%s' "$SERVER_IPS" | sed -e 's#[^,][^,]*#https://&/#g' -e 's#,#  #g')
 
 Next steps:
   1. Sign in as the administrator (password in $CRED_FILE on first install).

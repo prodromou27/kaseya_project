@@ -33,6 +33,10 @@ if IS_PRODUCTION and (SECRET_KEY.startswith("dev-only") or len(SECRET_KEY) < 50)
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
+# Extra names/IPs the portal is opened with (e.g. the server IP before DNS exists). HTTPS origins only.
+PORTAL_EXTRA_HOSTS = env_list("PORTAL_EXTRA_HOSTS", [])
+ALLOWED_HOSTS += [h for h in PORTAL_EXTRA_HOSTS if h not in ALLOWED_HOSTS]
+CSRF_TRUSTED_ORIGINS += [f"https://{h}" for h in PORTAL_EXTRA_HOSTS if f"https://{h}" not in CSRF_TRUSTED_ORIGINS]
 
 INSTALLED_APPS = [
     "django.contrib.auth",

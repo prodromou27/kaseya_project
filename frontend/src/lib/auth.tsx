@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 
+import { ErrorState } from "../components/States";
 import { ApiError, UNAUTHENTICATED_EVENT, api } from "./api";
 import type { Me } from "./types";
 
@@ -47,7 +48,20 @@ export function RequireAuth({ children, fallback }: { children: ReactNode; fallb
   }, [me.error, navigate, location.pathname]);
 
   if (me.isPending) return <>{fallback}</>;
-  if (me.isError || !me.data) return <>{fallback}</>;
+  if (me.isError && !(me.error instanceof ApiError && me.error.status === 401)) {
+    // Not "signed out": the API is unreachable or refused the request (e.g. 400 for an unknown host name, 502 when
+    // the backend is down). Show it instead of an endless "Checking your session…".
+    return (
+      <div className="mx-auto mt-16 max-w-lg p-4">
+        <ErrorState error={me.error} onRetry={() => void me.refetch()} />
+        <p className="mt-3 text-sm text-slate-600">
+          Open the portal with the host name it was installed for. If the problem persists, ask the administrator to
+          check the server (<code>docker compose ps</code> and the backend logs).
+        </p>
+      </div>
+    );
+  }
+  if (!me.data) return <>{fallback}</>;
   return <MeContext.Provider value={me.data}>{children}</MeContext.Provider>;
 }
 
