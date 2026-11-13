@@ -56,7 +56,7 @@ fi
 if [ -f .env.prod ]; then
   perm=$(stat -c %a .env.prod); [ "$perm" = "600" ] && pass ".env.prod mode 600" || warn ".env.prod mode $perm (use 600)"
 fi
-for f in django_secret_key postgres_password oidc_client_secret tls_cert.pem tls_key.pem; do
+for f in django_secret_key postgres_password oidc_client_secret connector_encryption_key tls_cert.pem tls_key.pem; do
   p="secrets/$f"
   if [ ! -e "$p" ]; then fail "$p missing"; continue; fi
   owner=$(stat -c '%U:%g %a' "$p")

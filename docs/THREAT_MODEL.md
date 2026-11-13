@@ -79,6 +79,7 @@ All of these now run in `.github/workflows/security.yml` (CI has not yet been ex
 * **`CSRF_COOKIE_HTTPONLY=False`:** the SPA must read the token to send `X-CSRFToken`. Mitigated by `SameSite=Lax`, the
   same-origin design and the CSP (`script-src 'self'`).
 * **`SameSite=Lax`, not `Strict`:** OIDC returns the browser via a top-level cross-site redirect to the callback.
+* **API token entered in the portal (decision of 2026-11-13, interim DEC-07):** a super admin enters the VSA X token in the portal instead of on the server. A database dump alone does not reveal it; an attacker with both the database and the host key file (or code execution in the worker) does. `test_portal_credential.py`.
 * **Saved views are writable with read access:** they are personal and owner-controlled, and editing another user's view is
   refused. This is the only viewer-writable route, explicitly allowlisted in the IDOR sweep.
 
@@ -88,7 +89,7 @@ All of these now run in `.github/workflows/security.yml` (CI has not yet been ex
 |---|---|---|---|---|
 | R1 | DNS-rebinding TOCTOU: the egress check resolves the host, then `requests` resolves again | Low | Exact hostname allowlist set by system admins; TLS verification (a rebind to an internal IP fails the certificate check for the vendor name); no redirects | Pin the validated IP in a custom transport adapter (keep SNI/hostname verification) |
 | R2 | OIDC/MFA only tested against a mock IdP | Medium | Local login can be disabled; MFA is enforced by the IdP | Entra UAT (VSAP-01, BLOCKED_APPROVAL) |
-| R3 | Vendor credential is an `env:` reference, not a vault | Medium | Never stored in the DB or logged; redaction | Vault integration (DEC-07) |
+| R3 | Vendor credential is entered in the portal (encrypted in the DB) or an `env:` reference; no vault | Medium | Fernet with a host-held key (`secrets/connector_encryption_key`, not in the DB or backups); bound to the integration id; write-only API; super admin only; audited without values; cleared when the base URL changes | Vault/KMS integration (DEC-07); protect the host and the key file |
 | R4 | Container images not pinned by digest (`postgres:16-alpine`, `redis:7-alpine`, `nginx-unprivileged:1.27-alpine`, `python:3.12-slim`, `node:22-alpine`) | Low–Medium | Pinned minor lines; hash-pinned Python lock | Pin digests in the release build; scan images (e.g. Trivy) |
 | R5 | Redis has no AUTH (internal network only) | Low | `data` network `internal: true`, protected mode | Add `requirepass` from a Docker secret |
 | R6 | The deployment has never been booted; SELinux labels, firewall (DOCKER-USER) and permissions are unverified | Medium | Preflight script | First boot on an AlmaLinux test VM |

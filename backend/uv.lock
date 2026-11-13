@@ -411,6 +411,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "celery" },
+    { name = "cryptography" },
     { name = "defusedxml" },
     { name = "django" },
     { name = "djangorestframework" },
@@ -437,6 +438,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "celery", specifier = ">=5.5,<6" },
+    { name = "cryptography", specifier = ">=45" },
     { name = "defusedxml", specifier = ">=0.7,<0.8" },
     { name = "django", specifier = ">=5.2.19,<5.3" },
     { name = "djangorestframework", specifier = ">=3.18.2,<3.19" },

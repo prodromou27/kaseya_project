@@ -45,7 +45,7 @@
 | DEC-04 | Vendor admins | VSA token privilege scope, instances and pilot orgs? | Fixture mode |
 | DEC-05 | Vendor admins | IT Glue region and safe configuration field allowlist? | Connector disabled |
 | DEC-06 | Vendor admins | Autotask zone, copied restricted API user, permitted ticket fields? | Connector disabled |
-| DEC-07 | Security/operations | Vault/KMS provider, rotation and outbound allowlist? | No production credentials stored |
+| DEC-07 | Security/operations | Vault/KMS provider, rotation and outbound allowlist? | **Interim (2026-11-13, product owner):** the VSA X API token may be entered in the portal by a super admin, stored encrypted with a host-held key (see THREAT_MODEL R3). A vault remains the production target |
 | DEC-08 | Reporting owner | Approved catalog sources, refresh/review cadence and exception owner? | Unknown classifications when not reviewed |
 | DEC-09 | Business owner | Customer-specific retention schedules, report recipients and allowed email distribution? | Export delivery disabled until approved |
 | DEC-10 | Team lead | First pilot customer and acceptance comparison baseline? | Synthetic demo only |

@@ -31,7 +31,8 @@ x-app: &app
     OIDC_AUTO_PROVISION: ${OIDC_AUTO_PROVISION:-true}
     CONNECTOR_ALLOWED_HOSTS_VSA_X: ${CONNECTOR_ALLOWED_HOSTS_VSA_X:-}
     CONNECTOR_APPROVED_PRIVATE_CIDRS: ${CONNECTOR_APPROVED_PRIVATE_CIDRS:-}
-  secrets: [django_secret_key, postgres_password, oidc_client_secret]
+    CONNECTOR_ENCRYPTION_KEY_FILE: /run/secrets/connector_encryption_key
+  secrets: [django_secret_key, postgres_password, oidc_client_secret, connector_encryption_key]
   volumes: [reports:/app/var/reports, onboarding:/app/var/onboarding]
   depends_on:
     db: { condition: service_healthy }
@@ -100,6 +101,7 @@ services:
       OIDC_AUTO_PROVISION: ${OIDC_AUTO_PROVISION:-true}
       CONNECTOR_ALLOWED_HOSTS_VSA_X: ${CONNECTOR_ALLOWED_HOSTS_VSA_X:-}
       CONNECTOR_APPROVED_PRIVATE_CIDRS: ${CONNECTOR_APPROVED_PRIVATE_CIDRS:-}
+      CONNECTOR_ENCRYPTION_KEY_FILE: /run/secrets/connector_encryption_key
       RUN_MIGRATIONS: "1"
 
   worker:
@@ -151,5 +153,6 @@ secrets:
   django_secret_key: { file: ./secrets/django_secret_key }
   postgres_password: { file: ./secrets/postgres_password }
   oidc_client_secret: { file: ./secrets/oidc_client_secret }
+  connector_encryption_key: { file: ./secrets/connector_encryption_key }
   tls_cert: { file: ./secrets/tls_cert.pem }
   tls_key: { file: ./secrets/tls_key.pem }

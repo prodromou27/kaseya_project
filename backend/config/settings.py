@@ -255,6 +255,9 @@ CONNECTOR_ALLOWED_HOSTS = {
     "autotask": env_list("CONNECTOR_ALLOWED_HOSTS_AUTOTASK", []),
 }
 CONNECTOR_APPROVED_PRIVATE_CIDRS = env_list("CONNECTOR_APPROVED_PRIVATE_CIDRS", [])
+# Fernet key(s) for API credentials entered in the portal. Comma-separated: the first encrypts, all decrypt (rotation).
+# Lives in a Docker secret file on the host, never in the database. Empty = entering credentials in the portal is off.
+CONNECTOR_ENCRYPTION_KEY = env_str("CONNECTOR_ENCRYPTION_KEY", "")
 
 # --- Logging: structured JSON, redacted ---
 LOG_LEVEL = env_str("LOG_LEVEL", "INFO")

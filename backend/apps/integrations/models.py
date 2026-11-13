@@ -4,6 +4,7 @@ import uuid
 from decimal import Decimal
 from urllib.parse import urlsplit
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
@@ -78,6 +79,13 @@ class IntegrationInstance(models.Model):
     last_test_result = models.JSONField(default=dict, blank=True)
     is_fixture = models.BooleanField(
         default=False, help_text="True for demo/fixture-backed instances. Never mixed with live data."
+    )
+    # API token entered in the portal by a super admin: Fernet ciphertext only (apps.integrations.secrets). The key is a
+    # host secret file, not in the DB. Never serialised, logged or audited. Cleared when the base URL changes.
+    credential_ciphertext = models.TextField(blank=True, default="", editable=False)
+    credential_set_at = models.DateTimeField(null=True, blank=True, editable=False)
+    credential_set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", editable=False
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

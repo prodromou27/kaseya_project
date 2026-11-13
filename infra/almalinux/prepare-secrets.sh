@@ -2,7 +2,9 @@
 # Prepare ./secrets for compose.prod.yml on an AlmaLinux (SELinux enforcing) host. Run as root from the repo root:
 #   sudo infra/almalinux/prepare-secrets.sh
 #
-# - Generates django_secret_key and postgres_password if missing (never prints them).
+# - Generates django_secret_key, postgres_password and connector_encryption_key if missing (never prints them).
+#   connector_encryption_key encrypts API tokens entered in the portal; back it up with the vault/key custodians:
+#   without it, a restored database cannot decrypt those tokens (they must then be entered again).
 # - Expects tls_cert.pem / tls_key.pem and oidc_client_secret to be placed by the operator (warns if missing;
 #   creates an empty oidc_client_secret only when OIDC is not used).
 # - Sets ownership/mode so the non-root containers can read *only* their own secrets:
@@ -34,6 +36,13 @@ gen() {  # gen <file> <bytes>
 
 gen django_secret_key 64
 gen postgres_password 32
+# Fernet key: URL-safe base64 of 32 random bytes.
+if [ ! -s "$SECRETS_DIR/connector_encryption_key" ]; then
+  openssl rand -base64 32 | tr -d '\n' | tr '+/' '-_' >"$SECRETS_DIR/connector_encryption_key"
+  echo "generated connector_encryption_key"
+else
+  echo "kept existing connector_encryption_key"
+fi
 
 if [ ! -e "$SECRETS_DIR/oidc_client_secret" ]; then
   : >"$SECRETS_DIR/oidc_client_secret"
@@ -43,7 +52,7 @@ for f in tls_cert.pem tls_key.pem; do
   [ -s "$SECRETS_DIR/$f" ] || echo "WARNING: $SECRETS_DIR/$f is missing. Place the CA-issued certificate/key." >&2
 done
 
-for f in django_secret_key postgres_password oidc_client_secret; do
+for f in django_secret_key postgres_password oidc_client_secret connector_encryption_key; do
   chown root:"$APP_GID" "$SECRETS_DIR/$f"
   chmod 0640 "$SECRETS_DIR/$f"
 done

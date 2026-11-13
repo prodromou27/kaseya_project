@@ -14,6 +14,7 @@ import { AuditTable } from "../customers/AuditTable";
 import { CatalogPanel } from "./CatalogPanel";
 import { QuarantinePanel } from "./QuarantinePanel";
 import { SyncSchedulesPanel } from "./SyncSchedulesPanel";
+import { CredentialForm, credentialLabel } from "./CredentialForm";
 import { mappingColumns } from "../customers/MappingsPanel";
 
 function UsersPanel() {
@@ -75,6 +76,12 @@ function IntegrationsPanel() {
   const [cfBudget, setCfBudget] = useState("0");
   const [discoverId, setDiscoverId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ name: string; result: ConnectionTestResult } | null>(null);
+  const [tokenFor, setTokenFor] = useState<Integration | null>(null);
+  const storage = useQuery({ queryKey: ["credential-storage"], queryFn: ({ signal }) => api.get<{ available: boolean }>("/integrations/credential-storage/", undefined, signal) });
+  const removeToken = useMutation({
+    mutationFn: (id: string) => api.del<Integration>(`/integrations/${id}/credential/`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["integrations"] }),
+  });
   const testConn = useMutation({
     mutationFn: (row: Integration) => api.post<ConnectionTestResult>(`/integrations/${row.id}/test-connection/`).then((result) => ({ name: row.name, result })),
     onSuccess: (r) => {
@@ -100,7 +107,14 @@ function IntegrationsPanel() {
     { header: "Name", cell: ({ row }) => <span>{row.original.name} {row.original.is_fixture ? <Badge tone="info">fixture</Badge> : <Badge tone="warn">live</Badge>}</span> },
     { header: "Provider", cell: ({ row }) => PROVIDER_LABEL[row.original.provider] },
     { header: "Base URL", accessorKey: "base_url", cell: ({ getValue }) => <code className="text-xs">{String(getValue())}</code> },
-    { header: "Credential", cell: ({ row }) => (row.original.credential_configured ? "Reference set" : "None") },
+    { header: "Credential", cell: ({ row }) => (
+        <span className="text-xs">
+          {credentialLabel(row.original)}
+          {row.original.credential_source === "portal" && row.original.credential_set_at
+            ? <span className="block text-slate-500">{row.original.credential_set_by ?? "deleted user"}, {formatUtc(row.original.credential_set_at)}</span>
+            : null}
+        </span>
+      ) },
     { header: "TLS verify", cell: ({ row }) => (row.original.verify_tls ? "On (enforced)" : "OFF") },
     { header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { header: "Detail budget", cell: ({ row }) => row.original.installed_updates_budget || "off" },
@@ -120,6 +134,17 @@ function IntegrationsPanel() {
           {row.original.provider === "vsa_x" ? (
             <button type="button" className="btn-secondary" disabled={testConn.isPending} onClick={() => testConn.mutate(row.original)}>Test connection</button>
           ) : null}
+          {row.original.provider === "vsa_x" && !row.original.is_fixture ? (
+            <button type="button" className="btn-secondary" disabled={storage.data?.available === false} onClick={() => setTokenFor(row.original)}>
+              {row.original.credential_source === "portal" ? "Replace API token" : "Set API token"}
+            </button>
+          ) : null}
+          {row.original.credential_source === "portal" ? (
+            <button type="button" className="btn-secondary" disabled={removeToken.isPending}
+                    onClick={() => { if (window.confirm(`Remove the API token for ${row.original.name}? Syncs will stop until a new one is set.`)) removeToken.mutate(row.original.id); }}>
+              Remove token
+            </button>
+          ) : null}
         </span>
       ),
     },
@@ -131,9 +156,9 @@ function IntegrationsPanel() {
   return (
     <div className="space-y-3">
       <Notice tone="warn">
-        Connectors are read-only. Hosts must be on the deployment allowlist; TLS verification cannot be disabled. Store
-        only a <em>reference</em> to the secret (e.g. <code>vault:kv/portal/vsa</code>), never the secret itself. No
-        connector performs collection until P1.
+        Connectors are read-only. Hosts must be on the deployment allowlist; TLS verification cannot be disabled. Add the
+        integration, then use <em>Set API token</em> to enter a read-only VSA X token: it is stored encrypted and never
+        shown again. A server credential reference (e.g. <code>env:VSA_TOKEN</code>) is still supported.
       </Notice>
       <form onSubmit={submit} aria-label="Add integration" className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-3">
         <Field label="Name">{(id) => <input id={id} className="input w-48" required value={name} onChange={(e) => setName(e.target.value)} />}</Field>
@@ -152,7 +177,7 @@ function IntegrationsPanel() {
           {(id, hint) => <input id={id} aria-describedby={hint} className="input w-64" required value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://" />}
         </Field>
         {!isFixture ? (
-          <Field label="Credential reference">
+          <Field label="Server credential reference (optional)">
             {(id) => <input id={id} className="input w-56" value={credentialRef} onChange={(e) => setCredentialRef(e.target.value)} autoComplete="off" />}
           </Field>
         ) : null}
@@ -191,6 +216,11 @@ function IntegrationsPanel() {
       </form>
       {toggle.isError ? <p role="alert" className="text-sm text-red-700">{describeError(toggle.error)}</p> : null}
       {testConn.isError ? <p role="alert" className="text-sm text-red-700">{describeError(testConn.error)}</p> : null}
+      {removeToken.isError ? <p role="alert" className="text-sm text-red-700">{describeError(removeToken.error)}</p> : null}
+      {storage.data?.available === false ? (
+        <Notice tone="warn">This server has no credential encryption key, so API tokens cannot be entered here. Re-run the installer (it creates the key).</Notice>
+      ) : null}
+      {tokenFor ? <CredentialForm key={tokenFor.id} integration={tokenFor} onClose={() => setTokenFor(null)} /> : null}
       {testResult ? <ConnectionTestPanel name={testResult.name} result={testResult.result} onClose={() => setTestResult(null)} /> : null}
       {discoverId ? <DiscoveryResult id={discoverId} onClose={() => setDiscoverId(null)} /> : null}
       <QueryBoundary query={query}>

@@ -20,6 +20,11 @@ All implementation claims require linked evidence. Use semantic versions for app
 
 Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-tested only; no live VSA validation.**
 
+### Added (deployment)
+- `install.sh`: one-command, idempotent AlmaLinux installer/updater (packages, Docker, firewall 80/443, settings, secrets, TLS, build, health wait, first admin, optional backups, preflight). Not yet run on a host.
+- The VSA X API token can be entered in the portal by a super admin (Admin → Integrations → *Set API token*). Encrypted at rest with a host-held key, write-only, audited, cleared when the base URL changes.
+- CI and security workflows run on GitHub (first run fixed: stale OpenAPI schema, pip-audit Python version, check --deploy env, reviewed gitleaks test fixtures).
+
 ### Added
 - VSA1: org > site > group explorer from `/sites`, `/groups` and `/devices`. Devices also gain NIC/IP/MAC, disk and security observations, a group network view (derived CIDRs, duplicate-IP/MAC-reuse review flags) and MAC/IP search. The UI states explicitly that third-party patch status is *unavailable*.
 - VSA2: an **Onboarding check**. Upload an expected device list (.xlsx/.csv) and match it deterministically against the customer's latest complete VSA snapshot. Results come out in eight classifications plus secondary flags and an unexpected-device set. Uncertain matches get a review queue, and the run exports as a 10-tab XLSX or as CSV. Runs are immutable and pinned to a generation.

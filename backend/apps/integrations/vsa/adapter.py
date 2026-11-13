@@ -9,7 +9,7 @@ from typing import Any
 
 from ..http import ReadOnlyHttpClient, Transport
 from ..models import IntegrationInstance
-from ..secrets import resolve_basic
+from ..secrets import resolve_instance_basic
 from .schema import Page, PageInvalid, RecordInvalid, VsaOrganization, normalize_organization, parse_page
 
 PAGE_SIZE = 100  # documented maximum for $top
@@ -69,7 +69,7 @@ class VsaXAdapter:
             transport = transport or FixtureVsaTransport.for_instance(instance)
             auth = None
         else:
-            credential = resolve_basic(instance.credential_ref)
+            credential = resolve_instance_basic(instance)
             auth = (credential.username, credential.password)
         self.client = ReadOnlyHttpClient(
             base_url=instance.base_url,

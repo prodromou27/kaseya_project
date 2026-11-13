@@ -3415,6 +3415,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/IntegrationInstance'
           description: ''
+  /api/v1/integrations/{id}/credential/:
+    post:
+      operationId: integrations_credential_create
+      description: Set (POST) or remove (DELETE) the API token entered in the portal.
+        Write-only; super admin only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credential'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
+    delete:
+      operationId: integrations_credential_destroy
+      description: Set (POST) or remove (DELETE) the API token entered in the portal.
+        Write-only; super admin only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
   /api/v1/integrations/{id}/organizations/:
     get:
       operationId: integrations_organizations_retrieve
@@ -3453,6 +3506,23 @@ paths:
           format: uuid
         description: A UUID string identifying this integration instance.
         required: true
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/integrations/credential-storage/:
+    get:
+      operationId: integrations_credential_storage_retrieve
+      description: Whether this server can store portal-entered credentials (an encryption
+        key is configured).
       tags:
       - integrations
       security:
@@ -4201,6 +4271,22 @@ components:
       description: |-
         * `local` - Local (bootstrap/dev only)
         * `oidc` - OIDC (Microsoft Entra ID)
+    Credential:
+      type: object
+      description: Write-only VSA X API token pair. Values are never echoed back,
+        logged or audited.
+      properties:
+        token_id:
+          type: string
+          writeOnly: true
+          maxLength: 200
+        token_secret:
+          type: string
+          writeOnly: true
+          maxLength: 500
+      required:
+      - token_id
+      - token_secret
     CustomFieldAllowlist:
       type: object
       properties:
@@ -4788,6 +4874,20 @@ components:
         credential_configured:
           type: boolean
           readOnly: true
+        credential_source:
+          type: string
+          description: '``portal`` (entered in the portal, encrypted), ``server``
+            (env/file reference) or ``none``.'
+          readOnly: true
+        credential_set_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        credential_set_by:
+          type: string
+          nullable: true
+          readOnly: true
         enabled:
           type: boolean
         installed_updates_budget:
@@ -4850,6 +4950,9 @@ components:
       - base_url
       - created_at
       - credential_configured
+      - credential_set_at
+      - credential_set_by
+      - credential_source
       - id
       - name
       - provider
@@ -5777,6 +5880,20 @@ components:
           maxLength: 200
         credential_configured:
           type: boolean
+          readOnly: true
+        credential_source:
+          type: string
+          description: '``portal`` (entered in the portal, encrypted), ``server``
+            (env/file reference) or ``none``.'
+          readOnly: true
+        credential_set_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        credential_set_by:
+          type: string
+          nullable: true
           readOnly: true
         enabled:
           type: boolean

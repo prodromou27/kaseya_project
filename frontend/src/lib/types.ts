@@ -67,6 +67,10 @@ export type Integration = {
   base_url: string;
   region: string;
   credential_configured: boolean;
+  /** portal = entered in the portal (encrypted); server = env/file reference. */
+  credential_source: "portal" | "server" | "none";
+  credential_set_at: string | null;
+  credential_set_by: string | null;
   enabled: boolean;
   verify_tls: boolean;
   max_rps: string;

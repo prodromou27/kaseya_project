@@ -20,6 +20,14 @@ from apps.accounts.roles import Cap
 from apps.audit.services import record_event
 
 from .models import IntegrationInstance, SyncQuarantine, SyncSchedule
+from .secrets import CredentialStorageUnavailable, credential_source, encrypt_for, storage_available
+
+
+class CredentialSerializer(serializers.Serializer):
+    """Write-only VSA X API token pair. Values are never echoed back, logged or audited."""
+
+    token_id = serializers.CharField(write_only=True, max_length=200, trim_whitespace=True)
+    token_secret = serializers.CharField(write_only=True, max_length=500, trim_whitespace=True)
 
 
 class IntegrationInstanceSerializer(serializers.ModelSerializer):
@@ -27,6 +35,8 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
 
     credential_ref = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=200)
     credential_configured = serializers.SerializerMethodField()
+    credential_source = serializers.SerializerMethodField()
+    credential_set_by = serializers.SerializerMethodField()
 
     class Meta:
         model = IntegrationInstance
@@ -38,6 +48,9 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "region",
             "credential_ref",
             "credential_configured",
+            "credential_source",
+            "credential_set_at",
+            "credential_set_by",
             "enabled",
             "installed_updates_budget",
             "applied_policies_budget",
@@ -53,10 +66,25 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "verify_tls", "status", "created_at", "updated_at", "credential_configured"]
+        read_only_fields = [
+            "id",
+            "verify_tls",
+            "status",
+            "created_at",
+            "updated_at",
+            "credential_configured",
+            "credential_set_at",
+        ]
 
     def get_credential_configured(self, obj: IntegrationInstance) -> bool:
-        return bool(obj.credential_ref)
+        return bool(obj.credential_ref or obj.credential_ciphertext)
+
+    def get_credential_source(self, obj: IntegrationInstance) -> str:
+        """``portal`` (entered in the portal, encrypted), ``server`` (env/file reference) or ``none``."""
+        return credential_source(obj)
+
+    def get_credential_set_by(self, obj: IntegrationInstance) -> str | None:
+        return obj.credential_set_by.email if obj.credential_set_by_id else None
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         instance = self.instance or IntegrationInstance()
@@ -84,8 +112,9 @@ class IntegrationInstanceViewSet(
     """Global connector configuration (super admin). No delete: disable instead; mappings reference it."""
 
     serializer_class = IntegrationInstanceSerializer
-    http_method_names = ["get", "post", "patch", "head", "options"]
-    queryset = IntegrationInstance.objects.all()
+    # DELETE exists only for the ``credential`` action; there is no destroy mixin (disable instead).
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    queryset = IntegrationInstance.objects.select_related("credential_set_by")
 
     def get_permissions(self) -> list[Any]:
         if self.action == "options_list":
@@ -93,7 +122,7 @@ class IntegrationInstanceViewSet(
         return [IsSystemAdmin()]
 
     def get_queryset(self) -> QuerySet[IntegrationInstance]:
-        return IntegrationInstance.objects.all()
+        return IntegrationInstance.objects.select_related("credential_set_by")
 
     def perform_create(self, serializer: IntegrationInstanceSerializer) -> None:
         inst = serializer.save()
@@ -109,7 +138,21 @@ class IntegrationInstanceViewSet(
 
     def perform_update(self, serializer: IntegrationInstanceSerializer) -> None:
         changed = sorted(serializer.validated_data.keys())
+        # From the DB: ``validate()`` has already applied the new values to ``serializer.instance``.
+        old_url = IntegrationInstance.objects.values_list("base_url", flat=True).get(pk=serializer.instance.pk)
         inst = serializer.save()
+        if inst.base_url != old_url and inst.credential_ciphertext:
+            # Never send a token entered for one server to another: the admin must enter it again.
+            _clear_portal_credential(inst)
+            record_event(
+                action="integration.credential_cleared",
+                outcome="success",
+                actor=self.request.user,
+                target_type="integration",
+                target_id=str(inst.id),
+                request=self.request,
+                metadata={"reason": "base_url_changed"},
+            )
         record_event(
             action="integration.updated",
             outcome="success",
@@ -160,6 +203,58 @@ class IntegrationInstanceViewSet(
         )
         return Response({**result, "tested_at": instance.last_test_at})
 
+    @extend_schema(request=CredentialSerializer, responses={200: IntegrationInstanceSerializer})
+    @action(detail=True, methods=["post", "delete"], url_path="credential")
+    def credential(self, request: Request, pk: str | None = None) -> Response:
+        """Set (POST) or remove (DELETE) the API token entered in the portal. Write-only; super admin only."""
+        instance = self.get_object()
+        if request.method == "DELETE":
+            had = bool(instance.credential_ciphertext)
+            _clear_portal_credential(instance)
+            record_event(
+                action="integration.credential_cleared",
+                outcome="success",
+                actor=request.user,
+                target_type="integration",
+                target_id=str(instance.id),
+                request=request,
+                metadata={"reason": "admin_removed", "had_credential": had},
+            )
+            return Response(self.get_serializer(instance).data)
+        if instance.is_fixture:
+            raise ValidationError({"detail": "Fixture instances never use credentials."})
+        if instance.provider != IntegrationInstance.Provider.VSA_X:
+            raise ValidationError({"detail": "Only VSA X is supported in this phase."})
+        body = CredentialSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        try:
+            ciphertext = encrypt_for(instance, body.validated_data["token_id"], body.validated_data["token_secret"])
+        except (ValueError, CredentialStorageUnavailable) as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+        replaced = bool(instance.credential_ciphertext)
+        instance.credential_ciphertext = ciphertext
+        instance.credential_set_at = timezone.now()
+        instance.credential_set_by = request.user
+        # The previous connection test was for the old credential.
+        instance.last_test_at, instance.last_test_outcome, instance.last_test_result = None, "", {}
+        instance.save(update_fields=[*_CREDENTIAL_FIELDS])
+        record_event(
+            action="integration.credential_set",
+            outcome="success",
+            actor=request.user,
+            target_type="integration",
+            target_id=str(instance.id),
+            request=request,
+            metadata={"replaced": replaced, "server_reference_also_set": bool(instance.credential_ref)},
+        )
+        return Response(self.get_serializer(instance).data)
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"], url_path="credential-storage")
+    def credential_storage(self, request: Request) -> Response:
+        """Whether this server can store portal-entered credentials (an encryption key is configured)."""
+        return Response({"available": storage_available()})
+
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="options")
     def options_list(self, request: Request) -> Response:
@@ -173,6 +268,25 @@ class IntegrationInstanceViewSet(
             for i in IntegrationInstance.objects.order_by("provider", "name")
         ]
         return Response(data)
+
+
+_CREDENTIAL_FIELDS = (
+    "credential_ciphertext",
+    "credential_set_at",
+    "credential_set_by",
+    "last_test_at",
+    "last_test_outcome",
+    "last_test_result",
+    "updated_at",
+)
+
+
+def _clear_portal_credential(instance: IntegrationInstance) -> None:
+    instance.credential_ciphertext = ""
+    instance.credential_set_at = None
+    instance.credential_set_by = None
+    instance.last_test_at, instance.last_test_outcome, instance.last_test_result = None, "", {}
+    instance.save(update_fields=[*_CREDENTIAL_FIELDS])
 
 
 class SyncQuarantineSerializer(serializers.ModelSerializer):
@@ -214,7 +328,8 @@ _TEST_MESSAGES = {
     "vendor_unavailable": "The VSA X server did not respond or returned a server error.",
     "egress_blocked": "The host is not on the deployment allowlist, resolves to a blocked address, or redirected.",
     "endpoint_not_allowed": "The request path is not on the read-only allowlist.",
-    "credential_unavailable": "The credential reference could not be resolved on this server.",
+    "credential_unavailable": "No usable API token: enter it with 'Set API token', or check the server "
+    "credential reference.",
     "bad_response": "The server answered, but not with the documented rate-limit response.",
     "vendor_client_error": "The server rejected the request (4xx).",
 }

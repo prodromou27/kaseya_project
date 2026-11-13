@@ -42,7 +42,7 @@ jobs:
           --exclude node_modules --exclude "*.test.tsx"
           backend/apps backend/config frontend/src infra
       - name: ShellCheck (host scripts)
-        run: uvx --from shellcheck-py shellcheck -S warning infra/almalinux/*.sh infra/backup/*.sh
+        run: uvx --from shellcheck-py shellcheck -S warning install.sh infra/almalinux/*.sh infra/backup/*.sh
       - name: Django deployment checks (errors fail; W008 is intentional, see docs/THREAT_MODEL.md)
         working-directory: backend
         env:
