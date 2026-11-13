@@ -170,7 +170,12 @@ fi
 current_host=$(get_env PORTAL_HOSTNAME)
 [ "$current_host" = "portal.example.internal" ] && current_host=""
 if [ -z "$HOSTNAME_ARG" ]; then
-  ask HOSTNAME_ARG "Portal hostname (DNS name users will open)" "${current_host:-$(hostname -f 2>/dev/null || hostname)}"
+  default_host=$(hostname -f 2>/dev/null || hostname)
+  # A bare "localhost"-style name is useless to browsers: default to this server's first IPv4 address instead.
+  if [[ "$default_host" != *.* || "$default_host" == localhost* ]]; then
+    default_host=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+(\.[0-9]+){3}$' | head -1 || true)
+  fi
+  ask HOSTNAME_ARG "Portal hostname or IP (what users will open)" "${current_host:-$default_host}"
 fi
 [[ "$HOSTNAME_ARG" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$ ]] \
   || die "Invalid hostname: $HOSTNAME_ARG"
@@ -261,7 +266,10 @@ if [ "$(get_env LOCAL_LOGIN_ENABLED)" != "true" ]; then
   info "local sign-in is disabled; skipping (administrators sign in with Entra ID)."
 else
   if [ -z "$ADMIN_EMAIL" ]; then
-    ask ADMIN_EMAIL "Administrator e-mail (login)" "admin@$HOSTNAME_ARG"
+    # The login only needs to look like an e-mail address; it does not have to be a real mailbox.
+    default_email="admin@$HOSTNAME_ARG"
+    [[ "$HOSTNAME_ARG" == *[a-z]*.*[a-z]* ]] || default_email="admin@portal.local"
+    ask ADMIN_EMAIL "Administrator e-mail (login)" "$default_email"
   fi
   [[ "$ADMIN_EMAIL" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || die "Invalid e-mail: $ADMIN_EMAIL"
   pwdir=$(mktemp -d)
