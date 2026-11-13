@@ -23,10 +23,10 @@
 
 ## VSA2 — Excel, network
 
-- [ ] **VSA2-01 [P0]** Secure XLSX/CSV importer, sheet selection/mapping/template/preview. AC: malicious/big/formula upload tests.
-- [ ] **VSA2-02 [P0]** Deterministic match engine and classifications, human review; invalid/duplicate/ambiguous. AC: 100-row fixture matches totals.
-- [ ] **VSA2-03 [P0]** Compare against pinned complete VSA generation, history, inverse unexpected set. AC: stale/incomplete/cross-customer blocked.
-- [ ] **VSA2-04 [P0]** Multi-tab XLSX and CSV export; filtering; private artifact retention. AC: correct row totals, formula safety. — *PARTIAL: CSV/XLSX/PDF exist (`c483a8f`); multi-tab onboarding workbook pending (VSA2-01..03).*
+- [x] **VSA2-01 [P0]** Secure XLSX/CSV importer, sheet selection/mapping/template/preview. AC: malicious/big/formula upload tests. — *Done `dcecf60` (fixture): .xlsx/.csv only, magic bytes, size/row/column/sheet/cell limits, zip-bomb/macro/ActiveX/embedding/external-link/DTD rejection, defusedxml, formulas never evaluated; sheet/header selection, mapping suggestion, preview, customer templates; `test_onboarding.py` importer tests.*
+- [x] **VSA2-02 [P0]** Deterministic match engine and classifications, human review; invalid/duplicate/ambiguous. AC: 100-row fixture matches totals. — *Done `dcecf60` (fixture): deterministic precedence (ID > serial > FQDN > hostname), MAC/IP never auto-confirm, eight classes, one-time reviewer decisions kept beside engine output; 100-row fixture classifies 80/10/5/3/2 exactly.*
+- [x] **VSA2-03 [P0]** Compare against pinned complete VSA generation, history, inverse unexpected set. AC: stale/incomplete/cross-customer blocked. — *Done `dcecf60` (fixture): only the current published generation of an approved mapping with complete hierarchy; stale needs explicit acknowledgement (STALE_SOURCE); cross-customer upload/generation refused; immutable runs (upload hash, mapping hash, logic version, generation) with DB triggers; inverse unexpected set.*
+- [x] **VSA2-04 [P0]** Multi-tab XLSX and CSV export; filtering; private artifact retention. AC: correct row totals, formula safety. — *Done `dcecf60` (fixture): 10-tab XLSX + expected/unexpected CSV built from immutable results, string-typed, formula-neutralised; result filtering; uploads purged after 72 h; tab totals reconcile in tests and E2E.*
 - [ ] **VSA2-05 [P0]** Group network view, derived CIDRs, duplicate IP review and threshold flags. AC: dual-stack/multi-NIC/virtual NIC tests. — *PARTIAL `ea26682`: group network view, derived CIDRs, duplicate-IP and MAC-reuse review flags, dual-stack/multi-NIC/virtual tests. Expected-subnet policy and threshold flags pending.*
 
 ## VSA3 — Patch/software/reporting

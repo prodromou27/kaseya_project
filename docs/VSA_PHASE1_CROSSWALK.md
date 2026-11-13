@@ -15,10 +15,10 @@
 | VSA1-04 Observation schema: NIC/disks/software/agent/OS/security | P1-04, P1-05 | DONE_VERIFIED (fixture, `ea26682`) | `inventory/models.py`, `inventory/ingest.py`, `inventory/network.py`, `software/models.py` | `test_sync.py`, `test_p1_api.py`, `test_vsa1_hierarchy_network.py` | LIVE_VALIDATION_PENDING |
 | VSA1-05 Device list/search/saved views/detail tabs | P1-04, P2-03 | PARTIAL | `inventory/views.py`, `AssetsPage.tsx`, `AssetDetailPage.tsx`, `SavedViews.tsx` | `test_p1_api.py`, `p1.test.tsx`, `vsa1.test.tsx`, E2E | Policy, notification and reconciliation tabs |
 | VSA1-06 Customer > org > site > group explorer | — | DONE_VERIFIED (fixture, `ea26682`) | `inventory/hierarchy.py`, `GroupsPage.tsx` | `test_vsa1_hierarchy_network.py`, `vsa1.test.tsx`, E2E `vsa1.spec.ts` | LIVE_VALIDATION_PENDING |
-| VSA2-01 Secure XLSX/CSV importer | — | MISSING | (openpyxl present) | — | everything |
-| VSA2-02 Deterministic matching + review | — | MISSING | — | — | everything |
-| VSA2-03 Compare to pinned complete generation, history, unexpected set | — | MISSING | (pinned generations exist) | — | everything |
-| VSA2-04 Multi-tab XLSX/CSV export | P1-09, P2-04 | PARTIAL | `reporting/renderers.py` (single data sheet) | `test_p2_reporting.py` | multi-sheet workbook |
+| VSA2-01 Secure XLSX/CSV importer | — | DONE_VERIFIED (fixture, `dcecf60`) | `apps/onboarding/importer.py`, `OnboardingPage.tsx` | `test_onboarding.py`, `onboarding.test.tsx`, E2E `vsa2-onboarding.spec.ts` | Real customer layouts LIVE_VALIDATION_PENDING |
+| VSA2-02 Deterministic matching + review | — | DONE_VERIFIED (fixture, `dcecf60`) | `apps/onboarding/matching.py`, `services.review` | `test_onboarding.py` (100-row fixture) | — |
+| VSA2-03 Compare to pinned complete generation, history, unexpected set | — | DONE_VERIFIED (fixture, `dcecf60`) | `apps/onboarding/services.py`, migration `0002_customer_consistency` | `test_onboarding.py`, E2E | — |
+| VSA2-04 Multi-tab XLSX/CSV export | P1-09, P2-04 | DONE_VERIFIED (fixture, `dcecf60`) | `apps/onboarding/workbook.py`, `render_xlsx_sheets` | `test_onboarding.py`, E2E download | — |
 | VSA2-05 Group network view, CIDRs, duplicate IPs | — | PARTIAL (`ea26682`) | `inventory/hierarchy.py` (`group_network`), `GroupNetworkPage.tsx` | `test_vsa1_hierarchy_network.py`, `vsa1.test.tsx`, E2E | Expected-subnet policy, threshold flags |
 | VSA3-01 Catalog, aliases, comparator, approvals | P1-06, P1-07 | DONE_VERIFIED | `software/catalog.py`, `comparator.py` | `test_comparator.py` (32), `test_p1_api.py` | — |
 | VSA3-02 Version classification dashboards, no false pending patch | P1-08 | DONE_VERIFIED | `software/queries.py`, `SoftwarePage.tsx` | `test_p1_api.py`, E2E p1 | — |
@@ -57,3 +57,4 @@ Each step's evidence is recorded in `docs/IMPLEMENTATION_EVIDENCE.md`, and the s
 ## Progress log
 
 * **2026-11-13, `ea26682`:** VSA1-02, VSA1-04 and VSA1-06 are DONE_VERIFIED (fixture). VSA2-05 is PARTIAL: expected-subnet policy and threshold flags remain. VSA3-07 is DONE_VERIFIED as explicit-unavailable. VSA1-05 gained MAC/IP search and Network and Hardware & security tabs, but stays PARTIAL until the policy, notification and reconciliation tabs exist. **Next: VSA2-01..04 (Excel onboarding reconciliation).**
+* **2026-11-13, `dcecf60`:** VSA2-01 through VSA2-04 are DONE_VERIFIED (fixture). Onboarding reconciliation is live in the portal against fixture data. Deviations are recorded in `ONBOARDING_RECONCILIATION.md` §Implementation notes. **Next: VSA3-04 (applied patch policies) and VSA4-01/02 (agent health, disks/security).** These also enable the `NO_PATCH_POLICY` and `OLD_AGENT` flags.

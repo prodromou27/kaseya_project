@@ -111,3 +111,14 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
    export access. Anyone who loses access is removed at the next run, and this is audited.
 10. **Retention:** report files are deleted after `REPORT_ARTIFACT_TTL_HOURS` (hourly purge job). Dataset generations are kept
     until a retention policy is approved.
+
+### Added in VSA Phase 1 (fixture-tested)
+
+11. **Onboarding uploads:** files live on the private `onboarding` volume (`ONBOARDING_STORAGE_DIR`). They are purged
+    after `ONBOARDING_UPLOAD_TTL_HOURS` (default 72) by the hourly `purge-expired-onboarding-uploads` beat job.
+    `ONBOARDING_MAX_UPLOAD_BYTES` (default 5 MB) must stay below the proxy's per-route limit (6 MB on the upload route
+    only; every other route keeps the 1 MB limit). `ONBOARDING_MAX_ROWS` defaults to 20,000. Comparisons run on the
+    `reports` queue.
+12. **Snapshot requirement:** a comparison needs a current sync with a complete site/group crawl. If the hierarchy step
+    failed, re-run the sync. The previous good generation stays current meanwhile, but it cannot be compared until the
+    hierarchy is complete.

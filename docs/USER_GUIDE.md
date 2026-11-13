@@ -54,6 +54,19 @@ Open **Autotask PSA → Tickets**. Filter by customer, status, priority, created
 
 Exports can contain sensitive operational data. Use approved storage and recipients. Download access can expire or be revoked.
 
+## 8a. Onboarding check (expected device list vs VSA X)
+
+1. Select the customer, open **Onboarding check**, and confirm the snapshot line shows a recent sync.
+2. Upload the customer's list (.xlsx or .csv, at most 5 MB). Pick the worksheet and header row, then check the suggested
+   column mapping. Map at least one identifier: source device ID, serial, FQDN, hostname, MAC or IP.
+3. Review the preview. Malformed values are marked, and formula cells are ignored, never calculated.
+4. Start the comparison and open the result. The tiles count each classification. **Not found** means no match in
+   this snapshot. It does not prove the agent is missing.
+5. Use **Needs review** to resolve ambiguous rows (several devices, or a MAC/IP-only hit) by choosing the right device.
+   Your decision is recorded next to the automatic result, which is kept unchanged.
+6. Download the workbook (XLSX) or CSV. Wrong-group devices must be moved in VSA X through the approved change process;
+   the portal does not move devices.
+
 ## 9. Interpretation reference
 
 | State | Meaning | Appropriate action |

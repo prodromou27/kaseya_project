@@ -16,6 +16,18 @@ All implementation claims require linked evidence. Use semantic versions for app
 - No source code for the Django/React application in this package.
 - No deployed portal, working vendor connector, live customer data, tests, or production sign-off.
 
+## [0.4.0-dev] — 2026-11-13 (unreleased; VSA Phase 1, commits `ea26682`, `dcecf60`)
+
+Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-tested only; no live VSA validation.**
+
+### Added
+- VSA1: org > site > group explorer from `/sites`, `/groups` and `/devices`. Devices also gain NIC/IP/MAC, disk and security observations, a group network view (derived CIDRs, duplicate-IP/MAC-reuse review flags) and MAC/IP search. The UI states explicitly that third-party patch status is *unavailable*.
+- VSA2: an **Onboarding check**. Upload an expected device list (.xlsx/.csv) and match it deterministically against the customer's latest complete VSA snapshot. Results come out in eight classifications plus secondary flags and an unexpected-device set. Uncertain matches get a review queue, and the run exports as a 10-tab XLSX or as CSV. Runs are immutable and pinned to a generation.
+- `defusedxml` dependency (hardens workbook XML parsing).
+
+### Not changed
+- VSA X stays read-only. Device moves remain disabled (VSA5 BLOCKED_APPROVAL).
+
 ## [0.3.0-dev] — 2026-11-13 (unreleased; P2 Windows updates, reports, history, commit `c483a8f`)
 
 Evidence: [PHASE_ACCEPTANCE_P2.md](PHASE_ACCEPTANCE_P2.md). **Fixture-tested only.**
