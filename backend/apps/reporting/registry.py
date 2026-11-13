@@ -348,6 +348,54 @@ def _stale_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) ->
         ]
 
 
+# ---------------------------------------------------------------------------------------------- R08 (VSA3-04)
+
+
+class PolicyFilters(serializers.Serializer):
+    patch_state = serializers.ChoiceField(
+        choices=["assigned", "explicit_none", "not_reported", "unknown"], required=False
+    )
+    drift = serializers.ChoiceField(
+        choices=["no_baseline", "unknown", "matches", "different_policy", "missing_policy", "unexpected_policy"],
+        required=False,
+    )
+
+
+def _policy_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    from apps.patching.models import AppliedPolicyObservation
+    from apps.patching.policies import approved_baselines, baseline_for, drift
+
+    pol = {
+        p.observation_id: p
+        for p in AppliedPolicyObservation.objects.filter(customer=customer, generation_id__in=pins["generation_ids"])
+    }
+    baselines = approved_baselines(customer.id)
+    for o in _observations(customer, pins).order_by("hostname", "asset_id").iterator(chunk_size=2000):
+        p = pol.get(o.pk)
+        state = p.patch_state if p else "unknown"
+        base = baseline_for(baselines, o.organization_external_id, o.site_external_id, o.group_external_id)
+        d = drift(base, state, p.patch_policy_id if p else "")
+        if filters.get("patch_state") and state != filters["patch_state"]:
+            continue
+        if filters.get("drift") and d != filters["drift"]:
+            continue
+        yield [
+            o.asset.external_id,
+            o.hostname,
+            o.site_external_id,
+            o.group_external_id,
+            state,
+            p.patch_policy_id if p else "",
+            p.patch_policy_name if p else "",
+            p.status if p else "not_collected",
+            p.collected_at.isoformat() if p and p.collected_at else "",
+            "" if base is None else f"{base.scope_type}:{base.scope_external_id}",
+            "" if base is None else ("no policy" if base.expect_no_policy else base.expected_policy_id),
+            d,
+            o.generation.published_at.isoformat(),
+        ]
+
+
 # ---------------------------------------------------------------------------------------------- registry
 
 SNAPSHOT_CAPS = frozenset({Cap.CUSTOMER_EXPORT, Cap.CUSTOMER_READ})
@@ -477,6 +525,35 @@ REPORT_TYPES: dict[str, ReportType] = {
         pin=_pin_generations,
         limitations="Age is computed at generation time from LastSeenOnline; devices without a value are listed "
         "as never_seen_or_unreported, not as online.",
+    ),
+    "patch_policy_coverage": ReportType(
+        key="patch_policy_coverage",
+        title="Patch policy coverage and drift (R08)",
+        description="Per-device Patch Management assignment, explicit No Policy, unknown, and drift vs approved "
+        "expectations.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=PolicyFilters,
+        columns=(
+            "device_id",
+            "hostname",
+            "site_id",
+            "group_id",
+            "patch_state",
+            "policy_id",
+            "policy_name",
+            "collection_status",
+            "policy_collected_at_utc",
+            "expected_scope",
+            "expected_policy",
+            "drift",
+            "source_as_of_utc",
+        ),
+        rows=_policy_rows,
+        pin=_pin_generations,
+        limitations="Assignment is configuration, not deployment: an assigned policy is not evidence that patches "
+        "were installed. 'unknown' = not collected; 'not_reported' = no Patch Management entry in the response. "
+        "Drift uses the expectations approved at report generation time.",
     ),
 }
 

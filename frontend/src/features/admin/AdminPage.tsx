@@ -70,6 +70,7 @@ function IntegrationsPanel() {
   const [credentialRef, setCredentialRef] = useState("");
   const [isFixture, setIsFixture] = useState(false);
   const [budget, setBudget] = useState("0");
+  const [policyBudget, setPolicyBudget] = useState("0");
   const [discoverId, setDiscoverId] = useState<string | null>(null);
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => api.patch<Integration>(`/integrations/${id}/`, { enabled }),
@@ -77,7 +78,7 @@ function IntegrationsPanel() {
   });
   const create = useMutation({
     mutationFn: () =>
-      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture, installed_updates_budget: Number(budget) }),
+      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture, installed_updates_budget: Number(budget), applied_policies_budget: Number(policyBudget) }),
     onSuccess: () => {
       setName("");
       setBaseUrl("");
@@ -93,6 +94,7 @@ function IntegrationsPanel() {
     { header: "TLS verify", cell: ({ row }) => (row.original.verify_tls ? "On (enforced)" : "OFF") },
     { header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { header: "Detail budget", cell: ({ row }) => row.original.installed_updates_budget || "off" },
+    { header: "Policy budget", cell: ({ row }) => row.original.applied_policies_budget || "off" },
     { header: "Status", accessorKey: "status", cell: ({ getValue }) => <Badge tone={statusTone[String(getValue())]}>{String(getValue())}</Badge> },
     {
       header: "Actions",
@@ -142,6 +144,12 @@ function IntegrationsPanel() {
           {(id, hint) => (
             <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
                    onChange={(e) => setBudget(e.target.value)} />
+          )}
+        </Field>
+        <Field label="Applied policies budget / sync" hint="Per-device policy calls (0 = off; limit 3600 req/h)">
+          {(id, hint) => (
+            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={policyBudget}
+                   onChange={(e) => setPolicyBudget(e.target.value)} />
           )}
         </Field>
         <label className="flex items-center gap-2 pb-1.5 text-sm">

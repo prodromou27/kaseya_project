@@ -26,6 +26,9 @@ ALLOWED_PATHS = [
     re.compile(r"/api/v3/sites"),
     re.compile(r"/api/v3/groups"),
     re.compile(r"/api/v3/devices"),
+    # VSA3-04 (docs-verified 2026-11-13): per-device applied policies and patch policy configuration. GET only.
+    re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/appliedpolicies"),
+    re.compile(r"/api/v3/patchmanagement/policies/[0-9]{1,18}"),
 ]
 _DEVICE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
@@ -102,6 +105,21 @@ class VsaXAdapter:
         if not _DEVICE_ID.fullmatch(identifier or ""):
             raise ValueError("Unsafe device identifier.")
         return self.client.get_json(f"/api/v3/assets/{identifier}", {"include": DETAIL_INCLUDE}).json
+
+    def get_applied_policies(self, identifier: str) -> list[dict[str, Any]]:
+        """``GET /api/v3/devices/:id/appliedpolicies`` (documented ``$top`` max 100) → raw policy dicts."""
+        if not _DEVICE_ID.fullmatch(identifier or ""):
+            raise ValueError("Unsafe device identifier.")
+        rows: list[dict[str, Any]] = []
+        for page in self._paged(f"/api/v3/devices/{identifier}/appliedpolicies", {}, 100, max_pages=5):
+            rows.extend(page.records)
+        return rows
+
+    def get_patch_policy(self, policy_id: str) -> Any:
+        """``GET /api/v3/patchmanagement/policies/:id`` → raw body (policy *configuration*, not deployment state)."""
+        if not _ORG_ID.fullmatch(policy_id or ""):
+            raise ValueError("Unsafe policy identifier.")
+        return self.client.get_json(f"/api/v3/patchmanagement/policies/{policy_id}", {}).json
 
     def _paged(self, path: str, params: dict[str, str], page_size: int, max_pages: int = 2000) -> Iterator[Page]:
         skip = 0

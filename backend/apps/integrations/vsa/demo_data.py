@@ -135,6 +135,7 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
     asset["_GroupId"] = site_id * 10 + (2 if kind == "Servers" else 1)
     asset["_GroupName"] = kind
     asset["_SiteName"] = site
+    asset["_AppliedPolicies"] = _applied_policies(index, kind)
     _add_network_and_hardware(rng, asset, org_id, index)
     if asset["Type"] == "windows" and index % 37 != 0:  # every 37th Windows device omits OS update sections
         available = [u for u in _DEMO_UPDATES if rng.random() < u["_p"]]
@@ -206,6 +207,58 @@ def _add_network_and_hardware(rng: random.Random, asset: dict[str, Any], org_id:
     ]
 
 
+def _applied_policies(index: int, kind: str) -> list[dict[str, Any]]:
+    """Deterministic (index-based, no RNG draws) VSA3-04 fixture: shapes copied from the documented example."""
+    rows: list[dict[str, Any]] = [
+        {"PolicyType": "Antivirus", "PolicyId": None, "PolicyName": "No Antivirus"},
+        {
+            "PolicyType": "Monitoring",
+            "PolicyId": 221,
+            "PolicyName": "Free Space (fixture)",
+            "Profiles": [{"Id": 1938, "Name": "Free Space Profile", "Category": "Storage", "Settings": {"x": 1}}],
+        },
+    ]
+    if index % 17 == 0:
+        return rows  # no Patch Management entry at all -> must surface as "not reported", never "no policy"
+    if index % 11 == 0:
+        rows.append(
+            {"PolicyType": "Patch Management", "PolicyId": None, "PolicyName": "No Policy (Explicitly configured)"}
+        )
+    elif kind == "Servers" or index % 13 == 0:  # every 13th workstation drifts onto the server policy
+        rows.append({"PolicyType": "Patch Management", "PolicyId": 302, "PolicyName": "Servers - monthly (fixture)"})
+    else:
+        rows.append(
+            {"PolicyType": "Patch Management", "PolicyId": 301, "PolicyName": "Workstations - weekly (fixture)"}
+        )
+    return rows
+
+
+def _patch_policy(pid: int, name: str, desc: str, severities: list[str]) -> dict[str, Any]:
+    return {
+        "Id": pid,
+        "Name": name,
+        "Description": desc,
+        "GeneralSettings": {
+            "CreateRestorePoint": True,
+            "RebootIfRequire": True,
+            "NotifyLoggedInUsers": False,
+            "Schedule": {
+                "Id": -1,
+                "Type": {"Id": 1, "Text": "Schedule"},
+                "FrequencyInterval": {"Id": 2, "Text": "Weekly"},
+            },
+            "RebootOption": "DO_NOT_REBOOT",
+            "AutomaticUpdate": "AUTO_DOWNLOAD",
+            "NotificationSettings": {"Recipients": ["should-not-be-stored@demo.invalid"]},
+        },
+        "OsRules": [
+            {"Field": "SEVERITY", "Operator": "CONTAINS", "Severity": s, "Action": "APPROVE_AND_INSTALL"}
+            for s in severities
+        ],
+        "SoftwareRules": [{"ProductId": "7-zip-x64", "ProductName": "7-Zip (64-bit)", "Action": "INSTALL_AND_UPDATE"}],
+    }
+
+
 @lru_cache(maxsize=1)
 def _build() -> dict[str, Any]:
     rng = random.Random(20261112)  # noqa: S311 - deterministic fictional data, not security relevant
@@ -217,7 +270,13 @@ def _build() -> dict[str, Any]:
         {"Id": 1002, "Name": "Demo Org B (fixture)", "Type": "Customer"},
         {"Id": 1999, "Name": "Unmapped Demo Org (fixture)", "Type": "Customer"},
     ]
-    return {"assets": assets, "organizations": organizations}
+    patch_policies = {
+        "301": _patch_policy(
+            301, "Workstations - weekly (fixture)", "Saturday 23:30 (fixture)", ["CRITICAL", "IMPORTANT"]
+        ),
+        "302": _patch_policy(302, "Servers - monthly (fixture)", "First Sunday (fixture)", ["CRITICAL"]),
+    }
+    return {"assets": assets, "organizations": organizations, "patch_policies": patch_policies}
 
 
 def demo_tenant() -> dict[str, Any]:

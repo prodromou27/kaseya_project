@@ -55,6 +55,12 @@ class IntegrationInstance(models.Model):
         help_text="Max per-device GET /api/v3/assets/:id calls per sync for InstalledUpdates (0 = disabled). "
         "Documented limit is 3600 requests/hour per token+endpoint.",
     )
+    applied_policies_budget = models.PositiveIntegerField(
+        default=0,
+        validators=[MaxValueValidator(3000)],
+        help_text="Max per-device GET /api/v3/devices/:id/appliedpolicies calls per sync (0 = disabled). "
+        "Documented limit is 3600 requests/hour.",
+    )
     is_fixture = models.BooleanField(
         default=False, help_text="True for demo/fixture-backed instances. Never mixed with live data."
     )
@@ -171,6 +177,7 @@ class SyncRun(models.Model):
     quarantined_count = models.PositiveIntegerField(default=0)
     source_total_count = models.PositiveIntegerField(null=True, blank=True)
     installed_updates_requested = models.PositiveIntegerField(default=0)
+    applied_policies_requested = models.PositiveIntegerField(default=0)
     initial_total_count = models.PositiveIntegerField(
         null=True, blank=True, help_text="TotalCount reported by the first page; every later page must match."
     )

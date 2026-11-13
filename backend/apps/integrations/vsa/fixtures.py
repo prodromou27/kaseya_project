@@ -39,6 +39,7 @@ class FixtureVsaTransport:
         sites: list[dict[str, Any]] | None = None,
         groups: list[dict[str, Any]] | None = None,
         devices: list[dict[str, Any]] | None = None,
+        patch_policies: dict[str, dict[str, Any]] | None = None,
         scripted: list[FakeResponse | Exception] | None = None,
         on_request: Callable[[str, Mapping[str, str]], None] | None = None,
     ):
@@ -48,6 +49,9 @@ class FixtureVsaTransport:
         self.sites = sites if sites is not None else _derive_sites(assets)
         self.groups = groups if groups is not None else _derive_groups(assets)
         self.devices = devices if devices is not None else _derive_devices(assets)
+        # VSA3-04: per-device applied policies come from the fixture-only "_AppliedPolicies" key; patch policy
+        # definitions are keyed by ID. Both are synthetic shapes copied from the documented examples.
+        self.patch_policies = patch_policies or {}
         self.scripted = list(scripted or [])  # responses returned (in order) before normal behaviour
         self.on_request = on_request
         self.calls: list[tuple[str, dict[str, str]]] = []
@@ -57,7 +61,7 @@ class FixtureVsaTransport:
         from .demo_data import demo_tenant
 
         tenant = demo_tenant()
-        return cls(tenant["assets"], tenant["organizations"])
+        return cls(tenant["assets"], tenant["organizations"], patch_policies=tenant.get("patch_policies"))
 
     def _list(self, rows: list[dict[str, Any]], skip: int, top: int, total: bool = True) -> FakeResponse:
         meta: dict[str, Any] = {"ResponseCode": 200}
@@ -87,6 +91,12 @@ class FixtureVsaTransport:
             if "InstalledUpdates" in asset:
                 data["InstalledUpdates"] = asset["InstalledUpdates"]
             return FakeResponse(200, {"Data": data, "Meta": {"ResponseCode": 200}})
+        policy = re.fullmatch(r"/api/v3/patchmanagement/policies/([0-9]+)", path)
+        if policy:
+            definition = self.patch_policies.get(policy.group(1))
+            if definition is None:
+                return FakeResponse(404)
+            return FakeResponse(200, {"Data": definition, "Meta": {"ResponseCode": 200}})
         try:
             top = int(params.get("$top", "100"))
             skip = int(params.get("$skip", "0"))
@@ -94,6 +104,12 @@ class FixtureVsaTransport:
             return FakeResponse(400)
         if top < 1 or skip < 0:
             return FakeResponse(400)
+        applied = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)/appliedpolicies", path)
+        if applied:
+            asset = next((a for a in self.assets if str(a.get("Identifier")) == applied.group(1)), None)
+            if asset is None:
+                return FakeResponse(404)
+            return self._list(list(asset.get("_AppliedPolicies", [])), skip, min(top, 100))
         if path == "/api/v3/devices":
             flt = _FILTER.fullmatch(params.get("$filter", ""))
             if not flt or params.get("$orderby") != "Identifier":

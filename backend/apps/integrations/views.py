@@ -39,6 +39,7 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "credential_configured",
             "enabled",
             "installed_updates_budget",
+            "applied_policies_budget",
             "verify_tls",
             "max_rps",
             "status",

@@ -261,6 +261,11 @@ def load_devices(customer_id: Any, generation: DatasetGeneration) -> list[matchi
         IpAddressObservation.objects.filter(**gen_filter).exclude(address="").values_list("asset_id", "address")
     ):
         ips.setdefault(asset_id, set()).add(addr)
+    from apps.patching.models import AppliedPolicyObservation
+
+    policy_states = dict(
+        AppliedPolicyObservation.objects.filter(**gen_filter).values_list("observation_id", "patch_state")
+    )
     devices = []
     for o in AssetObservation.objects.filter(**gen_filter).select_related("asset").order_by("asset__external_id"):
         devices.append(
@@ -281,6 +286,7 @@ def load_devices(customer_id: Any, generation: DatasetGeneration) -> list[matchi
                 last_seen_online=o.last_seen_online,
                 is_agent_installed=o.is_agent_installed,
                 network_status=o.network_status,
+                patch_policy_state=policy_states.get(o.pk, "unknown"),
             )
         )
     return devices

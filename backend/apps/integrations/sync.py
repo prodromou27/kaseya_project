@@ -164,6 +164,7 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
         for page in adapter.iter_asset_pages(run.mapping.external_org_id, start_skip=run.next_skip):
             _ingest_page(run, generation, page)
         _collect_installed_updates(run, generation, adapter)
+        _collect_applied_policies(run, generation, adapter)
         collect_hierarchy(run, generation, adapter)
         _finalize(run, generation)
     except VendorAuthError:
@@ -375,6 +376,37 @@ def _collect_installed_updates(run: SyncRun, generation: DatasetGeneration, adap
         except (VendorClientError, RecordInvalid, ValueError):
             record_installed_failure(po)
     carry_forward(generation)
+    run.refresh_from_db()
+
+
+def _collect_applied_policies(run: SyncRun, generation: DatasetGeneration, adapter: VsaXAdapter) -> None:
+    """VSA3-04: budgeted ``GET /devices/:id/appliedpolicies`` + one ``GET /patchmanagement/policies/:id`` per
+    referenced policy. Per-device/per-policy 4xx or malformed bodies mark only that item ``failed``.
+    """
+    from apps.patching import policies
+
+    from .http import VendorClientError
+    from .vsa.schema import normalize_applied_policies, normalize_patch_policy
+
+    policies.ensure_observations(generation)
+    remaining = max(0, run.integration_instance.applied_policies_budget - run.applied_policies_requested)
+    for po in policies.pending(generation, remaining):
+        SyncRun.objects.filter(pk=run.pk).update(
+            applied_policies_requested=F("applied_policies_requested") + 1, api_requests=F("api_requests") + 1
+        )
+        try:
+            policies.record(po, normalize_applied_policies(adapter.get_applied_policies(po.asset.external_id)))
+        except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
+            policies.record_failure(po)
+    policies.carry_forward(generation)
+    for policy_id in policies.referenced_policy_ids(generation):
+        SyncRun.objects.filter(pk=run.pk).update(api_requests=F("api_requests") + 1)
+        try:
+            policies.record_definition(
+                generation, normalize_patch_policy(adapter.get_patch_policy(policy_id), policy_id)
+            )
+        except (VendorClientError, RecordInvalid, ValueError):
+            policies.record_definition_failure(generation, policy_id)
     run.refresh_from_db()
 
 

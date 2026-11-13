@@ -612,4 +612,4 @@ def test_xlsx_upload_with_sheet_selection(world, synced, django_capture_on_commi
 
 
 def test_engine_version_recorded():
-    assert matching.LOGIC_VERSION == "onboarding-match-1"
+    assert matching.LOGIC_VERSION.startswith("onboarding-match-2")

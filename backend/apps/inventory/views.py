@@ -222,9 +222,43 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
                 "is_mdm_enrolled": current.is_mdm_enrolled,
                 "units_note": "Disk TotalValue units are not documented by VSA X and are shown as reported.",
             }
+        policies: dict[str, Any] | None = None
+        if current is not None:
+            from apps.patching.models import AppliedPolicyObservation, PatchPolicyDefinition
+            from apps.patching.policy_queries import NOTE as POLICY_NOTE
+
+            pol = AppliedPolicyObservation.objects.filter(observation=current).first()
+            definition = None
+            if pol is not None and pol.patch_policy_id:
+                d = PatchPolicyDefinition.objects.filter(
+                    customer_id=asset.customer_id, generation_id=current.generation_id, policy_id=pol.patch_policy_id
+                ).first()
+                if d is not None:
+                    definition = {
+                        "status": d.status,
+                        "name": d.name,
+                        "description": d.description,
+                        "general_settings": d.general_settings,
+                        "os_rules": d.os_rules,
+                        "software_rules": d.software_rules,
+                    }
+            policies = {
+                "collection_status": pol.status if pol else "not_collected",
+                "collected_at": pol.collected_at.isoformat() if pol and pol.collected_at else None,
+                "patch_state": pol.patch_state if pol else "unknown",
+                "patch_policy_id": pol.patch_policy_id if pol else "",
+                "patch_policy_name": pol.patch_policy_name if pol else "",
+                "applied": [
+                    {"type": p.policy_type, "id": p.policy_id, "name": p.policy_name, "profiles": p.profiles}
+                    for p in (pol.policies.order_by("policy_type") if pol else [])
+                ],
+                "definition": definition,
+                "note": POLICY_NOTE,
+            }
         return Response(
             {
                 "details": details,
+                "policies": policies,
                 "third_party_patch_status": THIRD_PARTY_PATCH_STATUS,
                 "os_updates": os_updates,
                 "asset": AssetRowSerializer(current, context={"offline_days": 7}).data if current else None,

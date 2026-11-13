@@ -531,3 +531,111 @@ def normalize_organization(item: dict[str, Any]) -> VsaOrganization:
     if not org_id:
         raise RecordInvalid("missing_id")
     return VsaOrganization(id=org_id, name=_text(item.get("Name")), type=_text(item.get("Type")))
+
+
+# ---------------------------------------------------------------------------------------------- VSA3-04 policies
+
+POLICY_TYPES = ("Device Configuration", "Monitoring", "Antivirus", "Ransomware Detection", "Patch Management")
+PATCH_POLICY_TYPE = "Patch Management"
+# Documented GeneralSettings keys kept; NotificationSettings and anything undocumented are dropped (may hold contacts).
+PATCH_GENERAL_SETTINGS_KEPT = (
+    "CreateRestorePoint",
+    "RebootIfRequire",
+    "NotifyLoggedInUsers",
+    "Schedule",
+    "RandomizeUpdateInterval",
+    "StartPatchingIfScheduledMissed",
+    "RebootOption",
+    "AutomaticUpdate",
+    "DeferQualityUpdates",
+    "QualityUpdatesDeferPeriod",
+    "DeferFeatureUpdates",
+    "FeatureUpdatesDeferPeriod",
+    "IncludeDriversUpdate",
+    "PreventFromExecutingAndConfiguringWindowsUpdates",
+    "RebootImmediatelyIfScheduledMissed",
+)
+
+
+@dataclass(frozen=True)
+class AppliedPolicyItem:
+    policy_type: str
+    policy_id: str  # "" when null (explicitly configured No Policy)
+    policy_name: str
+    profiles: tuple[tuple[str, str, str], ...]  # (id, name, category) — profile Settings are not stored
+
+    @property
+    def explicit_none(self) -> bool:
+        return self.policy_id == ""
+
+
+@dataclass(frozen=True)
+class PatchPolicyDefinitionData:
+    policy_id: str
+    name: str
+    description: str
+    general_settings: dict[str, Any]
+    os_rules: list[dict[str, Any]]
+    software_rules: list[dict[str, Any]]
+
+
+def _json_safe(value: Any, depth: int = 0) -> Any:
+    """Bounded copy of plain JSON (configuration values only)."""
+    if depth > 4:
+        raise RecordInvalid("nesting_too_deep")
+    if value is None or isinstance(value, bool | int | float):
+        return value
+    if isinstance(value, str):
+        return value[:MAX_TEXT]
+    if isinstance(value, list):
+        return [_json_safe(v, depth + 1) for v in value[:200]]
+    if isinstance(value, dict):
+        return {str(k)[:64]: _json_safe(v, depth + 1) for k, v in list(value.items())[:100]}
+    raise RecordInvalid("unsupported_value")
+
+
+def normalize_applied_policies(rows: list[dict[str, Any]]) -> tuple[AppliedPolicyItem, ...]:
+    items = []
+    for row in rows:
+        ptype = _text(row.get("PolicyType"))
+        if not ptype:
+            raise RecordInvalid("missing_policy_type")
+        pid = row.get("PolicyId")
+        if pid is not None and (isinstance(pid, bool) or not isinstance(pid, int) or pid < 0):
+            raise RecordInvalid("invalid_policy_id")
+        profiles = []
+        for prof in row.get("Profiles") or []:
+            if isinstance(prof, dict):
+                profiles.append((_text(prof.get("Id")), _text(prof.get("Name")), _text(prof.get("Category"))))
+        items.append(
+            AppliedPolicyItem(
+                policy_type=ptype[:64],
+                policy_id="" if pid is None else str(pid),
+                policy_name=_text(row.get("PolicyName")),
+                profiles=tuple(profiles),
+            )
+        )
+    return tuple(items)
+
+
+def normalize_patch_policy(body: Any, policy_id: str) -> PatchPolicyDefinitionData:
+    if not isinstance(body, dict) or not isinstance(body.get("Data"), dict):
+        raise RecordInvalid("invalid_policy_envelope")
+    data = body["Data"]
+    if str(data.get("Id")) != policy_id:
+        raise RecordInvalid("policy_id_mismatch")
+    general = data.get("GeneralSettings") if isinstance(data.get("GeneralSettings"), dict) else {}
+    os_rules = data.get("OsRules") if isinstance(data.get("OsRules"), list) else []
+    sw_rules = data.get("SoftwareRules") if isinstance(data.get("SoftwareRules"), list) else []
+    return PatchPolicyDefinitionData(
+        policy_id=policy_id,
+        name=_text(data.get("Name")),
+        description=_text(data.get("Description")),
+        general_settings={k: _json_safe(general[k]) for k in PATCH_GENERAL_SETTINGS_KEPT if k in general},
+        os_rules=[_json_safe(r) for r in os_rules if isinstance(r, dict)],
+        software_rules=[
+            {k: _json_safe(r.get(k)) for k in ("ProductId", "ProductName", "Action")}
+            for r in sw_rules
+            if isinstance(r, dict)
+        ],
+    )

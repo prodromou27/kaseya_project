@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-LOGIC_VERSION = "onboarding-match-1"
+LOGIC_VERSION = "onboarding-match-2"  # 2: NO_PATCH_POLICY evaluated from applied policies (VSA3-04)
 
 MATCHED = ("MATCHED_CORRECT", "MATCHED_WRONG_GROUP", "MATCHED_WRONG_SITE", "REVIEW_WRONG_ORGANIZATION")
 
@@ -124,6 +124,7 @@ class Device:
     last_seen_online: datetime | None = None
     is_agent_installed: bool | None = None
     network_status: str = "not_collected"
+    patch_policy_state: str = "unknown"  # assigned | explicit_none | not_reported | unknown
 
     @property
     def fqdn(self) -> str:
@@ -157,7 +158,6 @@ class Params:
             "stale_source": self.stale_source,
             "flags_not_evaluated": {
                 "OLD_AGENT": "no approved agent-version baseline is configured",
-                "NO_PATCH_POLICY": "applied patch policies are not collected yet (VSA3-04)",
             },
         }
 
@@ -314,6 +314,8 @@ def _secondary_flags(device: Device, params: Params) -> list[str]:
         flags.append("STALE_SOURCE")
     if device.network_status != "collected":
         flags.append("MISSING_NETWORK_DATA")
+    if device.patch_policy_state == "explicit_none":
+        flags.append("NO_PATCH_POLICY")  # only the explicit rule; unknown/not reported is never "no policy"
     return flags
 
 
@@ -473,5 +475,7 @@ def _summary(
             "NOT_FOUND_IN_COMPLETE_SNAPSHOT is not proof that an agent is not installed.",
             "Offline devices that matched remain onboarded; OFFLINE/STALE_AGENT are secondary flags.",
             "IP addresses never confirm a match on their own; MAC-only and IP-only hits require review.",
+            "NO_PATCH_POLICY marks only devices with VSA's explicitly configured No Policy; unknown assignment is "
+            "not flagged.",
         ],
     }

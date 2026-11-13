@@ -73,12 +73,15 @@
       "fields": "IsOnline, Uptime (free text), InMaintenance, ExternalIpAddress, notification counts, LocalIpAddresses, ClientVersion, GroupId, ..."
     },
     "GET /api/v3/devices/:id/appliedpolicies": {
-      "status": "docs-verified 2026-11-13; not implemented (VSA3-04)",
-      "fields": "PolicyType (Device Configuration|Monitoring|Antivirus|Ransomware Detection|Patch Management), PolicyId (nullable), PolicyName (e.g. 'No Policy (Explicitly configured)')"
+      "status": "docs-verified 2026-11-13; implemented VSA3-04 (fixture-tested); LIVE_VALIDATION_PENDING",
+      "fields": "PolicyType (Device Configuration|Monitoring|Antivirus|Ransomware Detection|Patch Management), PolicyId (nullable), PolicyName (e.g. 'No Policy (Explicitly configured)')",
+      "rate_limit": "3600 requests per hour (documented); budgeted per sync via applied_policies_budget",
+      "paging": "$top max 100 (documented)"
     },
     "GET /api/v3/patchmanagement/policies/:id": {
-      "status": "docs-verified 2026-11-13; not implemented (VSA3-04)",
-      "fields": "Id, Name, Description, GeneralSettings, OsRules[], SoftwareRules[{ProductId, ProductName, Action}] \u2014 configuration, NOT deployment state"
+      "status": "docs-verified 2026-11-13; implemented VSA3-04 (fixture-tested); LIVE_VALIDATION_PENDING",
+      "fields": "Id, Name, Description, GeneralSettings, OsRules[], SoftwareRules[{ProductId, ProductName, Action}] \u2014 configuration, NOT deployment state",
+      "stored": "Name, Description, documented GeneralSettings keys (NotificationSettings dropped), OsRules, SoftwareRules{ProductId,ProductName,Action}"
     },
     "GET /api/v3/ratelimits/": {
       "status": "docs-verified 2026-11-13; not implemented yet (VSA1-01 connection test)",

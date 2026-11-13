@@ -11,7 +11,8 @@ import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { api } from "../../lib/api";
 import { AdapterList } from "../groups/GroupNetworkPage";
 import { formatUtc } from "../../lib/format";
-import { STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
+import { PATCH_STATE_LABEL, STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
+import { PolicyDefinitionView } from "../policies/PolicyDefinitionView";
 
 export const softwareColumns: ColumnDef<SoftwareRow, unknown>[] = [
   { header: "Installed software", cell: ({ row }) => (
@@ -112,6 +113,30 @@ function HardwareSecurity({ detail }: { detail: AssetDetail }) {
   );
 }
 
+function Policies({ detail }: { detail: AssetDetail }) {
+  const p = detail.policies;
+  if (!p) return <Notice tone="warn">No policy record for this device in the current dataset.</Notice>;
+  const tone = p.patch_state === "assigned" ? "good" : p.patch_state === "explicit_none" ? "warn" : "neutral";
+  return (
+    <div className="space-y-3">
+      <Notice tone="info">{p.note}</Notice>
+      <dl className="grid max-w-3xl grid-cols-[14rem_1fr] gap-y-1 text-sm">
+        <dt className="text-slate-500">Patch Management</dt>
+        <dd><Badge tone={tone}>{PATCH_STATE_LABEL[p.patch_state]}</Badge>{p.patch_policy_name ? ` · ${p.patch_policy_name}` : ""}{p.patch_policy_id ? ` (ID ${p.patch_policy_id})` : ""}</dd>
+        <dt className="text-slate-500">Collection</dt>
+        <dd>{p.collection_status.replace(/_/g, " ")}{p.collected_at ? ` · response from ${formatUtc(p.collected_at)}` : ""}</dd>
+      </dl>
+      <DataTable caption="Applied policies" rows={p.applied} getRowId={(r) => `${r.type}-${r.id}`} emptyTitle="No applied policies reported."
+        columns={[
+          { header: "Type", accessorKey: "type" },
+          { header: "Policy", cell: ({ row }) => row.original.id ? `${row.original.name} (ID ${row.original.id})` : <span>{row.original.name} <Badge tone="warn">explicit</Badge></span> },
+          { header: "Profiles", cell: ({ row }) => row.original.profiles.map((x) => `${x.name} (${x.category})`).join(", ") || "—" },
+        ]} />
+      {p.definition ? <PolicyDefinitionView definition={p.definition} /> : null}
+    </div>
+  );
+}
+
 function OsUpdates({ detail }: { detail: AssetDetail }) {
   const o = detail.os_updates;
   if (!o) return <Notice tone="warn">No OS update record for this device in the current dataset.</Notice>;
@@ -171,6 +196,7 @@ export function AssetDetailPage() {
                              emptyTitle="The source reported no installed software for this device." /></>
             ) },
             { id: "os-updates", label: "OS updates", content: <OsUpdates detail={detail} /> },
+            { id: "policies", label: "Policies", content: <Policies detail={detail} /> },
             { id: "network", label: "Network", content: <Network detail={detail} /> },
             { id: "hardware", label: "Hardware & security", content: <HardwareSecurity detail={detail} /> },
             { id: "history", label: "Observation history", content: (

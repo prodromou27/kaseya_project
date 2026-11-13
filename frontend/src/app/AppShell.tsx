@@ -15,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/assets", label: "Assets" },
   { to: "/software", label: "Software versions" },
   { to: "/windows-updates", label: "Windows updates" },
+  { to: "/patch-policies", label: "Patch policies" },
   { to: "/itglue", label: "IT Glue", phase: "P3" },
   { to: "/autotask", label: "Autotask PSA", phase: "P4" },
   { to: "/reports", label: "Reports" },

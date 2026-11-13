@@ -71,6 +71,7 @@ export type Integration = {
   verify_tls: boolean;
   max_rps: string;
   installed_updates_budget: number;
+  applied_policies_budget: number;
   status: string;
   is_fixture: boolean;
 };
@@ -193,6 +194,7 @@ export type AssetDetail = {
   details: AssetDetails | null;
   third_party_patch_status: ThirdPartyPatchStatus;
   os_updates: null | { status: DevicePatchStatus; updates: DeviceOsUpdateRow[] };
+  policies: DevicePolicies | null;
   id: string;
   external_id: string;
   active: boolean;
@@ -605,4 +607,86 @@ export type ReconciliationResult = {
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_note: string;
+};
+
+// ---------------------------------------------------------------- VSA3-04: patch policies
+
+export type PatchPolicyState = "assigned" | "explicit_none" | "not_reported" | "unknown";
+export type DriftState = "no_baseline" | "unknown" | "matches" | "different_policy" | "missing_policy" | "unexpected_policy";
+
+export type PolicyDefinition = {
+  policy_id?: string;
+  status: "collected" | "failed";
+  name: string;
+  description: string;
+  general_settings: Record<string, unknown>;
+  os_rules: Record<string, unknown>[];
+  software_rules: { ProductId?: string; ProductName?: string; Action?: string }[];
+  fetched_at?: string;
+  changed_since_previous?: boolean | null;
+};
+
+export type DevicePolicies = {
+  collection_status: string;
+  collected_at: string | null;
+  patch_state: PatchPolicyState;
+  patch_policy_id: string;
+  patch_policy_name: string;
+  applied: { type: string; id: string; name: string; profiles: { id: string; name: string; category: string }[] }[];
+  definition: PolicyDefinition | null;
+  note: string;
+};
+
+export type PolicySummary = {
+  as_of: (string | null)[];
+  data_basis: string[];
+  devices: number;
+  patch_states: Record<PatchPolicyState, number>;
+  collection_status: Record<string, number>;
+  coverage: { assigned: number; verified_denominator: number; percent: number | null; excluded_unknown: number; definition: string };
+  by_policy: { policy_id: string; policy_name: string; devices: number }[];
+  drift: Record<DriftState, number>;
+  drift_labels: Record<DriftState, string>;
+  definitions: PolicyDefinition[];
+  scopes: { organizations: Record<string, string>; sites: Record<string, string>; groups: Record<string, { name: string; site: string }> };
+  carried_forward_note: string;
+  note: string;
+};
+
+export type PolicyDeviceRow = {
+  asset_id: string;
+  hostname: string;
+  site_external_id: string;
+  site_name: string;
+  group_external_id: string;
+  group_name: string;
+  collection_status: string;
+  collected_at: string | null;
+  patch_state: PatchPolicyState;
+  patch_policy_id: string;
+  patch_policy_name: string;
+  expected: null | { scope_type: string; scope_external_id: string; expect_no_policy: boolean; policy_id: string; policy_name: string };
+  drift: DriftState;
+};
+
+export type PatchBaseline = {
+  id: string;
+  scope_type: "organization" | "site" | "group";
+  scope_external_id: string;
+  expect_no_policy: boolean;
+  expected_policy_id: string;
+  expected_policy_name: string;
+  reason: string;
+  state: "proposed" | "approved" | "rejected" | "retired";
+  proposed_by: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
+export const PATCH_STATE_LABEL: Record<PatchPolicyState, string> = {
+  assigned: "Policy assigned",
+  explicit_none: "No Policy (explicitly configured)",
+  not_reported: "No Patch Management entry reported",
+  unknown: "Unknown (not collected)",
 };

@@ -183,6 +183,10 @@ def _recommendations(counts: Counter[str], run: ReconciliationRun) -> list[list[
         "(still counted as onboarded).",
     )
     add(flags.get("MISSING_NETWORK_DATA", 0), "Matched device(s) have no reported network data in the snapshot.")
+    add(
+        flags.get("NO_PATCH_POLICY", 0),
+        "Matched device(s) have VSA's explicitly configured No Policy for Patch Management. Confirm this is intended.",
+    )
     if not recs:
         recs.append(["", "No follow-up actions identified."])
     return recs
