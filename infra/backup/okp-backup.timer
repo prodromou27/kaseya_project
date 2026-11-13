@@ -1,0 +1,12 @@
+# /etc/systemd/system/okp-backup.timer — daily backup at 02:15 local time (+ up to 15 min jitter); catches up after
+# downtime. Adjust OnCalendar to the approved RPO.
+[Unit]
+Description=Daily Odyssey Kaseya portal database backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target

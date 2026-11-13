@@ -29,6 +29,7 @@ Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-te
 - VSA1-01: an administrator **connection test** (`GET /api/v3/ratelimits`) reports an explicit outcome, latency and the reported per-endpoint rate limits. VSA2-05: **expected subnets** per site/group, two-person approved, flag addresses outside them, and addresses that changed since the previous snapshot are flagged too. Both are review observations only (commit `5dbb567`).
 - VSA4-04: **Inventory changes** shows the differences between two complete snapshots and adds report R16. No change time or person is invented. A device **Onboarding** tab lists the onboarding checks that involved the device (commit `136ddb6`).
 - AlmaLinux deployment: an as-implemented runbook, `.env.prod.example`, a host preflight script and a secrets preparation script (owners, modes, SELinux labels), and SELinux-aware Compose binds. Docker-published ports bypass firewalld, so the runbook adds `PORTAL_BIND_ADDRESS` and DOCKER-USER guidance. Not yet executed on a host.
+- VSAP-02: **encrypted backups**: `pg_dump` inside the db container is encrypted with GnuPG to a public key, with a checksum, manifest, off-host copy, retention and a systemd timer. Also an **isolated restore drill** with `manage.py restore_check` and a JSON drill record. Drill-tested locally; not yet run on the host.
 
 ### Not changed
 - VSA X stays read-only. Device moves remain disabled (VSA5 BLOCKED_APPROVAL).

@@ -1,0 +1,18 @@
+# /etc/systemd/system/okp-backup.service — VSAP-02 encrypted PostgreSQL backup (run by okp-backup.timer).
+[Unit]
+Description=Odyssey Kaseya portal encrypted database backup
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Root is required for `docker compose exec`; the script writes only BACKUP_DIR and never handles plaintext on disk.
+ExecStart=/opt/okp/infra/backup/backup.sh /etc/okp/backup.env
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/backups/okp /etc/okp/gnupg

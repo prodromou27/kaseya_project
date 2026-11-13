@@ -35,7 +35,7 @@
 | VSA4-06 Performance / 100k load | — | MISSING | — | — | — |
 | VSA5-01..04 Device move | — | BLOCKED_APPROVAL | — | — | Must stay disabled; design only when approved |
 | VSAP-01 SSO/MFA, TLS, vault, SSRF | P5-01, P5-02 | PARTIAL | OIDC (mock IdP), SSRF/TLS controls | `test_oidc.py`, `test_vsa_adapter.py` | Real Entra and vault are BLOCKED_APPROVAL (DEC-03/07) |
-| VSAP-02 Backups/restore | P5-03, P5-04 | MISSING | — | — | — |
+| VSAP-02 Backups/restore | P5-03, P5-04 | PARTIAL | `infra/backup/*`, `core/management/commands/restore_check.py` | `test_restore_check.py`; local end-to-end drill | Host run, real off-host target, filed drill record |
 | VSAP-03 Threat review, SAST/dep scan, IDOR regression | P5-07 | PARTIAL | `security.yml`, IDOR suites | pip-audit/npm audit clean | SAST and threat review |
 | VSAP-04 Live pilot | P5-08 | BLOCKED_VENDOR | — | — | Needs token and pilot customer (DEC-04/10) |
 | VSAP-05 Final acceptance | P5-09 | MISSING | — | — | — |
@@ -63,3 +63,4 @@ Each step's evidence is recorded in `docs/IMPLEMENTATION_EVIDENCE.md`, and the s
 * **2026-11-13, `5dbb567`:** VSA1-01 and VSA2-05 are DONE_VERIFIED (fixture). **Remaining:** VSA1-05 (notification and reconciliation tabs), VSA4-03 (notifications), VSA4-04 (generation diff), VSA4-05/06, VSAP-02/03/05. Docker/CI boot, live pilot (VSAP-04) and moves (VSA5) stay blocked.
 * **2026-11-13, `136ddb6`:** VSA4-04 is DONE_VERIFIED (fixture). VSA1-05 gained the Onboarding (reconciliation) tab; only notifications remain. **Remaining:** VSA4-03 (+ VSA1-05 notifications tab), VSA4-05 (lifecycle catalog), VSA4-06 (100k performance), VSAP-02/03/05. Docker/CI boot, live pilot (VSAP-04) and moves (VSA5) stay blocked.
 * **2026-11-13, AlmaLinux:** deployment target confirmed as AlmaLinux. `DEPLOYMENT.md` was rewritten as an as-implemented runbook. Added `.env.prod.example`, `infra/almalinux/` (daemon.json, prepare-secrets.sh, preflight.sh), SELinux relabel on the nginx bind mount, `PORTAL_BIND_ADDRESS`, and `secrets/` git-ignored. Fixed a latent defect: the documented `chmod 600` root-owned secrets would have been unreadable by the non-root containers. VSA0-02 stays PARTIAL: **never booted**. Validation so far is syntax only (YAML/JSON parse, `bash -n`, shellcheck).
+* **2026-11-13, VSAP-02:** backup and restore tooling is implemented and drill-tested on the workstation; it stays PARTIAL until it has run on the AlmaLinux host with a real off-host target and a filed drill record. While testing on Windows, a binary-unsafe pipe into native `pg_restore.exe` corrupted the stream. The drill now restores from a private temp file, which is also what `pg_restore --jobs` requires. An `OFFHOST_CMD` quoting defect (it would have broken `rsync -e 'ssh …'`) was found and fixed before use.

@@ -156,15 +156,74 @@ logs are rotated by `/etc/docker/daemon.json` (5 × 20 MB per container).
 4. Rolling back images is not enough if a migration is not backward compatible. Read the release's migration notes
    before upgrading.
 
-## 8. Backup and restore — NOT IMPLEMENTED (VSAP-02)
+## 8. Backup and restore (VSAP-02)
 
-No backup or restore tooling exists yet (`infra/backup/` is empty), so **do not onboard customers until VSAP-02 is
-complete and a restore drill has passed**. The required scope:
+**State:** The scripts are implemented and were exercised end to end on the development workstation against
+PostgreSQL 16 (Git Bash, local `pg_dump`/`pg_restore`, a throwaway GnuPG key, `cp` standing in for rsync). They
+have **not yet run on the AlmaLinux host**, against the Compose `db` container, or with a real off-host target.
+**Do not onboard customers until the first host backup and an isolated restore drill have passed** and their
+records are filed.
 
-* an encrypted, off-host PostgreSQL dump with checksum;
-* the `reports`/`onboarding` volumes, or an accepted decision that they are regenerable or expiring;
-* `secrets/` held in the approved vault;
-* a documented RPO/RTO and an isolated restore drill.
+### 8.1 What is backed up
+
+| Item | How | Notes |
+|---|---|---|
+| PostgreSQL (all portal data, audit log, history) | `infra/backup/backup.sh`: `pg_dump -Fc` inside the `db` container → `gpg --encrypt` to a public key | Plaintext never touches the backup host's disk |
+| `secrets/`, `.env.prod` | Not by the script | Hold them in the approved vault/key custody (DEC-07) |
+| `reports` volume | Not backed up | Report files expire after 24 h and can be regenerated from their pinned snapshot |
+| `onboarding` volume | Not backed up | Uploads expire after 72 h. Comparison *results* are in PostgreSQL and are backed up |
+
+### 8.2 One-time setup on the host
+
+```bash
+sudo dnf -y install rsync gnupg2 util-linux          # util-linux provides flock
+sudo install -d -m 0700 /etc/okp /etc/okp/gnupg /var/backups/okp
+# Import ONLY the backup PUBLIC key (the private key stays with the key custodians, offline):
+sudo GNUPGHOME=/etc/okp/gnupg gpg --import okp-backup-public.asc
+sudo GNUPGHOME=/etc/okp/gnupg gpg --list-keys --with-colons | awk -F: '/^fpr/{print $10; exit}'   # → GPG_RECIPIENT
+sudo install -m 0600 infra/backup/backup.env.example /etc/okp/backup.env   # then edit (fingerprint, off-host target)
+sudo install -m 0644 infra/backup/okp-backup.service infra/backup/okp-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now okp-backup.timer
+sudo systemctl start okp-backup.service && journalctl -u okp-backup.service -n 20   # first run, check "off-host copy ok"
+```
+
+Each run writes `okp-db-<UTC>.dump.gpg` plus `.sha256` and `.json` (size, checksum, key fingerprint, app version)
+to `/var/backups/okp`, and copies all three off-host. It keeps `RETENTION_DAYS` of local copies, and never deletes
+the newest one. Exit codes: `0` ok; `1` failed (no partial file is left); `2` the local backup is ok but the
+off-host copy is missing or failed. The systemd unit then shows as failed, so alert on it.
+
+### 8.3 Restore drill (isolated host only)
+
+Run it on a segregated host with its own PostgreSQL and the portal image, never on production. The custodian makes
+the **private** key available there for the drill only.
+
+```bash
+RESTORE_DB=restore_$(date +%Y%m%d) DRILL_OPERATOR=<name> DRILL_APPROVER=<name> \
+  infra/backup/restore-drill.sh /path/to/okp-db-<UTC>.dump.gpg /path/to/drill-records
+```
+
+The drill does the following:
+
+1. Verifies the sha256 checksum.
+2. Creates a **new** database, refusing any name that doesn't start with `restore_`.
+3. Decrypts into a private temp directory and runs `pg_restore --exit-on-error --jobs N`.
+4. Runs `manage.py restore_check` against the restored database. This checks for unapplied migrations, that all
+   integrity and append-only triggers are present, that no rows cross customers, that every current generation is
+   published, and that an active super admin exists. It also reports key counts.
+5. Writes a JSON drill record: times, backup, checksum, restore duration, verification report, operator and
+   approver.
+
+The run exits 0 only if everything passes. Compare the record's counts with the production `restore_check` output
+taken at backup time, and file the record with the actual RPO/RTO (DEC: the approved targets).
+
+Locally verified behaviour (2026-11-13):
+
+* A backup of 130 assets and 88 audit events was restored in 4 s, and the restored counts matched the source.
+* A tampered file fails with a sha256 mismatch.
+* `RESTORE_DB=portal` is refused.
+* A missing off-host target exits 2.
+* A failing dump exits 1 and leaves no partial file.
+* Retention removes files older than the window, and the newest backup is kept.
 
 ## 9. Monitoring (to wire up)
 
