@@ -144,8 +144,10 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
     integration. Notifications older than `NOTIFICATION_WINDOW_DAYS` (14) are not stored, and message text is redacted
     before storage. Custom fields are read **only** for names approved on Customer → *Custom fields* (customer admin
     proposes, a different admin approves). Names that look like credentials are refused and never stored.
-19. **VSA X API token:** Admin → Integrations → add the VSA X integration (base URL `https://<vsa host>`; the
-    host must be allowed on the server: `sudo ./install.sh --vsa-host <host> -y`). Then *Set API token*: enter the
-    token ID and secret of a **read-only** VSA X API token, save, and run *Test connection*. The token is encrypted
-    and can never be displayed again; *Replace API token* or *Remove token* are the only actions. Changing the base
-    URL removes it. Only super admins can do this, and every change is in the audit log (never the value).
+19. **Integrations (all settings in the portal):** Admin → Integrations lists every integration with its status
+    (available or planned) and what it needs. For VSA X: (1) *Allowed API hosts* → add your VSA hostname, e.g.
+    `yourcompany.vsax.net` (DNS names only; private/internal names and IPs are refused); (2) add the integration with
+    base URL `https://<that host>`; (3) *Set credentials*: token ID and secret of a **read-only** VSA X API token;
+    (4) *Test connection*; (5) *Discover orgs* and map them; (6) *Enable*. *Edit* changes the name, base URL, request
+    rate and budgets; a new base URL removes the stored credentials. Credentials are encrypted, can never be displayed
+    again and can only be replaced or removed. Only super admins can do this; every change is audited (never values).

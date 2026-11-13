@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
+from django.db.models.functions import Lower
 
 from .urlpolicy import validate_connector_base_url
 
@@ -278,3 +279,32 @@ class SyncSchedule(models.Model):
 
     def __str__(self) -> str:
         return f"sync {self.mapping_id} every {self.interval_hours}h"
+
+
+class ConnectorHost(models.Model):
+    """Vendor API hostname approved by a super admin in the portal (connector egress allowlist).
+
+    Combined with the deployment list (``CONNECTOR_ALLOWED_HOSTS_*``). Exact DNS names only: no wildcards and no IP
+    literals (those still need ``CONNECTOR_APPROVED_PRIVATE_CIDRS`` on the server). Every request re-checks the list,
+    so removing a host stops the connector at its next call. Loopback/link-local/metadata and private resolved
+    addresses stay blocked regardless.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    provider = models.CharField(max_length=16, choices=IntegrationInstance.Provider.choices)
+    hostname = models.CharField(max_length=253)
+    reason = models.CharField(max_length=500, blank=True)
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", editable=False
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["provider", "hostname"]
+        constraints = [
+            models.UniqueConstraint(fields=["provider", "hostname"], name="integrations_connector_host_unique"),
+            models.CheckConstraint(condition=Q(hostname=Lower("hostname")), name="integrations_host_lower"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.provider}: {self.hostname}"

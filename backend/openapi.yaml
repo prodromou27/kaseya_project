@@ -502,6 +502,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/Revision'
           description: ''
+  /api/v1/connector-hosts/:
+    get:
+      operationId: connector_hosts_list
+      description: Connector egress allowlist managed in the portal (super admin).
+        Deployment-configured hosts are listed too.
+      tags:
+      - connector-hosts
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConnectorHost'
+          description: ''
+    post:
+      operationId: connector_hosts_create
+      description: Connector egress allowlist managed in the portal (super admin).
+        Deployment-configured hosts are listed too.
+      tags:
+      - connector-hosts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectorHost'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectorHost'
+          description: ''
+  /api/v1/connector-hosts/{id}/:
+    delete:
+      operationId: connector_hosts_destroy
+      description: Connector egress allowlist managed in the portal (super admin).
+        Deployment-configured hosts are listed too.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this connector host.
+        required: true
+      tags:
+      - connector-hosts
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/customers/:
     get:
       operationId: customers_list
@@ -3552,6 +3611,23 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/integrations/providers/:
+    get:
+      operationId: integrations_providers_retrieve
+      description: 'Provider catalog: which integrations exist and what an administrator
+        must enter for each.'
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/mappings/:
     get:
       operationId: mappings_list
@@ -4271,22 +4347,50 @@ components:
       description: |-
         * `local` - Local (bootstrap/dev only)
         * `oidc` - OIDC (Microsoft Entra ID)
+    ConnectorHost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        hostname:
+          type: string
+          maxLength: 253
+        reason:
+          type: string
+          maxLength: 500
+        added_by:
+          type: string
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - added_by
+      - created_at
+      - hostname
+      - id
+      - provider
     Credential:
       type: object
-      description: Write-only VSA X API token pair. Values are never echoed back,
-        logged or audited.
+      description: |-
+        Write-only credential fields for the integration's provider (see ``GET /integrations/providers/``).
+
+        All values are encrypted together; they are never echoed back, logged or audited.
       properties:
-        token_id:
-          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+            maxLength: 1000
           writeOnly: true
-          maxLength: 200
-        token_secret:
-          type: string
-          writeOnly: true
-          maxLength: 500
       required:
-      - token_id
-      - token_secret
+      - fields
     CustomFieldAllowlist:
       type: object
       properties:

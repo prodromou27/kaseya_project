@@ -19,6 +19,7 @@ from apps.integrations.vsa.fixtures import FixtureVsaTransport
 
 pytestmark = pytest.mark.django_db
 TOKEN_ID, TOKEN_SECRET = "fake-token-id-123", "FAKE-SECRET-value-never-shown"
+PAYLOAD = {"fields": {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}}
 
 
 @pytest.fixture
@@ -42,7 +43,7 @@ def _url(inst):
 
 def test_super_admin_sets_token_encrypted_and_never_returned(world, live):
     client = world.client(world.super_admin)
-    resp = client.post(_url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json")
+    resp = client.post(_url(live), PAYLOAD, format="json")
     assert resp.status_code == 200, resp.content
     body = resp.json()
     assert body["credential_configured"] is True and body["credential_source"] == "portal"
@@ -66,9 +67,7 @@ def test_super_admin_sets_token_encrypted_and_never_returned(world, live):
 
 
 def test_adapter_uses_portal_token_as_basic_auth(world, live):
-    world.client(world.super_admin).post(
-        _url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json"
-    )
+    world.client(world.super_admin).post(_url(live), PAYLOAD, format="json")
     live.refresh_from_db()
     seen = []
 
@@ -88,9 +87,7 @@ def test_portal_token_takes_precedence_over_server_reference(world, key, monkeyp
         name="both", provider="vsa_x", base_url="https://vsa.example.com", credential_ref="env:VSA_TOKEN"
     )
     assert resolve_instance_basic(inst).username == "server-id"
-    world.client(world.super_admin).post(
-        _url(inst), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json"
-    )
+    world.client(world.super_admin).post(_url(inst), PAYLOAD, format="json")
     inst.refresh_from_db()
     assert resolve_instance_basic(inst).username == TOKEN_ID
     assert AuditEvent.objects.get(action="integration.credential_set").metadata["server_reference_also_set"] is True
@@ -99,9 +96,7 @@ def test_portal_token_takes_precedence_over_server_reference(world, key, monkeyp
 @pytest.mark.parametrize("who", ["admin_a", "engineer_a", "viewer_a", "outsider"])
 def test_only_super_admin_may_set_or_clear(world, live, who):
     client = world.client(getattr(world, who))
-    assert (
-        client.post(_url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json").status_code == 403
-    )
+    assert client.post(_url(live), PAYLOAD, format="json").status_code == 403
     assert client.delete(_url(live)).status_code == 403
     live.refresh_from_db()
     assert live.credential_ciphertext == ""
@@ -110,9 +105,7 @@ def test_only_super_admin_may_set_or_clear(world, live, who):
 def test_anonymous_refused(live):
     from rest_framework.test import APIClient
 
-    assert APIClient().post(
-        _url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json"
-    ).status_code in (401, 403)
+    assert APIClient().post(_url(live), PAYLOAD, format="json").status_code in (401, 403)
 
 
 @pytest.mark.parametrize(
@@ -123,10 +116,11 @@ def test_anonymous_refused(live):
         {"token_id": "ok", "token_secret": "has space"},
         {"token_id": "", "token_secret": "x"},
         {"token_id": "ok"},
+        {"token_id": "ok", "token_secret": "x", "extra_field": "sneaky-value"},
     ],
 )
 def test_malformed_token_refused_without_echo(world, live, payload):
-    resp = world.client(world.super_admin).post(_url(live), payload, format="json")
+    resp = world.client(world.super_admin).post(_url(live), {"fields": payload}, format="json")
     assert resp.status_code == 400
     for value in payload.values():
         if len(value) > 2:
@@ -137,9 +131,7 @@ def test_fixture_instance_refuses_credentials(world, key):
     fx = IntegrationInstance.objects.create(
         name="fx", provider="vsa_x", base_url="https://vsa.invalid", is_fixture=True
     )
-    resp = world.client(world.super_admin).post(
-        _url(fx), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json"
-    )
+    resp = world.client(world.super_admin).post(_url(fx), PAYLOAD, format="json")
     assert resp.status_code == 400 and "Fixture" in resp.json()["error"]["message"] + json.dumps(resp.json())
 
 
@@ -149,18 +141,16 @@ def test_without_encryption_key_storage_is_refused(world, settings):
     inst = IntegrationInstance.objects.create(name="nokey", provider="vsa_x", base_url="https://vsa.example.com")
     client = world.client(world.super_admin)
     assert client.get("/api/v1/integrations/credential-storage/").json() == {"available": False}
-    resp = client.post(_url(inst), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json")
+    resp = client.post(_url(inst), PAYLOAD, format="json")
     assert resp.status_code == 400 and "CONNECTOR_ENCRYPTION_KEY" in resp.content.decode()
 
 
 def test_changed_key_or_copied_ciphertext_fails_safely(world, live, key):
-    world.client(world.super_admin).post(
-        _url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json"
-    )
+    world.client(world.super_admin).post(_url(live), PAYLOAD, format="json")
     live.refresh_from_db()
     other = IntegrationInstance.objects.create(name="other", provider="vsa_x", base_url="https://vsa2.example.com")
     other.credential_ciphertext = live.credential_ciphertext  # copied row value (e.g. SQL tampering)
-    with pytest.raises(CredentialUnavailable, match="does not belong"):
+    with pytest.raises(CredentialUnavailable, match="do not belong"):
         resolve_instance_basic(other)
     old = key.CONNECTOR_ENCRYPTION_KEY
     key.CONNECTOR_ENCRYPTION_KEY = Fernet.generate_key().decode()
@@ -173,14 +163,14 @@ def test_changed_key_or_copied_ciphertext_fails_safely(world, live, key):
 
 def test_changing_base_url_clears_portal_token(world, live):
     client = world.client(world.super_admin)
-    client.post(_url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json")
+    client.post(_url(live), PAYLOAD, format="json")
     resp = client.patch(f"/api/v1/integrations/{live.id}/", {"base_url": "https://vsa2.example.com"}, format="json")
     assert resp.status_code == 200 and resp.json()["credential_source"] == "none"
     assert AuditEvent.objects.filter(
         action="integration.credential_cleared", metadata__reason="base_url_changed"
     ).exists()
     # Other edits keep it.
-    client.post(_url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json")
+    client.post(_url(live), PAYLOAD, format="json")
     assert (
         client.patch(f"/api/v1/integrations/{live.id}/", {"enabled": True}, format="json").json()["credential_source"]
         == "portal"
@@ -189,7 +179,7 @@ def test_changing_base_url_clears_portal_token(world, live):
 
 def test_remove_token(world, live):
     client = world.client(world.super_admin)
-    client.post(_url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json")
+    client.post(_url(live), PAYLOAD, format="json")
     resp = client.delete(_url(live))
     assert resp.status_code == 200 and resp.json()["credential_configured"] is False
     live.refresh_from_db()
@@ -203,6 +193,47 @@ def test_connection_test_with_portal_token_and_reset_after_change(world, live, m
     client = world.client(world.super_admin)
     live.last_test_outcome = "ok"
     live.save(update_fields=["last_test_outcome"])
-    client.post(_url(live), {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}, format="json")
+    client.post(_url(live), PAYLOAD, format="json")
     live.refresh_from_db()
     assert live.last_test_outcome == ""  # old test result no longer describes the new token
+
+
+def test_providers_catalog_lists_available_and_planned(world):
+    body = world.client(world.super_admin).get("/api/v1/integrations/providers/").json()
+    by_key = {p["key"]: p for p in body}
+    assert by_key["vsa_x"]["implemented"] is True
+    assert [f["name"] for f in by_key["vsa_x"]["fields"]] == ["token_id", "token_secret"]
+    assert by_key["vsa_x"]["fields"][1]["secret"] is True
+    assert {"itglue", "autotask", "tenable"} <= set(by_key) and not by_key["itglue"]["implemented"]
+    assert all("pattern" not in f for p in body for f in p["fields"])  # regexes stay server-side
+    assert world.client(world.engineer_a).get("/api/v1/integrations/providers/").status_code == 403
+
+
+def test_planned_provider_never_stores_credentials(world, key):
+    inst = IntegrationInstance.objects.create(name="itg", provider="itglue", base_url="https://api.itglue.com")
+    resp = world.client(world.super_admin).post(_url(inst), {"fields": {"api_key": "FAKE-ITG-KEY"}}, format="json")
+    assert resp.status_code == 400 and "not available yet" in resp.content.decode()
+    inst.refresh_from_db()
+    assert inst.credential_ciphertext == ""
+
+
+def test_all_fields_are_inside_one_encrypted_blob_bound_to_provider(world, live):
+    from apps.integrations.secrets import _cipher, decrypt_fields
+
+    world.client(world.super_admin).post(_url(live), PAYLOAD, format="json")
+    live.refresh_from_db()
+    plaintext = json.loads(_cipher().decrypt(live.credential_ciphertext.encode()))
+    assert plaintext["provider"] == "vsa_x"
+    assert plaintext["fields"] == {"token_id": TOKEN_ID, "token_secret": TOKEN_SECRET}
+    live.provider = "itglue"  # same row, different provider: refused
+    with pytest.raises(CredentialUnavailable, match="do not belong"):
+        decrypt_fields(live)
+
+
+def test_v1_ciphertext_from_first_release_still_decrypts(world, live):
+    from apps.integrations.secrets import _cipher
+
+    v1_plaintext = f"{live.id}\n{TOKEN_ID}:{TOKEN_SECRET}"
+    live.credential_ciphertext = _cipher().encrypt(v1_plaintext.encode()).decode()
+    cred = resolve_instance_basic(live)
+    assert (cred.username, cred.password) == (TOKEN_ID, TOKEN_SECRET)

@@ -2,7 +2,7 @@
 # Odyssey Kaseya Portal: one-command installer / updater for AlmaLinux 9/10 (also Rocky/RHEL), SELinux enforcing.
 #
 #   sudo ./install.sh                                   # interactive: asks for anything missing
-#   sudo ./install.sh --hostname portal.example.com --admin-email you@example.com --vsa-host vsa.example.com --yes
+#   sudo ./install.sh --hostname portal.example.com --admin-email you@example.com --yes
 #
 # Re-running is safe: it keeps existing secrets, settings, certificate and data, applies any new options, rebuilds
 # the images from the current checkout and restarts the stack (database migrations run automatically).
@@ -19,8 +19,8 @@
 #   7. Optionally (--backup-key) installs the encrypted nightly database backup.
 #   8. Runs the read-only preflight checks and prints the result.
 #
-# The VSA X API token is NOT handled here: after signing in, a super admin adds it in Admin → Integrations →
-# "Set API token" (stored encrypted). The VSA X server hostname must be allowed with --vsa-host.
+# Integration settings are NOT handled here: after signing in, a super admin configures everything in
+# Admin → Integrations (allowed API hosts, base URL, credentials; credentials are stored encrypted).
 set -euo pipefail
 
 usage() {
@@ -28,7 +28,7 @@ usage() {
 Usage: sudo ./install.sh [options]
   --hostname NAME          Portal DNS name used in the browser (default: this host's FQDN)
   --admin-email EMAIL      E-mail (login) of the first super administrator
-  --vsa-host HOST[,HOST]   VSA X server hostname(s) the connector may call, e.g. vsa.example.com
+  --vsa-host HOST[,HOST]   Optional: also allow VSA X host(s) in the server config (normally done in the portal)
   --cert FILE --key FILE   CA-issued certificate (full chain, PEM) and private key; default: self-signed
   --regen-cert             Replace an existing self-signed certificate (e.g. after changing --hostname)
   --backup-key FILE        GPG PUBLIC key (.asc) for encrypted nightly backups (enables the backup timer)
@@ -182,7 +182,7 @@ fi
 HOSTNAME_ARG=${HOSTNAME_ARG,,}
 
 if [ "$VSA_SET" -eq 0 ]; then
-  ask VSA_HOSTS "VSA X server hostname(s), comma-separated (empty = none yet)" "$(get_env CONNECTOR_ALLOWED_HOSTS_VSA_X)"
+  VSA_HOSTS=$(get_env CONNECTOR_ALLOWED_HOSTS_VSA_X)  # API hosts are normally allowed in the portal
 fi
 VSA_HOSTS=${VSA_HOSTS// /}
 VSA_HOSTS=${VSA_HOSTS,,}
@@ -203,7 +203,7 @@ if [ "$FIRST_INSTALL" -eq 1 ]; then
 fi
 info "hostname: $HOSTNAME_ARG"
 info "also reachable by IP: ${SERVER_IPS:-(none detected)}"
-info "VSA X hosts allowed: ${VSA_HOSTS:-(none yet: re-run with --vsa-host to add)}"
+info "API hosts: allowed in the portal (Admin → Integrations)${VSA_HOSTS:+; also in server config: $VSA_HOSTS}"
 info "sign-in: $( [ "$(get_env OIDC_ENABLED)" = "true" ] && echo "Entra ID (OIDC)" || echo "local accounts" )"
 
 # ---------------------------------------------------------------- 4. secrets + TLS
@@ -346,8 +346,8 @@ Also by IP: $(printf '%s' "$SERVER_IPS" | sed -e 's#[^,][^,]*#https://&/#g' -e '
 
 Next steps:
   1. Sign in as the administrator (password in $CRED_FILE on first install).
-  2. Admin → Integrations → add a VSA X integration (base URL https://<your VSA host>), then "Set API token"
-     with a READ-ONLY token, then "Test connection". The host must be allowed: sudo ./install.sh --vsa-host <host> -y
+  2. Admin → Integrations: allow your VSA X hostname, add the integration (base URL https://<your VSA host>),
+     "Set credentials" with a READ-ONLY token (stored encrypted), then "Test connection".
   3. Map VSA organisations to customers (Admin → Mappings), approve, then enable the integration.
   Update later with: git pull && sudo ./install.sh -y
 EOF

@@ -23,6 +23,8 @@ Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-te
 ### Added (deployment)
 - `install.sh`: one-command, idempotent AlmaLinux installer/updater (packages, Docker, firewall 80/443, settings, secrets, TLS, build, health wait, first admin, optional backups, preflight). Not yet run on a host.
 - The VSA X API token can be entered in the portal by a super admin (Admin → Integrations → *Set API token*). Encrypted at rest with a host-held key, write-only, audited, cleared when the base URL changes.
+- **Integrations page holds every API setting:** a provider catalog (VSA X available; IT Glue, Autotask, Tenable planned), allowed API hosts managed in the portal (audited, re-checked per request), editing of base URL, rate and budgets, and provider-defined credential fields stored together as one encrypted blob.
+- Deployment fixes from the first AlmaLinux boot: Redis user, backend health-check host, access by server IP, installer defaults on hosts named `localhost`, visible API errors instead of an endless session check.
 - CI and security workflows run on GitHub (first run fixed: stale OpenAPI schema, pip-audit Python version, check --deploy env, reviewed gitleaks test fixtures).
 
 ### Added

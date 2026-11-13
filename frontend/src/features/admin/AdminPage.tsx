@@ -14,7 +14,9 @@ import { AuditTable } from "../customers/AuditTable";
 import { CatalogPanel } from "./CatalogPanel";
 import { QuarantinePanel } from "./QuarantinePanel";
 import { SyncSchedulesPanel } from "./SyncSchedulesPanel";
-import { CredentialForm, credentialLabel } from "./CredentialForm";
+import { ConnectorHostsPanel } from "./ConnectorHostsPanel";
+import { CredentialForm, credentialLabel, useProviders } from "./CredentialForm";
+import { EditIntegrationForm } from "./EditIntegrationForm";
 import { mappingColumns } from "../customers/MappingsPanel";
 
 function UsersPanel() {
@@ -68,7 +70,6 @@ function IntegrationsPanel() {
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<Provider>("vsa_x");
   const [baseUrl, setBaseUrl] = useState("");
-  const [credentialRef, setCredentialRef] = useState("");
   const [isFixture, setIsFixture] = useState(false);
   const [budget, setBudget] = useState("0");
   const [policyBudget, setPolicyBudget] = useState("0");
@@ -77,6 +78,10 @@ function IntegrationsPanel() {
   const [discoverId, setDiscoverId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ name: string; result: ConnectionTestResult } | null>(null);
   const [tokenFor, setTokenFor] = useState<Integration | null>(null);
+  const providers = useProviders();
+  const available = (providers.data ?? []).filter((p) => p.implemented);
+  const providerSpec = providers.data?.find((p) => p.key === provider);
+  const [editing, setEditing] = useState<Integration | null>(null);
   const storage = useQuery({ queryKey: ["credential-storage"], queryFn: ({ signal }) => api.get<{ available: boolean }>("/integrations/credential-storage/", undefined, signal) });
   const removeToken = useMutation({
     mutationFn: (id: string) => api.del<Integration>(`/integrations/${id}/credential/`),
@@ -95,11 +100,10 @@ function IntegrationsPanel() {
   });
   const create = useMutation({
     mutationFn: () =>
-      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture, installed_updates_budget: Number(budget), applied_policies_budget: Number(policyBudget), notifications_budget: Number(notifBudget), custom_fields_budget: Number(cfBudget) }),
+      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, is_fixture: isFixture, installed_updates_budget: Number(budget), applied_policies_budget: Number(policyBudget), notifications_budget: Number(notifBudget), custom_fields_budget: Number(cfBudget) }),
     onSuccess: () => {
       setName("");
       setBaseUrl("");
-      setCredentialRef("");
       void queryClient.invalidateQueries({ queryKey: ["integrations"] });
     },
   });
@@ -130,19 +134,20 @@ function IntegrationsPanel() {
           <button type="button" className="btn-secondary" onClick={() => toggle.mutate({ id: row.original.id, enabled: !row.original.enabled })}>
             {row.original.enabled ? "Disable" : "Enable"}
           </button>
+          <button type="button" className="btn-secondary" onClick={() => setEditing(row.original)}>Edit</button>
           <button type="button" className="btn-secondary" onClick={() => setDiscoverId(row.original.id)}>Discover orgs</button>
           {row.original.provider === "vsa_x" ? (
             <button type="button" className="btn-secondary" disabled={testConn.isPending} onClick={() => testConn.mutate(row.original)}>Test connection</button>
           ) : null}
           {row.original.provider === "vsa_x" && !row.original.is_fixture ? (
             <button type="button" className="btn-secondary" disabled={storage.data?.available === false} onClick={() => setTokenFor(row.original)}>
-              {row.original.credential_source === "portal" ? "Replace API token" : "Set API token"}
+              {row.original.credential_source === "portal" ? "Replace credentials" : "Set credentials"}
             </button>
           ) : null}
           {row.original.credential_source === "portal" ? (
             <button type="button" className="btn-secondary" disabled={removeToken.isPending}
-                    onClick={() => { if (window.confirm(`Remove the API token for ${row.original.name}? Syncs will stop until a new one is set.`)) removeToken.mutate(row.original.id); }}>
-              Remove token
+                    onClick={() => { if (window.confirm(`Remove the credentials for ${row.original.name}? Syncs will stop until new ones are set.`)) removeToken.mutate(row.original.id); }}>
+              Remove credentials
             </button>
           ) : null}
         </span>
@@ -156,31 +161,41 @@ function IntegrationsPanel() {
   return (
     <div className="space-y-3">
       <Notice tone="warn">
-        Connectors are read-only. Hosts must be on the deployment allowlist; TLS verification cannot be disabled. Add the
-        integration, then use <em>Set API token</em> to enter a read-only VSA X token: it is stored encrypted and never
-        shown again. A server credential reference (e.g. <code>env:VSA_TOKEN</code>) is still supported.
+        All integrations are configured here. Connectors are read-only and TLS verification cannot be disabled.
+        Credentials (API keys, tokens, secrets) are stored encrypted and never shown again. Setup: 1) allow the API
+        hostname, 2) add the integration, 3) <em>Set credentials</em>, 4) <em>Test connection</em>, 5){" "}
+        <em>Discover orgs</em> and map them to customers, 6) <em>Enable</em>.
       </Notice>
+      <section aria-label="Available integrations" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {(providers.data ?? []).map((p) => (
+          <div key={p.key} className="rounded border border-slate-200 bg-white p-3 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold">{p.label}</span>
+              <Badge tone={p.implemented ? "good" : "neutral"}>{p.implemented ? "Available" : "Planned"}</Badge>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">{p.phase}</p>
+            <p className="mt-1 text-xs text-slate-600">Needs: {["Base URL", ...p.fields.map((f) => f.label)].join(", ")}</p>
+            {p.notes ? <p className="mt-1 text-xs text-slate-500">{p.notes}</p> : null}
+          </div>
+        ))}
+      </section>
+      <ConnectorHostsPanel />
       <form onSubmit={submit} aria-label="Add integration" className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-3">
         <Field label="Name">{(id) => <input id={id} className="input w-48" required value={name} onChange={(e) => setName(e.target.value)} />}</Field>
         <Field label="Provider">
           {(id) => (
             <select id={id} className="input" value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
-              {(Object.keys(PROVIDER_LABEL) as Provider[]).map((p) => (
+              {(available.length ? available.map((p) => p.key as Provider) : (["vsa_x"] as Provider[])).map((p) => (
                 <option key={p} value={p}>
-                  {PROVIDER_LABEL[p]}
+                  {PROVIDER_LABEL[p] ?? p}
                 </option>
               ))}
             </select>
           )}
         </Field>
-        <Field label="Base URL" hint={isFixture ? "Fixture URLs must end in .invalid" : "https only, allowlisted host"}>
+        <Field label="Base URL" hint={isFixture ? "Fixture URLs must end in .invalid" : providerSpec?.base_url_help ?? "https only, allowed host"}>
           {(id, hint) => <input id={id} aria-describedby={hint} className="input w-64" required value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://" />}
         </Field>
-        {!isFixture ? (
-          <Field label="Server credential reference (optional)">
-            {(id) => <input id={id} className="input w-56" value={credentialRef} onChange={(e) => setCredentialRef(e.target.value)} autoComplete="off" />}
-          </Field>
-        ) : null}
         <Field label="InstalledUpdates budget / sync" hint="Per-device detail calls (0 = off; limit 3600 req/h)">
           {(id, hint) => (
             <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
@@ -221,6 +236,7 @@ function IntegrationsPanel() {
         <Notice tone="warn">This server has no credential encryption key, so API tokens cannot be entered here. Re-run the installer (it creates the key).</Notice>
       ) : null}
       {tokenFor ? <CredentialForm key={tokenFor.id} integration={tokenFor} onClose={() => setTokenFor(null)} /> : null}
+      {editing ? <EditIntegrationForm key={editing.id} integration={editing} onClose={() => setEditing(null)} /> : null}
       {testResult ? <ConnectionTestPanel name={testResult.name} result={testResult.result} onClose={() => setTestResult(null)} /> : null}
       {discoverId ? <DiscoveryResult id={discoverId} onClose={() => setDiscoverId(null)} /> : null}
       <QueryBoundary query={query}>

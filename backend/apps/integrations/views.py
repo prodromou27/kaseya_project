@@ -19,15 +19,18 @@ from apps.accounts.permissions import IsSystemAdmin
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
 
-from .models import IntegrationInstance, SyncQuarantine, SyncSchedule
-from .secrets import CredentialStorageUnavailable, credential_source, encrypt_for, storage_available
+from .models import ConnectorHost, IntegrationInstance, SyncQuarantine, SyncSchedule
+from .providers import PROVIDERS, validate_fields
+from .secrets import CredentialStorageUnavailable, credential_source, encrypt_fields, storage_available
 
 
 class CredentialSerializer(serializers.Serializer):
-    """Write-only VSA X API token pair. Values are never echoed back, logged or audited."""
+    """Write-only credential fields for the integration's provider (see ``GET /integrations/providers/``).
 
-    token_id = serializers.CharField(write_only=True, max_length=200, trim_whitespace=True)
-    token_secret = serializers.CharField(write_only=True, max_length=500, trim_whitespace=True)
+    All values are encrypted together; they are never echoed back, logged or audited.
+    """
+
+    fields = serializers.DictField(child=serializers.CharField(allow_blank=True, max_length=1000), write_only=True)
 
 
 class IntegrationInstanceSerializer(serializers.ModelSerializer):
@@ -223,13 +226,14 @@ class IntegrationInstanceViewSet(
             return Response(self.get_serializer(instance).data)
         if instance.is_fixture:
             raise ValidationError({"detail": "Fixture instances never use credentials."})
-        if instance.provider != IntegrationInstance.Provider.VSA_X:
-            raise ValidationError({"detail": "Only VSA X is supported in this phase."})
         body = CredentialSerializer(data=request.data)
         body.is_valid(raise_exception=True)
+        clean, errors = validate_fields(instance.provider, body.validated_data["fields"])
+        if errors:
+            raise ValidationError(errors)
         try:
-            ciphertext = encrypt_for(instance, body.validated_data["token_id"], body.validated_data["token_secret"])
-        except (ValueError, CredentialStorageUnavailable) as exc:
+            ciphertext = encrypt_fields(instance, clean)
+        except CredentialStorageUnavailable as exc:
             raise ValidationError({"detail": str(exc)}) from exc
         replaced = bool(instance.credential_ciphertext)
         instance.credential_ciphertext = ciphertext
@@ -248,6 +252,12 @@ class IntegrationInstanceViewSet(
             metadata={"replaced": replaced, "server_reference_also_set": bool(instance.credential_ref)},
         )
         return Response(self.get_serializer(instance).data)
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"], url_path="providers")
+    def providers(self, request: Request) -> Response:
+        """Provider catalog: which integrations exist and what an administrator must enter for each."""
+        return Response([spec.as_dict() for spec in PROVIDERS.values()])
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="credential-storage")
@@ -487,3 +497,89 @@ class SyncScheduleViewSet(
             request=self.request,
             metadata={"interval_hours": s.interval_hours, "enabled": s.enabled},
         )
+
+
+class ConnectorHostSerializer(serializers.ModelSerializer):
+    added_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConnectorHost
+        fields = ["id", "provider", "hostname", "reason", "added_by", "created_at"]
+        read_only_fields = ["id", "added_by", "created_at"]
+
+    def get_added_by(self, obj: ConnectorHost) -> str | None:
+        return obj.added_by.email if obj.added_by_id else None
+
+    def validate_hostname(self, value: str) -> str:
+        from .urlpolicy import normalize_api_hostname
+
+        try:
+            return normalize_api_hostname(value)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages) from exc
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        if attrs["provider"] != IntegrationInstance.Provider.VSA_X:
+            raise ValidationError({"provider": "Only VSA X is supported in this phase."})
+        if ConnectorHost.objects.filter(provider=attrs["provider"], hostname=attrs["hostname"]).exists():
+            raise ValidationError({"hostname": "This host is already allowed."})
+        return attrs
+
+
+class ConnectorHostViewSet(
+    mixins.ListModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet
+):
+    """Connector egress allowlist managed in the portal (super admin). Deployment-configured hosts are listed too."""
+
+    permission_classes = [IsSystemAdmin]
+    serializer_class = ConnectorHostSerializer
+    queryset = ConnectorHost.objects.select_related("added_by")
+    pagination_class = None
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        from django.conf import settings
+
+        rows = self.get_serializer(self.get_queryset(), many=True).data
+        deployment = [
+            {"provider": provider, "hostname": host.lower()}
+            for provider, hosts in settings.CONNECTOR_ALLOWED_HOSTS.items()
+            for host in hosts
+        ]
+        return Response({"results": rows, "deployment": deployment})
+
+    def perform_create(self, serializer: ConnectorHostSerializer) -> None:
+        row = serializer.save(added_by=self.request.user)
+        record_event(
+            action="integration.host_allowed",
+            outcome="success",
+            actor=self.request.user,
+            target_type="connector_host",
+            target_id=str(row.id),
+            request=self.request,
+            metadata={"provider": row.provider, "hostname": row.hostname, "reason": row.reason[:200]},
+        )
+
+    def perform_destroy(self, instance: ConnectorHost) -> None:
+        from django.conf import settings
+
+        deployment_hosts = {h.lower() for h in settings.CONNECTOR_ALLOWED_HOSTS.get(instance.provider, [])}
+        in_deployment = instance.hostname in deployment_hosts
+        users = [
+            i.name
+            for i in IntegrationInstance.objects.filter(provider=instance.provider, is_fixture=False)
+            if (i.base_url or "").lower().removeprefix("https://").rstrip("/") == instance.hostname
+        ]
+        if users and not in_deployment:
+            raise ValidationError(
+                {"detail": f"Still used by: {', '.join(sorted(users))}. Change or disable those integrations first."}
+            )
+        record_event(
+            action="integration.host_removed",
+            outcome="success",
+            actor=self.request.user,
+            target_type="connector_host",
+            target_id=str(instance.id),
+            request=self.request,
+            metadata={"provider": instance.provider, "hostname": instance.hostname},
+        )
+        instance.delete()

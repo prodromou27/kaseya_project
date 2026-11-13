@@ -6,5 +6,6 @@ router = SimpleRouter()
 router.register("integrations", views.IntegrationInstanceViewSet, basename="integration")
 router.register("sync-quarantine", views.SyncQuarantineViewSet, basename="sync-quarantine")
 router.register("sync-schedules", views.SyncScheduleViewSet, basename="sync-schedule")
+router.register("connector-hosts", views.ConnectorHostViewSet, basename="connector-host")
 
 urlpatterns = router.urls

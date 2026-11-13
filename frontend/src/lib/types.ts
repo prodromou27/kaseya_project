@@ -130,6 +130,17 @@ export type PortalUser = {
   last_login: string | null;
 };
 
+/** Provider catalog from GET /integrations/providers/ (what an admin must enter; secret fields are stored encrypted). */
+export type ProviderSpec = {
+  key: string;
+  label: string;
+  implemented: boolean;
+  phase: string;
+  base_url_help: string;
+  notes: string;
+  fields: { name: string; label: string; secret: boolean; max_length: number; help: string; pattern_message: string }[];
+};
+
 export const PROVIDER_LABEL: Record<Provider, string> = {
   vsa_x: "Kaseya VSA X",
   itglue: "IT Glue",

@@ -17,14 +17,14 @@ sudo git clone https://github.com/prodromou27/kaseya_project.git /opt/okp   # pr
 cd /opt/okp
 sudo ./install.sh                                       # interactive
 # or fully unattended:
-sudo ./install.sh --hostname portal.example.com --admin-email admin@example.com --vsa-host vsa.example.com --yes
+sudo ./install.sh --hostname portal.example.com --admin-email admin@example.com --yes
 ```
 
 | Option | Effect |
 |---|---|
 | `--hostname` | Portal DNS name (default: the host FQDN) |
 | `--admin-email` | First super administrator. A random password is written to `/root/okp-initial-admin.txt` (0600) |
-| `--vsa-host` | VSA X hostname(s) the connector may call (`CONNECTOR_ALLOWED_HOSTS_VSA_X`) |
+| `--vsa-host` | Optional. API hosts are normally allowed in the portal; this adds them to the server config instead |
 | `--cert` / `--key` | CA-issued certificate and key (checked to match). Without them a **self-signed** certificate is generated |
 | `--backup-key` / `--backup-target` | Backup **public** key and optional rsync off-host target: installs and runs the backup timer |
 | `--skip-packages`, `--yes` | Prepared host; non-interactive |
@@ -34,7 +34,8 @@ Defaults chosen by the installer, change them deliberately:
 * Ports 80 and 443 are open to **every source** (firewalld `http`/`https`, `PORTAL_BIND_ADDRESS=0.0.0.0`). Restrict
   them with section 5 when needed.
 * Local sign-in is on and OIDC off on the first install (no Entra ID registration yet). Switch per section 6.
-* The VSA X API token is entered by a super admin in the portal (Admin → Integrations → *Set API token*). It is
+* All integration settings are entered by a super admin in the portal (Admin → Integrations): allowed API hosts,
+  base URL, budgets and credentials (*Set credentials*). Credentials are
   stored encrypted with `secrets/connector_encryption_key`; keep a copy of that key with the backup key custodians,
   or tokens must be entered again after a restore to a new host.
 * `seed_demo` is refused by the production stack; the portal starts empty.
