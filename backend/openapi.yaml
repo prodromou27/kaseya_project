@@ -641,6 +641,262 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAuditEventList'
           description: ''
+  /api/v1/customers/{customer_pk}/changes/:
+    get:
+      operationId: customers_changes_retrieve
+      description: 'Summary counts for the pair (default: current vs previous complete
+        snapshot).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: Older generation ID
+      - in: query
+        name: to
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/changes/devices/:
+    get:
+      operationId: customers_changes_devices_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: Older generation ID
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - agent_installed
+          - agent_version
+          - device_added
+          - device_removed
+          - group
+          - hostname
+          - ip_addresses
+          - os
+          - site
+          - software
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/changes/snapshots/:
+    get:
+      operationId: customers_changes_snapshots_retrieve
+      description: Complete snapshots of this customer that can be compared (newest
+        first).
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-allowlist/:
+    get:
+      operationId: customers_custom_field_allowlist_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomFieldAllowlist'
+          description: ''
+    post:
+      operationId: customers_custom_field_allowlist_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomFieldAllowlist'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldAllowlist'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-allowlist/{id}/approve/:
+    post:
+      operationId: customers_custom_field_allowlist_approve_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom field allowlist.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldAllowlist'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-allowlist/{id}/reject/:
+    post:
+      operationId: customers_custom_field_allowlist_reject_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom field allowlist.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldAllowlist'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-allowlist/{id}/retire/:
+    post:
+      operationId: customers_custom_field_allowlist_retire_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom field allowlist.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldAllowlist'
+          description: ''
   /api/v1/customers/{customer_pk}/datasets/:
     get:
       operationId: customers_datasets_retrieve
@@ -664,6 +920,236 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/device-health/devices/:
+    get:
+      operationId: customers_device_health_devices_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: query
+        name: agent_installed
+        schema:
+          type: string
+      - in: query
+        name: agent_version
+        schema:
+          type: string
+      - in: query
+        name: antivirus
+        schema:
+          type: string
+      - in: query
+        name: connectivity
+        schema:
+          type: string
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: disk
+        schema:
+          type: string
+      - in: query
+        name: firewall
+        schema:
+          type: string
+      - in: query
+        name: group_id
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/device-health/summary/:
+    get:
+      operationId: customers_device_health_summary_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/expected-subnets/:
+    get:
+      operationId: customers_expected_subnets_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExpectedSubnet'
+          description: ''
+    post:
+      operationId: customers_expected_subnets_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpectedSubnet'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedSubnet'
+          description: ''
+  /api/v1/customers/{customer_pk}/expected-subnets/{id}/approve/:
+    post:
+      operationId: customers_expected_subnets_approve_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected subnet.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedSubnet'
+          description: ''
+  /api/v1/customers/{customer_pk}/expected-subnets/{id}/reject/:
+    post:
+      operationId: customers_expected_subnets_reject_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected subnet.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedSubnet'
+          description: ''
+  /api/v1/customers/{customer_pk}/expected-subnets/{id}/retire/:
+    post:
+      operationId: customers_expected_subnets_retire_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected subnet.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedSubnet'
+          description: ''
   /api/v1/customers/{customer_pk}/groups/{id}/network/:
     get:
       operationId: customers_groups_network_retrieve
@@ -680,6 +1166,148 @@ paths:
         schema:
           type: string
           pattern: ^[0-9]{1,18}$
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/health-thresholds/:
+    get:
+      operationId: customers_health_thresholds_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthThresholds'
+          description: ''
+    post:
+      operationId: customers_health_thresholds_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthThresholds'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthThresholds'
+          description: ''
+  /api/v1/customers/{customer_pk}/health-thresholds/{id}/approve/:
+    post:
+      operationId: customers_health_thresholds_approve_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this health thresholds.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthThresholds'
+          description: ''
+  /api/v1/customers/{customer_pk}/health-thresholds/{id}/reject/:
+    post:
+      operationId: customers_health_thresholds_reject_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this health thresholds.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthThresholds'
+          description: ''
+  /api/v1/customers/{customer_pk}/health-thresholds/effective/:
+    get:
+      operationId: customers_health_thresholds_effective_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
         required: true
       tags:
       - customers
@@ -904,6 +1532,599 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/customers/{customer_pk}/notifications/:
+    get:
+      operationId: customers_notifications_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: query
+        name: asset
+        schema:
+          type: string
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: priority
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /api/v1/customers/{customer_pk}/notifications/summary/:
+    get:
+      operationId: customers_notifications_summary_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/runs/:
+    get:
+      operationId: customers_onboarding_runs_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReconciliationRunList'
+          description: ''
+    post:
+      operationId: customers_onboarding_runs_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconciliationRunRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationRun'
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/runs/{id}/:
+    get:
+      operationId: customers_onboarding_runs_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this reconciliation run.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationRun'
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/runs/{id}/export/:
+    get:
+      operationId: customers_onboarding_runs_export_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this reconciliation run.
+        required: true
+      - in: query
+        name: output
+        schema:
+          type: string
+          enum:
+          - csv
+          - xlsx
+      - in: query
+        name: part
+        schema:
+          type: string
+          enum:
+          - expected
+          - unexpected
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/runs/{id}/results/:
+    get:
+      operationId: customers_onboarding_runs_results_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: query
+        name: classification
+        schema:
+          type: string
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: flag
+        schema:
+          type: string
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this reconciliation run.
+        required: true
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - expected
+          - unexpected
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: review_state
+        schema:
+          type: string
+          enum:
+          - decided
+          - not_required
+          - pending
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReconciliationResultList'
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/runs/{id}/results/{result_pk}/review/:
+    post:
+      operationId: customers_onboarding_runs_results_review_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this reconciliation run.
+        required: true
+      - in: path
+        name: result_pk
+        schema:
+          type: string
+          pattern: ^[0-9a-f-]{36}$
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconciliationReview'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationResult'
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/runs/eligibility/:
+    get:
+      operationId: customers_onboarding_runs_eligibility_retrieve
+      description: Which snapshots can be compared now, and why not if none can (same
+        checks as run creation).
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/templates/:
+    get:
+      operationId: customers_onboarding_templates_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MappingTemplate'
+          description: ''
+    post:
+      operationId: customers_onboarding_templates_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingTemplate'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingTemplate'
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/templates/{id}/:
+    delete:
+      operationId: customers_onboarding_templates_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this mapping template.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/customers/{customer_pk}/onboarding/uploads/:
+    get:
+      operationId: customers_onboarding_uploads_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOnboardingUploadList'
+          description: ''
+    post:
+      operationId: customers_onboarding_uploads_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingUpload'
+          description: ''
+  /api/v1/customers/{customer_pk}/onboarding/uploads/{id}/:
+    get:
+      operationId: customers_onboarding_uploads_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected inventory upload.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingUpload'
+          description: ''
+    delete:
+      operationId: customers_onboarding_uploads_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected inventory upload.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/customers/{customer_pk}/onboarding/uploads/{id}/preview/:
+    post:
+      operationId: customers_onboarding_uploads_preview_create
+      description: Headers, suggested mapping and the first rows as plain text. Nothing
+        is stored.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected inventory upload.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OnboardingPreviewRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingPreviewRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/os-updates/:
     get:
       operationId: customers_os_updates_list
@@ -994,6 +2215,224 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/patch-policies/devices/:
+    get:
+      operationId: customers_patch_policies_devices_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: drift
+        schema:
+          type: string
+      - in: query
+        name: group_id
+        schema:
+          type: string
+      - in: query
+        name: patch_state
+        schema:
+          type: string
+      - in: query
+        name: policy_id
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/patch-policies/summary/:
+    get:
+      operationId: customers_patch_policies_summary_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/patch-policy-baselines/:
+    get:
+      operationId: customers_patch_policy_baselines_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExpectedPatchPolicy'
+          description: ''
+    post:
+      operationId: customers_patch_policy_baselines_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpectedPatchPolicy'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedPatchPolicy'
+          description: ''
+  /api/v1/customers/{customer_pk}/patch-policy-baselines/{id}/approve/:
+    post:
+      operationId: customers_patch_policy_baselines_approve_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected patch policy.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedPatchPolicy'
+          description: ''
+  /api/v1/customers/{customer_pk}/patch-policy-baselines/{id}/reject/:
+    post:
+      operationId: customers_patch_policy_baselines_reject_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected patch policy.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedPatchPolicy'
+          description: ''
+  /api/v1/customers/{customer_pk}/patch-policy-baselines/{id}/retire/:
+    post:
+      operationId: customers_patch_policy_baselines_retire_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this expected patch policy.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedPatchPolicy'
           description: ''
   /api/v1/customers/{customer_pk}/report-definitions/:
     get:
@@ -2001,6 +3440,31 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/integrations/{id}/test-connection/:
+    post:
+      operationId: integrations_test_connection_create
+      description: 'VSA1-01: one read-only ``GET /api/v3/ratelimits``. Records outcome,
+        latency and reported limits only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/integrations/options/:
     get:
       operationId: integrations_options_retrieve
@@ -2737,6 +4201,49 @@ components:
       description: |-
         * `local` - Local (bootstrap/dev only)
         * `oidc` - OIDC (Microsoft Entra ID)
+    CustomFieldAllowlist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        reason:
+          type: string
+          maxLength: 500
+        state:
+          allOf:
+          - $ref: '#/components/schemas/ReviewedExpectationStateEnum'
+          readOnly: true
+        proposed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - proposed_by
+      - reason
+      - reviewed_at
+      - reviewed_by
+      - state
     Customer:
       type: object
       properties:
@@ -2794,6 +4301,16 @@ components:
         * `active` - Active
         * `suspended` - Suspended
         * `archived` - Archived
+    DecisionEnum:
+      enum:
+      - match
+      - no_match
+      - confirm
+      type: string
+      description: |-
+        * `match` - match
+        * `no_match` - no_match
+        * `confirm` - confirm
     DeviceOsUpdate:
       type: object
       properties:
@@ -2967,6 +4484,139 @@ components:
       description: |-
         * `active` - Active
         * `revoked` - Revoked
+    ExpectedPatchPolicy:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        scope_type:
+          $ref: '#/components/schemas/ExpectedPatchPolicyScopeTypeEnum'
+        scope_external_id:
+          type: string
+          maxLength: 20
+        expect_no_policy:
+          type: boolean
+        expected_policy_id:
+          type: string
+          maxLength: 20
+        expected_policy_name:
+          type: string
+          readOnly: true
+          description: Label at proposal time.
+        reason:
+          type: string
+          maxLength: 500
+        state:
+          allOf:
+          - $ref: '#/components/schemas/ReviewedExpectationStateEnum'
+          readOnly: true
+        proposed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - expected_policy_name
+      - id
+      - proposed_by
+      - reason
+      - reviewed_at
+      - reviewed_by
+      - scope_external_id
+      - scope_type
+      - state
+    ExpectedPatchPolicyScopeTypeEnum:
+      enum:
+      - organization
+      - site
+      - group
+      type: string
+      description: |-
+        * `organization` - Organisation
+        * `site` - Site
+        * `group` - Group
+    ExpectedSubnet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        scope_type:
+          $ref: '#/components/schemas/ExpectedSubnetScopeTypeEnum'
+        scope_external_id:
+          type: string
+          maxLength: 20
+        cidr:
+          type: string
+          description: Normalised network (strict), IPv4 or IPv6.
+          maxLength: 49
+        reason:
+          type: string
+          maxLength: 500
+        state:
+          allOf:
+          - $ref: '#/components/schemas/ReviewedExpectationStateEnum'
+          readOnly: true
+        proposed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - cidr
+      - created_at
+      - id
+      - proposed_by
+      - reason
+      - reviewed_at
+      - reviewed_by
+      - scope_external_id
+      - scope_type
+      - state
+    ExpectedSubnetScopeTypeEnum:
+      enum:
+      - site
+      - group
+      type: string
+      description: |-
+        * `site` - Site
+        * `group` - Group
+    FileFormatEnum:
+      enum:
+      - xlsx
+      - csv
+      type: string
+      description: |-
+        * `xlsx` - Excel workbook
+        * `csv` - CSV
     FormatEnum:
       enum:
       - csv
@@ -2987,6 +4637,76 @@ components:
         * `daily` - Daily
         * `weekly` - Weekly
         * `monthly` - Monthly
+    HealthThresholds:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        offline_hours:
+          type: integer
+          maximum: 2160
+          minimum: 1
+        stale_days:
+          type: integer
+          maximum: 365
+          minimum: 1
+        disk_warning_free_pct:
+          type: integer
+          maximum: 100
+          minimum: 1
+        disk_critical_free_pct:
+          type: integer
+          maximum: 99
+          minimum: 0
+        minimum_agent_version:
+          type: string
+          maxLength: 32
+        reason:
+          type: string
+          maxLength: 500
+        state:
+          allOf:
+          - $ref: '#/components/schemas/HealthThresholdsStateEnum'
+          readOnly: true
+        proposed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - proposed_by
+      - reason
+      - reviewed_at
+      - reviewed_by
+      - state
+    HealthThresholdsStateEnum:
+      enum:
+      - proposed
+      - approved
+      - superseded
+      - rejected
+      type: string
+      description: |-
+        * `proposed` - Proposed
+        * `approved` - Approved (in effect)
+        * `superseded` - Superseded
+        * `rejected` - Rejected
     Import:
       type: object
       properties:
@@ -3076,6 +4796,33 @@ components:
           minimum: 0
           description: Max per-device GET /api/v3/assets/:id calls per sync for InstalledUpdates
             (0 = disabled). Documented limit is 3600 requests/hour per token+endpoint.
+        applied_policies_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/devices/:id/appliedpolicies calls
+            per sync (0 = disabled). Documented limit is 3600 requests/hour.
+        notifications_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/devices/:id/notifications calls
+            per sync (0 = disabled).
+        custom_fields_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/devices/:id/customfields calls per
+            sync (0 = disabled). Used only for customers with approved custom field
+            names.
+        last_test_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_test_outcome:
+          type: string
+          maxLength: 32
+        last_test_result: {}
         verify_tls:
           type: boolean
           readOnly: true
@@ -3147,6 +4894,14 @@ components:
       - id
       - name
       - provider
+    KindEnum:
+      enum:
+      - expected
+      - unexpected
+      type: string
+      description: |-
+        * `expected` - Expected row
+        * `unexpected` - Unexpected VSA asset
     Login:
       type: object
       properties:
@@ -3173,6 +4928,31 @@ components:
         * `approved` - Approved
         * `rejected` - Rejected
         * `revoked` - Revoked
+    MappingTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        header_row:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        columns:
+          description: '{portal_field: header text}'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - columns
+      - created_at
+      - id
+      - name
     MatchTypeEnum:
       enum:
       - exact
@@ -3230,6 +5010,124 @@ components:
       - role
       - updated_at
       - user
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        asset:
+          type: string
+          format: uuid
+          readOnly: true
+        hostname:
+          type: string
+          readOnly: true
+        vendor_id:
+          type: string
+          readOnly: true
+        priority:
+          type: string
+          readOnly: true
+        occurred_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        occurred_raw:
+          type: string
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+        redactions:
+          type: integer
+          readOnly: true
+      required:
+      - asset
+      - hostname
+      - id
+      - message
+      - occurred_at
+      - occurred_raw
+      - priority
+      - redactions
+      - vendor_id
+    OnboardingPreviewRequest:
+      type: object
+      properties:
+        sheet:
+          type: string
+          maxLength: 64
+        header_row:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 1
+        mapping:
+          type: object
+          additionalProperties:
+            type: integer
+            nullable: true
+      required:
+      - sheet
+    OnboardingUpload:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+          description: Sanitised original file name (display only).
+        file_format:
+          allOf:
+          - $ref: '#/components/schemas/FileFormatEnum'
+          readOnly: true
+        sha256:
+          type: string
+          readOnly: true
+        bytes:
+          type: integer
+          readOnly: true
+        sheets:
+          readOnly: true
+          description: '[{name, rows, columns}] discovered at upload time.'
+        uploaded_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+        purged_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        available:
+          type: boolean
+          readOnly: true
+      required:
+      - available
+      - bytes
+      - created_at
+      - display_name
+      - expires_at
+      - file_format
+      - id
+      - purged_at
+      - sha256
+      - sheets
+      - uploaded_by
     OutcomeEnum:
       enum:
       - success
@@ -3470,6 +5368,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Membership'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+    PaginatedOnboardingUploadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OnboardingUpload'
     PaginatedProductList:
       type: object
       required:
@@ -3493,6 +5437,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Product'
+    PaginatedReconciliationResultList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReconciliationResult'
+    PaginatedReconciliationRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReconciliationRun'
     PaginatedReportDefinitionList:
       type: object
       required:
@@ -3796,6 +5786,33 @@ components:
           minimum: 0
           description: Max per-device GET /api/v3/assets/:id calls per sync for InstalledUpdates
             (0 = disabled). Documented limit is 3600 requests/hour per token+endpoint.
+        applied_policies_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/devices/:id/appliedpolicies calls
+            per sync (0 = disabled). Documented limit is 3600 requests/hour.
+        notifications_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/devices/:id/notifications calls
+            per sync (0 = disabled).
+        custom_fields_budget:
+          type: integer
+          maximum: 3000
+          minimum: 0
+          description: Max per-device GET /api/v3/devices/:id/customfields calls per
+            sync (0 = disabled). Used only for customers with approved custom field
+            names.
+        last_test_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_test_outcome:
+          type: string
+          maxLength: 32
+        last_test_result: {}
         verify_tls:
           type: boolean
           readOnly: true
@@ -4155,6 +6172,270 @@ components:
         * `vsa_x` - Kaseya VSA X
         * `itglue` - IT Glue
         * `autotask` - Autotask PSA
+    ReconciliationClassificationEnum:
+      enum:
+      - MATCHED_CORRECT
+      - MATCHED_WRONG_GROUP
+      - MATCHED_WRONG_SITE
+      - REVIEW_WRONG_ORGANIZATION
+      - NOT_FOUND_IN_COMPLETE_SNAPSHOT
+      - AMBIGUOUS
+      - DUPLICATE_INPUT
+      - INVALID_INPUT
+      type: string
+      description: |-
+        * `MATCHED_CORRECT` - Matched, correct placement
+        * `MATCHED_WRONG_GROUP` - Matched, wrong group
+        * `MATCHED_WRONG_SITE` - Matched, wrong site
+        * `REVIEW_WRONG_ORGANIZATION` - Review: organisation differs
+        * `NOT_FOUND_IN_COMPLETE_SNAPSHOT` - Not found in complete snapshot
+        * `AMBIGUOUS` - Ambiguous: needs review
+        * `DUPLICATE_INPUT` - Duplicate input row
+        * `INVALID_INPUT` - Invalid input row
+    ReconciliationResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          readOnly: true
+        row_number:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Sheet row (expected rows).
+        input:
+          readOnly: true
+          description: Mapped input values as uploaded (text).
+        classification:
+          allOf:
+          - $ref: '#/components/schemas/ReconciliationClassificationEnum'
+          readOnly: true
+        effective_classification:
+          type: string
+          readOnly: true
+        flags:
+          readOnly: true
+        evidence:
+          readOnly: true
+        asset:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        actual:
+          readOnly: true
+          description: Matched device placement/hostname from the pinned snapshot.
+        candidates:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
+        pending_review_row:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Unexpected device that is a candidate of an unresolved ambiguous
+            row.
+        review_state:
+          allOf:
+          - $ref: '#/components/schemas/ReviewStateEnum'
+          readOnly: true
+        reviewed_classification:
+          allOf:
+          - $ref: '#/components/schemas/ReconciliationClassificationEnum'
+          readOnly: true
+        reviewed_asset:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        review_note:
+          type: string
+          readOnly: true
+      required:
+      - actual
+      - asset
+      - candidates
+      - classification
+      - effective_classification
+      - evidence
+      - flags
+      - id
+      - input
+      - kind
+      - pending_review_row
+      - review_note
+      - review_state
+      - reviewed_asset
+      - reviewed_at
+      - reviewed_by
+      - reviewed_classification
+      - row_number
+    ReconciliationReview:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/DecisionEnum'
+        asset:
+          type: string
+          format: uuid
+          nullable: true
+        note:
+          type: string
+          default: ''
+          maxLength: 500
+      required:
+      - decision
+    ReconciliationRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        upload:
+          type: string
+          format: uuid
+          readOnly: true
+        upload_name:
+          type: string
+          readOnly: true
+        upload_sha256:
+          type: string
+          readOnly: true
+        sheet:
+          type: string
+          readOnly: true
+        header_row:
+          type: integer
+          readOnly: true
+        mapping:
+          readOnly: true
+          description: '{portal_field: column index} — frozen at request time.'
+        mapping_hash:
+          type: string
+          readOnly: true
+        logic_version:
+          type: string
+          readOnly: true
+        parameters:
+          readOnly: true
+          description: Thresholds used for secondary flags.
+        generation:
+          type: string
+          format: uuid
+          readOnly: true
+        data_basis:
+          type: string
+          readOnly: true
+        stale_source_acknowledged:
+          type: boolean
+          readOnly: true
+        requested_by:
+          type: string
+          format: email
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/ReconciliationRunStateEnum'
+          readOnly: true
+        error_code:
+          type: string
+          readOnly: true
+        summary:
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - completed_at
+      - created_at
+      - data_basis
+      - error_code
+      - generation
+      - header_row
+      - id
+      - logic_version
+      - mapping
+      - mapping_hash
+      - parameters
+      - requested_by
+      - sheet
+      - stale_source_acknowledged
+      - started_at
+      - state
+      - summary
+      - upload
+      - upload_name
+      - upload_sha256
+    ReconciliationRunRequest:
+      type: object
+      properties:
+        upload:
+          type: string
+          format: uuid
+        sheet:
+          type: string
+          maxLength: 64
+        header_row:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 1
+        mapping:
+          type: object
+          additionalProperties:
+            type: integer
+            nullable: true
+        generation:
+          type: string
+          format: uuid
+          nullable: true
+        allow_stale:
+          type: boolean
+          default: false
+      required:
+      - mapping
+      - sheet
+      - upload
+    ReconciliationRunStateEnum:
+      enum:
+      - queued
+      - running
+      - completed
+      - failed
+      type: string
+      description: |-
+        * `queued` - Queued
+        * `running` - Running
+        * `completed` - Completed
+        * `failed` - Failed
     ReportDefinition:
       type: object
       properties:
@@ -4236,7 +6517,7 @@ components:
           readOnly: true
         state:
           allOf:
-          - $ref: '#/components/schemas/ReportRunStateEnum'
+          - $ref: '#/components/schemas/ReconciliationRunStateEnum'
           readOnly: true
         row_count:
           type: integer
@@ -4294,18 +6575,6 @@ components:
       - started_at
       - state
       - title
-    ReportRunStateEnum:
-      enum:
-      - queued
-      - running
-      - completed
-      - failed
-      type: string
-      description: |-
-        * `queued` - Queued
-        * `running` - Running
-        * `completed` - Completed
-        * `failed` - Failed
     ReportSchedule:
       type: object
       properties:
@@ -4375,17 +6644,29 @@ components:
       - time_of_day
     ReportTypeEnum:
       enum:
+      - agent_health
       - asset_inventory
       - customer_audit_log
+      - device_notifications
+      - disk_hardware
+      - inventory_changes
       - os_updates
+      - patch_policy_coverage
+      - security_observations
       - software_compliance
       - software_distribution
       - stale_devices
       type: string
       description: |-
+        * `agent_health` - agent_health
         * `asset_inventory` - asset_inventory
         * `customer_audit_log` - customer_audit_log
+        * `device_notifications` - device_notifications
+        * `disk_hardware` - disk_hardware
+        * `inventory_changes` - inventory_changes
         * `os_updates` - os_updates
+        * `patch_policy_coverage` - patch_policy_coverage
+        * `security_observations` - security_observations
         * `software_compliance` - software_compliance
         * `software_distribution` - software_distribution
         * `stale_devices` - stale_devices
@@ -4395,6 +6676,16 @@ components:
         note:
           type: string
           maxLength: 2000
+    ReviewStateEnum:
+      enum:
+      - not_required
+      - pending
+      - decided
+      type: string
+      description: |-
+        * `not_required` - Not required
+        * `pending` - Pending review
+        * `decided` - Decided
     ReviewStatusEnum:
       enum:
       - proposed
@@ -4405,6 +6696,18 @@ components:
         * `proposed` - Proposed
         * `approved` - Approved
         * `rejected` - Rejected
+    ReviewedExpectationStateEnum:
+      enum:
+      - proposed
+      - approved
+      - rejected
+      - retired
+      type: string
+      description: |-
+        * `proposed` - Proposed
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `retired` - Retired
     Revision:
       type: object
       properties:

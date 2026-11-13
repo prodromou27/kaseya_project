@@ -1,0 +1,6 @@
+# Fake secrets used by redaction tests (reviewed 2026-11-13). Add entries by exact fingerprint only.
+d799241d3db920574c50ab733c6d910b6c5220ec:backend/tests/test_auth.py:generic-api-key:198
+d799241d3db920574c50ab733c6d910b6c5220ec:backend/tests/test_auth.py:generic-api-key:216
+d799241d3db920574c50ab733c6d910b6c5220ec:backend/tests/test_audit_and_errors.py:stripe-access-token:69
+d799241d3db920574c50ab733c6d910b6c5220ec:backend/tests/test_audit_and_errors.py:stripe-access-token:82
+d799241d3db920574c50ab733c6d910b6c5220ec:backend/tests/test_audit_and_errors.py:generic-api-key:70
