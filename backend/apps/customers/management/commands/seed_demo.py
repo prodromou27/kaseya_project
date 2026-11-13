@@ -103,8 +103,53 @@ class Command(BaseCommand):
                 },
             )
             self._seed_catalog(User.objects.get(email="demo.superadmin@demo.invalid"), reviewer)
+            self._seed_lifecycle(User.objects.get(email="demo.superadmin@demo.invalid"), reviewer)
             record_event(action="system.demo_seeded", outcome="success", actor_label="system:seed_demo")
         self.stdout.write(self.style.SUCCESS("Demo data seeded (fixture-only; no vendor data)."))
+
+    def _seed_lifecycle(self, proposer: User, reviewer: User) -> None:
+        """Illustrative DEMO lifecycle entries (VSA4-05). Dates are NOT vendor facts: the evidence URL is .invalid."""
+        from apps.software.models import LifecycleEntry
+
+        if LifecycleEntry.objects.filter(source_url__startswith=EVIDENCE_URL).exists():
+            return
+        today = timezone.localdate()
+        common = {
+            "kind": "os",
+            "source_url": f"{EVIDENCE_URL}/lifecycle",
+            "source_type": "manual_verification",
+            "source_checked_at": today - timedelta(days=1),
+            "note": "DEMO: illustrative date for the demo tenant, not a vendor lifecycle fact.",
+            "created_by": proposer,
+        }
+        approved = {"state": "approved", "reviewed_by": reviewer, "reviewed_at": timezone.now()}
+        # One of each status the demo devices can show: ended, still supported, and an unverified (unknown) source.
+        LifecycleEntry.objects.create(
+            os_family="Windows 11",
+            release_label="23H2 (DEMO)",
+            version_prefix="10.0.22631",
+            end_of_support=today - timedelta(days=3),
+            confidence="official",
+            **common,
+            **approved,
+        )
+        LifecycleEntry.objects.create(
+            os_family="Windows Server 2022",
+            release_label="LTSC (DEMO)",
+            version_prefix="10.0.20348",
+            end_of_support=today + timedelta(days=5 * 365),
+            confidence="official",
+            **common,
+            **approved,
+        )
+        LifecycleEntry.objects.create(
+            os_family="Windows 11",
+            release_label="24H2 (DEMO, proposed)",
+            version_prefix="10.0.26100",
+            end_of_support=today + timedelta(days=2 * 365),
+            confidence="official",
+            **common,
+        )
 
     def _seed_catalog(self, importer: User, reviewer: User) -> None:
         """Illustrative DEMO catalog: reference versions are NOT verified vendor facts (evidence URL is .invalid)."""

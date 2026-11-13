@@ -151,3 +151,8 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
     (4) *Test connection*; (5) *Discover orgs* and map them; (6) *Enable*. *Edit* changes the name, base URL, request
     rate and budgets; a new base URL removes the stored credentials. Credentials are encrypted, can never be displayed
     again and can only be replaced or removed. Only super admins can do this; every change is audited (never values).
+20. **Lifecycle (end of support):** Admin → *Lifecycle catalog* → propose an entry per OS release or software
+    version line, citing the vendor's official lifecycle page (https) and the date you checked it. A different super
+    admin approves it. Approved entries cannot be edited: retire and propose a corrected one. Use *secondary*
+    confidence for anything not from the vendor; such entries never classify devices. Engineers see the result under
+    *Lifecycle (end of support)* and in report R17; devices without an approved official entry show as **unknown**.

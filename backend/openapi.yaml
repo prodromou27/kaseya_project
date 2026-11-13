@@ -380,6 +380,165 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/catalog/lifecycle/:
+    get:
+      operationId: catalog_lifecycle_list
+      description: Lifecycle catalog. Proposed by one super admin, approved by a different
+        one; approved rows are immutable.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLifecycleEntryList'
+          description: ''
+    post:
+      operationId: catalog_lifecycle_create
+      description: Lifecycle catalog. Proposed by one super admin, approved by a different
+        one; approved rows are immutable.
+      tags:
+      - catalog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifecycleEntry'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEntry'
+          description: ''
+  /api/v1/catalog/lifecycle/{id}/approve/:
+    post:
+      operationId: catalog_lifecycle_approve_create
+      description: Lifecycle catalog. Proposed by one super admin, approved by a different
+        one; approved rows are immutable.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lifecycle entry.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEntry'
+          description: ''
+  /api/v1/catalog/lifecycle/{id}/reject/:
+    post:
+      operationId: catalog_lifecycle_reject_create
+      description: Lifecycle catalog. Proposed by one super admin, approved by a different
+        one; approved rows are immutable.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lifecycle entry.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEntry'
+          description: ''
+  /api/v1/catalog/lifecycle/{id}/retire/:
+    post:
+      operationId: catalog_lifecycle_retire_create
+      description: Stop using an approved entry (e.g. superseded). It stays as evidence;
+        propose a corrected one.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lifecycle entry.
+        required: true
+      tags:
+      - catalog
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEntry'
+          description: ''
+  /api/v1/catalog/lifecycle/bulk/:
+    post:
+      operationId: catalog_lifecycle_bulk_create
+      description: Propose many entries at once (e.g. from a spreadsheet the UI parsed).
+        All-or-nothing.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - catalog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/LifecycleEntry'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLifecycleEntryList'
+          description: ''
   /api/v1/catalog/products/:
     get:
       operationId: catalog_products_list
@@ -1391,6 +1550,77 @@ paths:
         schema:
           type: string
         required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/lifecycle/:
+    get:
+      operationId: customers_lifecycle_retrieve
+      description: '``/customers/{id}/lifecycle/`` - OS and software support status
+        of the latest snapshot.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: 'on'
+        schema:
+          type: string
+        description: Evaluate on this date (YYYY-MM-DD); default today
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/lifecycle/devices/:
+    get:
+      operationId: customers_lifecycle_devices_retrieve
+      description: Per-device (OS) or per-installation (software) rows, filtered by
+        status.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - os
+          - software
+      - in: query
+        name: 'on'
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - end_of_support
+          - ending_soon
+          - supported
+          - unknown
       tags:
       - customers
       security:
@@ -4347,6 +4577,14 @@ components:
       description: |-
         * `local` - Local (bootstrap/dev only)
         * `oidc` - OIDC (Microsoft Entra ID)
+    ConfidenceEnum:
+      enum:
+      - official
+      - secondary
+      type: string
+      description: |-
+        * `official` - Vendor lifecycle page / official announcement
+        * `secondary` - Secondary source (not used to classify)
     ConnectorHost:
       type: object
       properties:
@@ -5101,14 +5339,116 @@ components:
       - id
       - name
       - provider
-    KindEnum:
+    LifecycleEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/LifecycleEntryKindEnum'
+        os_family:
+          type: string
+          maxLength: 120
+        product:
+          type: string
+          format: uuid
+          nullable: true
+        product_label:
+          type: string
+          nullable: true
+          readOnly: true
+        release_label:
+          type: string
+          description: Human label, e.g. '23H2', 'ESR 115', '2019'.
+          maxLength: 80
+        version_prefix:
+          type: string
+          description: Dotted prefix the reported version/build must start with (e.g.
+            10.0.22631). Blank = whole family.
+          maxLength: 64
+        edition_note:
+          type: string
+          description: e.g. 'Enterprise/Education editions'.
+          maxLength: 160
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        end_of_mainstream:
+          type: string
+          format: date
+          nullable: true
+        end_of_support:
+          type: string
+          format: date
+        extended_until:
+          type: string
+          format: date
+          nullable: true
+          description: Paid extended support (e.g. ESU), if any.
+        source_url:
+          type: string
+          format: uri
+          maxLength: 500
+        source_type:
+          $ref: '#/components/schemas/SourceTypeEnum'
+        source_checked_at:
+          type: string
+          format: date
+        confidence:
+          $ref: '#/components/schemas/ConfidenceEnum'
+        note:
+          type: string
+        state:
+          allOf:
+          - $ref: '#/components/schemas/ReviewedExpectationStateEnum'
+          readOnly: true
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        review_note:
+          type: string
+          readOnly: true
+      required:
+      - confidence
+      - created_at
+      - created_by
+      - end_of_support
+      - id
+      - kind
+      - product_label
+      - release_label
+      - review_note
+      - reviewed_at
+      - reviewed_by
+      - source_checked_at
+      - source_type
+      - source_url
+      - state
+    LifecycleEntryKindEnum:
       enum:
-      - expected
-      - unexpected
+      - os
+      - software
       type: string
       description: |-
-        * `expected` - Expected row
-        * `unexpected` - Unexpected VSA asset
+        * `os` - Operating system
+        * `software` - Software
     Login:
       type: object
       properties:
@@ -5552,6 +5892,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/IntegrationInstance'
+    PaginatedLifecycleEntryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LifecycleEntry'
     PaginatedMembershipList:
       type: object
       required:
@@ -6422,7 +6785,7 @@ components:
           readOnly: true
         kind:
           allOf:
-          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/ReconciliationResultKindEnum'
           readOnly: true
         row_number:
           type: integer
@@ -6507,6 +6870,14 @@ components:
       - reviewed_by
       - reviewed_classification
       - row_number
+    ReconciliationResultKindEnum:
+      enum:
+      - expected
+      - unexpected
+      type: string
+      description: |-
+        * `expected` - Expected row
+        * `unexpected` - Unexpected VSA asset
     ReconciliationReview:
       type: object
       properties:
@@ -6871,6 +7242,7 @@ components:
       - device_notifications
       - disk_hardware
       - inventory_changes
+      - lifecycle
       - os_updates
       - patch_policy_coverage
       - security_observations
@@ -6885,6 +7257,7 @@ components:
         * `device_notifications` - device_notifications
         * `disk_hardware` - disk_hardware
         * `inventory_changes` - inventory_changes
+        * `lifecycle` - lifecycle
         * `os_updates` - os_updates
         * `patch_policy_coverage` - patch_policy_coverage
         * `security_observations` - security_observations
@@ -7149,6 +7522,16 @@ components:
       - reviewed_at
       - reviewed_by
       - updated_at
+    SourceTypeEnum:
+      enum:
+      - vendor_lifecycle_page
+      - vendor_announcement
+      - manual_verification
+      type: string
+      description: |-
+        * `vendor_lifecycle_page` - vendor_lifecycle_page
+        * `vendor_announcement` - vendor_announcement
+        * `manual_verification` - manual_verification
     SyncQuarantine:
       type: object
       properties:

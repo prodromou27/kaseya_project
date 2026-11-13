@@ -25,6 +25,7 @@ export const NAV_SECTIONS: NavSection[] = [
     { to: "/windows-updates", label: "Windows updates" },
     { to: "/patch-policies", label: "Patch policies" },
     { to: "/software", label: "Software versions" },
+    { to: "/lifecycle", label: "Lifecycle (end of support)" },
   ] },
   { title: "Onboarding & reports", items: [
     { to: "/onboarding", label: "Onboarding check" },

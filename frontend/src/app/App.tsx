@@ -20,6 +20,7 @@ import { LoginPage } from "../features/auth/LoginPage";
 import { CustomerDetailPage } from "../features/customers/CustomerDetailPage";
 import { CustomersPage } from "../features/customers/CustomersPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
+import { LifecyclePage } from "../features/lifecycle/LifecyclePage";
 import { NotFoundPage, NotYetAvailablePage } from "../features/placeholder/NotYetAvailable";
 import { ReportsPage } from "../features/reports/ReportsPage";
 import { ApiError } from "../lib/api";
@@ -68,6 +69,7 @@ export function AppRoutes() {
         <Route path="changes" element={<ChangesPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="windows-updates" element={<WindowsUpdatesPage />} />
+        <Route path="lifecycle" element={<LifecyclePage />} />
         <Route path="itglue" element={<NotYetAvailablePage title="IT Glue" phase="P3" />} />
         <Route path="autotask" element={<NotYetAvailablePage title="Autotask PSA" phase="P4" />} />
         <Route path="*" element={<NotFoundPage />} />

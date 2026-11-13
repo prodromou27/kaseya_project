@@ -867,3 +867,82 @@ export type CustomFieldAllow = {
   reviewed_at: string | null;
   created_at: string;
 };
+
+// ---------------------------------------------------------------- VSA4-05 lifecycle
+
+export type LifecycleStatus = "end_of_support" | "ending_soon" | "supported" | "unknown";
+
+export type LifecycleEntryRef = {
+  id: string;
+  label: string;
+  release_label: string;
+  version_prefix: string;
+  edition_note: string;
+  release_date: string | null;
+  end_of_mainstream: string | null;
+  end_of_support: string;
+  extended_until: string | null;
+  source_url: string;
+  source_type: string;
+  source_checked_at: string;
+  reviewed_by: string | null;
+};
+
+export type LifecycleGroup = { status: LifecycleStatus; reason: string; entry: LifecycleEntryRef | null; reported: string; count: number };
+
+export type LifecycleSummary = {
+  evaluated_on: string;
+  algorithm_version: string;
+  ending_soon_days: number;
+  as_of: (string | null)[];
+  data_basis: string[];
+  labels: Record<LifecycleStatus, string>;
+  reasons: Record<string, string>;
+  os: { devices: number; totals: Record<LifecycleStatus, number>; groups: LifecycleGroup[] };
+  software: {
+    installations: number;
+    totals: Record<LifecycleStatus, number>;
+    devices_with_end_of_support: number;
+    groups: LifecycleGroup[];
+  };
+  notes: string[];
+};
+
+export type LifecycleRow = {
+  asset_id: string;
+  hostname: string;
+  os_name?: string;
+  os_version?: string;
+  name?: string;
+  installed_version?: string;
+  product?: string | null;
+  status: LifecycleStatus;
+  reason: string;
+  entry: LifecycleEntryRef | null;
+};
+
+export type LifecycleCatalogEntry = {
+  id: string;
+  kind: "os" | "software";
+  os_family: string;
+  product: string | null;
+  product_label: string | null;
+  release_label: string;
+  version_prefix: string;
+  edition_note: string;
+  release_date: string | null;
+  end_of_mainstream: string | null;
+  end_of_support: string;
+  extended_until: string | null;
+  source_url: string;
+  source_type: string;
+  source_checked_at: string;
+  confidence: "official" | "secondary";
+  note: string;
+  state: "proposed" | "approved" | "rejected" | "retired";
+  created_by: string;
+  created_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string;
+};

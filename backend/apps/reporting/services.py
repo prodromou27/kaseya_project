@@ -140,7 +140,12 @@ def generate(run_id: str) -> ReportRun:
     if report_type.pin is not None:
         pinned = run.as_of_generation_ids or None
         pins = report_type.pin(run.customer, pinned)
-        run.as_of_generation_ids = {"generations": pins["generation_ids"], "evaluations": pins["evaluation_ids"]}
+        run.as_of_generation_ids = {
+            "generations": pins["generation_ids"],
+            "evaluations": pins["evaluation_ids"],
+            # Report-specific pins (e.g. R17's evaluation date and lifecycle entry IDs) so regeneration is exact.
+            **pins.get("extra_pins", {}),
+        }
         run.data_basis = pins["data_basis"]
         run.save(update_fields=["as_of_generation_ids", "data_basis"])
     try:

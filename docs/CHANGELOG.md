@@ -21,6 +21,8 @@ All implementation claims require linked evidence. Use semantic versions for app
 Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-tested only; no live VSA validation.**
 
 ### Added (deployment)
+- VSA4-05: **Lifecycle (end of support)** for OS releases and software version lines from a reviewed, cited catalog (two-person approval, immutable once approved); Lifecycle page, dashboard tile, admin catalog tab, report R17. Unverified or missing entries are shown as unknown. The software state previously labelled "Unsupported (not catalogued)" is now labelled **Not catalogued**.
+- UI: dashboard summary tiles, setup checklist, in-place customer picker, grouped and responsive navigation.
 - `install.sh`: one-command, idempotent AlmaLinux installer/updater (packages, Docker, firewall 80/443, settings, secrets, TLS, build, health wait, first admin, optional backups, preflight). Not yet run on a host.
 - The VSA X API token can be entered in the portal by a super admin (Admin → Integrations → *Set API token*). Encrypted at rest with a host-held key, write-only, audited, cleared when the base URL changes.
 - **Integrations page holds every API setting:** a provider catalog (VSA X available; IT Glue, Autotask, Tenable planned), allowed API hosts managed in the portal (audited, re-checked per request), editing of base URL, rate and budgets, and provider-defined credential fields stored together as one encrypted blob.

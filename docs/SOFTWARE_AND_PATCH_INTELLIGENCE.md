@@ -51,6 +51,24 @@ Use `AvailableUpdates` and `InstalledUpdates` with page/snapshot as-of; count on
 
 Software by product/device/customer; outdated version trend; unknown catalog coverage; Windows updates by KB/device/group; policy coverage and drift; failed deployment **only with verified external data**; lifecycle reference sources and end dates.
 
+## Implementation notes — lifecycle catalog (VSA4-05, fixture-tested only)
+
+* **Entry:** an OS family as reported (e.g. `Windows 11`) or a reviewed catalog product, a release label, an optional
+  dotted version prefix (component-wise: `10.0.22631` matches `10.0.22631.4317`, not `10.0.2263`), end of support,
+  optional mainstream end / extended (ESU) end, an https source URL, the date it was checked, and a confidence.
+* **Review:** proposed by one super admin, approved or rejected by a different one; approved entries cannot be edited
+  or deleted (DB trigger), only retired.
+* **Classification** (as of a date): `end_of_support`, `ending_soon` (within 180 days), `supported`, or `unknown`.
+  Only approved entries with *official* confidence classify. The most specific match wins (longest OS family, then
+  longest version prefix); equally specific entries with different dates give `unknown` (`conflicting_entries`).
+  Unknown reasons: no entry, unverified source only, conflicting entries, OS not reported, unparsable version,
+  software not matched to a reviewed product.
+* **Naming:** the software comparison state `unsupported` keeps its API value but is labelled **Not catalogued**; it
+  means "no reviewed product", not "past end of support". Lifecycle uses its own statuses.
+* **Report R17** (`lifecycle`) pins the snapshot, software evaluation, evaluation date and exact entry IDs, so a
+  regenerated report is identical even after an entry is retired.
+* **No vendor dates are shipped.** The demo seed creates illustrative `(DEMO)` entries with a `.invalid` source.
+
 ## Implementation notes — applied patch policies (VSA3-04, `ff7a956`, fixture-tested only)
 
 * **Sources:** `GET /api/v3/devices/:id/appliedpolicies` (per device, `$top` at most 100, documented 3600 requests/hour)

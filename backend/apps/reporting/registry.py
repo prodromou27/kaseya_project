@@ -547,6 +547,74 @@ class ChangeFilters(serializers.Serializer):
     )
 
 
+# ---------------------------------------------------------------------------------------------- R17 lifecycle
+
+
+class LifecycleFilters(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=["os", "software"], required=False)
+    status = serializers.ChoiceField(choices=["end_of_support", "ending_soon", "supported", "unknown"], required=False)
+
+
+def _pin_lifecycle(customer: Any, pinned: dict[str, Any] | None) -> dict[str, Any]:
+    """Snapshot + software evaluation + the evaluation date + the exact approved lifecycle entries used."""
+    from django.utils import timezone
+
+    from apps.software import lifecycle
+
+    pins = _pin_software(customer, pinned)
+    if pinned is not None and "lifecycle_on" in pinned:
+        on, entry_ids = pinned["lifecycle_on"], [str(i) for i in pinned.get("lifecycle_entries", [])]
+    else:
+        on = timezone.localdate().isoformat()
+        os_entries, by_product = lifecycle.approved_entries()
+        entry_ids = sorted({str(e.id) for e in os_entries} | {str(e.id) for es in by_product.values() for e in es})
+    pins["extra_pins"] = {"lifecycle_on": on, "lifecycle_entries": entry_ids}
+    pins["provenance"]["Lifecycle"] = (
+        f"evaluated on {on}; {len(entry_ids)} approved lifecycle entr{'y' if len(entry_ids) == 1 else 'ies'}; "
+        f"algorithm {lifecycle.ALGORITHM_VERSION}"
+    )
+    return pins
+
+
+def _lifecycle_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    import datetime as dt
+
+    from apps.software import lifecycle
+
+    on = dt.date.fromisoformat(pins["extra_pins"]["lifecycle_on"])
+    entry_ids = pins["extra_pins"]["lifecycle_entries"]
+    kinds = [filters["kind"]] if filters.get("kind") else ["os", "software"]
+    for kind in kinds:
+        if kind == "os":
+            rows = lifecycle.os_rows(customer.id, on, generation_ids=pins["generation_ids"], entry_ids=entry_ids)
+        else:
+            rows = lifecycle.software_rows(
+                customer.id,
+                on,
+                generation_ids=pins["generation_ids"],
+                evaluation_ids=pins["evaluation_ids"],
+                entry_ids=entry_ids,
+            )
+        for r in rows:
+            if filters.get("status") and r["status"] != filters["status"]:
+                continue
+            e = r["entry"] or {}
+            yield [
+                kind,
+                r["hostname"],
+                r.get("os_name") or r.get("name") or "",
+                r.get("os_version") or r.get("installed_version") or "",
+                r["status"],
+                r["reason"],
+                e.get("label", ""),
+                e.get("end_of_support") or "",
+                e.get("extended_until") or "",
+                e.get("source_url", ""),
+                e.get("source_checked_at") or "",
+                on.isoformat(),
+            ]
+
+
 SNAPSHOT_NOTE = (
     "Inventory snapshot at the generation publish time, not live monitoring telemetry. 'unknown', 'not_reported' "
     "and 'not_collected' are neither healthy nor unhealthy. Thresholds are those approved at generation time "
@@ -825,6 +893,33 @@ REPORT_TYPES: dict[str, ReportType] = {
         rows=_security_rows,
         pin=_pin_generations,
         limitations=SNAPSHOT_NOTE + " A disabled or unknown state is an observation, not a confirmed incident.",
+    ),
+    "lifecycle": ReportType(
+        key="lifecycle",
+        title="OS and software lifecycle (R17)",
+        description="Support end dates per device OS and per catalogued software installation, with the cited source.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=LifecycleFilters,
+        columns=(
+            "kind",
+            "hostname",
+            "reported_name",
+            "reported_version",
+            "lifecycle_status",
+            "reason",
+            "lifecycle_entry",
+            "end_of_support",
+            "extended_support_until",
+            "source_url",
+            "source_checked_at",
+            "evaluated_on",
+        ),
+        rows=_lifecycle_rows,
+        pin=_pin_lifecycle,
+        limitations=SNAPSHOT_NOTE
+        + " Only approved lifecycle entries from official vendor sources classify a row; everything else is unknown."
+        + " Lifecycle status is not a patch or vulnerability statement.",
     ),
 }
 

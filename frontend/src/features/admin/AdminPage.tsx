@@ -18,6 +18,7 @@ import { SyncSchedulesPanel } from "./SyncSchedulesPanel";
 import { ConnectorHostsPanel } from "./ConnectorHostsPanel";
 import { CredentialForm, credentialLabel, useProviders } from "./CredentialForm";
 import { EditIntegrationForm } from "./EditIntegrationForm";
+import { LifecycleCatalogPanel } from "./LifecycleCatalogPanel";
 import { mappingColumns } from "../customers/MappingsPanel";
 
 function UsersPanel() {
@@ -376,6 +377,7 @@ export function AdminPage() {
           { id: "mappings", label: "Mapping review", content: <MappingReviewPanel /> },
           { id: "integrations", label: "Integrations", content: <IntegrationsPanel /> },
           { id: "catalog", label: "Software catalog", content: <CatalogPanel /> },
+          { id: "lifecycle", label: "Lifecycle catalog", content: <LifecycleCatalogPanel /> },
           { id: "quarantine", label: "Sync quarantine", content: <QuarantinePanel /> },
           { id: "sync-schedules", label: "Sync schedules", content: <SyncSchedulesPanel /> },
           { id: "users", label: "Users", content: <UsersPanel /> },

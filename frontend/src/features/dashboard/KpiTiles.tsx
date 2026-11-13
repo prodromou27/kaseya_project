@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
 import { formatUtc } from "../../lib/format";
-import type { Customer, HealthSummary, TrendResponse } from "../../lib/types";
+import type { Customer, HealthSummary, LifecycleSummary, TrendResponse } from "../../lib/types";
 
 type Tile = { label: string; value: number | null; sub: string; to: string; attention?: boolean };
 
@@ -35,6 +35,10 @@ export function KpiTiles({ customer }: { customer: Customer }) {
   const trends = useQuery({
     queryKey: ["trends", customer.id, 7],
     queryFn: ({ signal }) => api.get<TrendResponse>(`/customers/${customer.id}/trends/`, { days: 7 }, signal),
+  });
+  const lifecycle = useQuery({
+    queryKey: ["lifecycle", customer.id],
+    queryFn: ({ signal }) => api.get<LifecycleSummary>(`/customers/${customer.id}/lifecycle/`, undefined, signal),
   });
   if (health.isPending || trends.isPending) return <p className="mb-4 text-sm text-slate-500">Loading summary…</p>;
   if (health.isError) return null;
@@ -74,11 +78,20 @@ export function KpiTiles({ customer }: { customer: Customer }) {
       to: "/software",
       attention: (sw?.devices_with_outdated ?? 0) > 0,
     },
+    {
+      label: "OS end of support",
+      value: lifecycle.data ? lifecycle.data.os.totals.end_of_support : null,
+      sub: lifecycle.data
+        ? `${lifecycle.data.os.totals.ending_soon} ending soon · ${lifecycle.data.os.totals.unknown} unknown`
+        : "lifecycle not available",
+      to: "/lifecycle",
+      attention: (lifecycle.data?.os.totals.end_of_support ?? 0) > 0,
+    },
   ];
   const asOf = h.as_of.filter(Boolean).sort().at(-1);
   return (
     <section aria-label="Summary" className="mb-4">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
         {tiles.map((t) => (
           <TileCard key={t.label} tile={t} />
         ))}

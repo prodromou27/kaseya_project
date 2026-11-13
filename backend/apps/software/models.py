@@ -251,7 +251,7 @@ class ComplianceResult(models.Model):
         OUTDATED = "outdated", "Outdated"
         NEWER = "newer", "Newer than reference"
         UNKNOWN = "unknown", "Unknown"
-        UNSUPPORTED = "unsupported", "Unsupported (not catalogued)"
+        UNSUPPORTED = "unsupported", "Not catalogued"
         EXCLUDED = "excluded", "Excluded"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -276,3 +276,74 @@ class ComplianceResult(models.Model):
 
     def __str__(self) -> str:
         return f"{self.installation_id}: {self.state} ({self.reason_code})"
+
+
+class LifecycleEntry(models.Model):
+    """VSA4-05: vendor support end date for an OS release or a software version line, with its evidence.
+
+    Proposed by a super admin and approved by a *different* reviewer; approved rows are immutable (DB trigger) apart
+    from retirement. Only approved entries with ``confidence=official`` can make a device "end of support" or
+    "supported"; anything else (no entry, an unverified source, conflicting entries) is reported as unknown. Dates are
+    never inferred.
+    """
+
+    class Kind(models.TextChoices):
+        OS = "os", "Operating system"
+        SOFTWARE = "software", "Software"
+
+    class Confidence(models.TextChoices):
+        OFFICIAL = "official", "Vendor lifecycle page / official announcement"
+        SECONDARY = "secondary", "Secondary source (not used to classify)"
+
+    class State(models.TextChoices):
+        PROPOSED = "proposed", "Proposed"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        RETIRED = "retired", "Retired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    # OS: the reported OS name must contain os_family (case-insensitive), e.g. "Windows 11", "Windows Server 2016".
+    os_family = models.CharField(max_length=120, blank=True)
+    # Software: the reviewed catalog product the installation was matched to.
+    product = models.ForeignKey(SoftwareProduct, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    release_label = models.CharField(max_length=80, help_text="Human label, e.g. '23H2', 'ESR 115', '2019'.")
+    version_prefix = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Dotted prefix the reported version/build must start with (e.g. 10.0.22631). Blank = whole family.",
+    )
+    edition_note = models.CharField(max_length=160, blank=True, help_text="e.g. 'Enterprise/Education editions'.")
+    release_date = models.DateField(null=True, blank=True)
+    end_of_mainstream = models.DateField(null=True, blank=True)
+    end_of_support = models.DateField()
+    extended_until = models.DateField(null=True, blank=True, help_text="Paid extended support (e.g. ESU), if any.")
+    source_url = models.URLField(max_length=500)
+    source_type = models.CharField(max_length=32)
+    source_checked_at = models.DateField()
+    confidence = models.CharField(max_length=10, choices=Confidence.choices)
+    note = models.TextField(blank=True)
+    state = models.CharField(max_length=10, choices=State.choices, default=State.PROPOSED)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["kind", "os_family", "release_label"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(kind="os") & ~Q(os_family="") & Q(product__isnull=True))
+                | (Q(kind="software") & Q(product__isnull=False) & Q(os_family="")),
+                name="software_lifecycle_kind_target",
+            ),
+            models.CheckConstraint(condition=Q(source_url__startswith="https://"), name="software_lifecycle_https"),
+        ]
+        indexes = [models.Index(fields=["state", "kind"], name="software_lifecycle_state_kind")]
+
+    def __str__(self) -> str:
+        target = self.os_family or str(self.product_id)
+        return f"{target} {self.release_label}: end {self.end_of_support} ({self.state})"
