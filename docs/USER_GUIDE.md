@@ -91,6 +91,17 @@ space, antivirus and firewall.
 * All values come from the last VSA X snapshot, not live monitoring.
 * The thresholds banner shows whether documented defaults or customer-approved values are in use.
 
+## 8d. Inventory changes
+
+**Inventory changes** compares two complete VSA X snapshots; by default it uses the current one and the one before it.
+It lists:
+
+* devices that appeared or disappeared;
+* changes to hostname, group, site, OS, agent version, IP addresses and installed software.
+
+The window shown is between the two sync times. It is not when the change happened, and no person is named. If a
+section was missing in either snapshot, that device is listed as "not compared" for that section.
+
 ## 9. Interpretation reference
 
 | State | Meaning | Appropriate action |
