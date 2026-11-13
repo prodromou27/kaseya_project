@@ -93,6 +93,46 @@ def render_xlsx(title: str, provenance: dict[str, str], columns: Sequence[str], 
     return out.getvalue()
 
 
+def render_xlsx_sheets(
+    title: str, provenance: dict[str, str], sheets: Sequence[tuple[str, Sequence[str], Sequence[Sequence[Any]]]]
+) -> bytes:
+    """Multi-tab workbook (VSA2-04). Same cell safety as :func:`render_xlsx`; provenance is the first tab's head."""
+    wb = Workbook(write_only=True)
+    header_font, header_fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1E3A5F")
+
+    def string_cell(ws: Any, value: Any, *, header: bool = False) -> WriteOnlyCell:
+        c = WriteOnlyCell(ws, value=_cell(value))
+        c.data_type = "s"
+        if header:
+            c.font, c.fill = header_font, header_fill
+        return c
+
+    for index, (name, columns, rows) in enumerate(sheets):
+        ws = wb.create_sheet(_cell(name)[:31])
+        if index == 0:
+            ws.column_dimensions["A"].width = 34
+            ws.column_dimensions["B"].width = 90
+            title_cell = WriteOnlyCell(ws, value=_cell(title))
+            title_cell.font = Font(bold=True, size=14)
+            ws.append([title_cell])
+            for key, value in provenance.items():
+                k = string_cell(ws, key)
+                k.font = Font(bold=True)
+                ws.append([k, string_cell(ws, value)])
+            ws.append([])
+        else:
+            ws.freeze_panes = "A2"
+            for i in range(len(columns)):
+                ws.column_dimensions[get_column_letter(i + 1)].width = 22
+        if columns:
+            ws.append([string_cell(ws, c, header=True) for c in columns])
+        for row in rows:
+            ws.append([string_cell(ws, v) for v in row])
+    out = io.BytesIO()
+    wb.save(out)
+    return out.getvalue()
+
+
 def _p(text: Any, style: ParagraphStyle) -> Paragraph:
     return Paragraph(escape(str("" if text is None else text)), style)
 

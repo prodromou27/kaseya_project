@@ -87,6 +87,19 @@ export async function apiRequest<T>(
   return (await resp.json()) as T;
 }
 
+/** Multipart upload (one file). The browser sets the multipart boundary; CSRF is sent as for JSON writes. */
+export async function apiUpload<T>(path: string, file: File, field = "file"): Promise<T> {
+  const form = new FormData();
+  form.append(field, file);
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const csrf = readCookie(CSRF_COOKIE);
+  if (csrf) headers["X-CSRFToken"] = csrf;
+  const resp = await fetch(buildUrl(path), { method: "POST", headers, credentials: "same-origin", body: form });
+  if (resp.status === 401) window.dispatchEvent(new Event(UNAUTHENTICATED_EVENT));
+  if (!resp.ok) throw await parseError(resp);
+  return (await resp.json()) as T;
+}
+
 export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => apiRequest<T>("GET", path, { query, signal }),
   post: <T>(path: string, body?: unknown) => apiRequest<T>("POST", path, { body }),

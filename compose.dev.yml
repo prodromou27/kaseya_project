@@ -14,11 +14,13 @@ x-backend: &backend
     CELERY_BROKER_URL: redis://redis:6379/0
     CELERY_TASK_ALWAYS_EAGER: "false"
     REPORT_STORAGE_DIR: /app/var/reports
+    ONBOARDING_STORAGE_DIR: /app/var/onboarding
     DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
     DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
   volumes:
     - ./backend:/app
     - reports:/app/var/reports
+    - onboarding:/app/var/onboarding
   depends_on:
     db: { condition: service_healthy }
     redis: { condition: service_healthy }
@@ -60,6 +62,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_TASK_ALWAYS_EAGER: "false"
       REPORT_STORAGE_DIR: /app/var/reports
+      ONBOARDING_STORAGE_DIR: /app/var/onboarding
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
       RUN_MIGRATIONS: "1"
@@ -119,4 +122,5 @@ volumes:
   pgdata: {}
   redisdata: {}
   reports: {}
+  onboarding: {}
   frontend_node_modules: {}

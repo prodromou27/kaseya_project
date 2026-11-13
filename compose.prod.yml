@@ -16,6 +16,7 @@ x-app: &app
     POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     CELERY_BROKER_URL: redis://redis:6379/0
     REPORT_STORAGE_DIR: /app/var/reports
+    ONBOARDING_STORAGE_DIR: /app/var/onboarding
     DJANGO_ALLOWED_HOSTS: ${PORTAL_HOSTNAME:?set PORTAL_HOSTNAME},backend
     DJANGO_CSRF_TRUSTED_ORIGINS: https://${PORTAL_HOSTNAME}
     TRUST_PROXY_TLS_HEADER: "true"
@@ -29,7 +30,7 @@ x-app: &app
     CONNECTOR_ALLOWED_HOSTS_VSA_X: ${CONNECTOR_ALLOWED_HOSTS_VSA_X:-}
     CONNECTOR_APPROVED_PRIVATE_CIDRS: ${CONNECTOR_APPROVED_PRIVATE_CIDRS:-}
   secrets: [django_secret_key, postgres_password, oidc_client_secret]
-  volumes: [reports:/app/var/reports]
+  volumes: [reports:/app/var/reports, onboarding:/app/var/onboarding]
   depends_on:
     db: { condition: service_healthy }
     redis: { condition: service_healthy }
@@ -84,6 +85,7 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       CELERY_BROKER_URL: redis://redis:6379/0
       REPORT_STORAGE_DIR: /app/var/reports
+      ONBOARDING_STORAGE_DIR: /app/var/onboarding
       DJANGO_ALLOWED_HOSTS: ${PORTAL_HOSTNAME},backend
       DJANGO_CSRF_TRUSTED_ORIGINS: https://${PORTAL_HOSTNAME}
       TRUST_PROXY_TLS_HEADER: "true"
@@ -138,6 +140,7 @@ volumes:
   pgdata: {}
   redisdata: {}
   reports: {}
+  onboarding: {}
 
 secrets:
   django_secret_key: { file: ./secrets/django_secret_key }

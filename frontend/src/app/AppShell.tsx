@@ -11,6 +11,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard" },
   { to: "/customers", label: "Customers" },
   { to: "/groups", label: "Groups & network" },
+  { to: "/onboarding", label: "Onboarding check" },
   { to: "/assets", label: "Assets" },
   { to: "/software", label: "Software versions" },
   { to: "/windows-updates", label: "Windows updates" },

@@ -19,7 +19,7 @@ COPY --from=deps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.
 COPY --from=deps /usr/local/bin /usr/local/bin
 WORKDIR /app
 COPY --chown=portal:portal . .
-RUN mkdir -p /app/var/reports /app/staticfiles && chown -R portal:portal /app/var /app/staticfiles \
+RUN mkdir -p /app/var/reports /app/var/onboarding /app/staticfiles && chown -R portal:portal /app/var /app/staticfiles \
  && chmod +x /app/docker-entrypoint.sh
 USER portal
 EXPOSE 8000

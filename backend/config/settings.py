@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.inventory",
     "apps.software",
     "apps.patching",
+    "apps.onboarding",
 ]
 
 MIDDLEWARE = [
@@ -185,7 +186,11 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
-    "ENUM_NAME_OVERRIDES": {"UpdateStatusEnum": "apps.patching.models.UpdateStatus"},
+    "ENUM_NAME_OVERRIDES": {
+        "UpdateStatusEnum": "apps.patching.models.UpdateStatus",
+        "ReconciliationClassificationEnum": "apps.onboarding.models.Classification",
+        "ReconciliationRunStateEnum": "apps.onboarding.models.ReconciliationRun.State",
+    },
 }
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
@@ -222,6 +227,18 @@ CATALOG_REQUIRE_SEPARATE_REVIEWER = env_bool("CATALOG_REQUIRE_SEPARATE_REVIEWER"
 REPORT_STORAGE_DIR = Path(env_str("REPORT_STORAGE_DIR", str(BASE_DIR / "var" / "reports")))
 REPORT_ARTIFACT_TTL_HOURS = env_int("REPORT_ARTIFACT_TTL_HOURS", 24)
 REPORT_MAX_ROWS = env_int("REPORT_MAX_ROWS", 100_000)
+
+# --- VSA2 onboarding reconciliation: expected-inventory uploads (private storage, TTL, hard limits) ---
+ONBOARDING_STORAGE_DIR = Path(env_str("ONBOARDING_STORAGE_DIR", str(BASE_DIR / "var" / "onboarding")))
+ONBOARDING_UPLOAD_TTL_HOURS = env_int("ONBOARDING_UPLOAD_TTL_HOURS", 72)
+ONBOARDING_MAX_UPLOAD_BYTES = env_int("ONBOARDING_MAX_UPLOAD_BYTES", 5 * 1024 * 1024)
+ONBOARDING_MAX_ROWS = env_int("ONBOARDING_MAX_ROWS", 20_000)
+CELERY_BEAT_SCHEDULE["purge-expired-onboarding-uploads"] = {
+    "task": "apps.onboarding.tasks.purge_expired_uploads",
+    "schedule": 3600.0,
+}
+CELERY_TASK_ROUTES["apps.onboarding.tasks.purge_expired_uploads"] = {"queue": "maintenance"}
+CELERY_TASK_ROUTES["apps.onboarding.tasks.run_reconciliation"] = {"queue": "reports"}
 
 # --- Connector egress policy (validated on every IntegrationInstance save; see apps.integrations.urlpolicy) ---
 CONNECTOR_ALLOWED_HOSTS = {

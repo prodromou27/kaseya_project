@@ -487,3 +487,122 @@ export type AssetDetails = {
 };
 
 export type ThirdPartyPatchStatus = { state: string; message: string; evidence: string; live_validation: string };
+
+// ---------------------------------------------------------------- VSA2: onboarding reconciliation
+
+export type Classification =
+  | "MATCHED_CORRECT"
+  | "MATCHED_WRONG_GROUP"
+  | "MATCHED_WRONG_SITE"
+  | "REVIEW_WRONG_ORGANIZATION"
+  | "NOT_FOUND_IN_COMPLETE_SNAPSHOT"
+  | "AMBIGUOUS"
+  | "DUPLICATE_INPUT"
+  | "INVALID_INPUT";
+
+export type OnboardingSheet = { name: string; rows: number; columns: number; formula_cells_ignored: number; truncated_cells: number };
+
+export type OnboardingUpload = {
+  id: string;
+  display_name: string;
+  file_format: "xlsx" | "csv";
+  sha256: string;
+  bytes: number;
+  sheets: OnboardingSheet[];
+  uploaded_by: string;
+  created_at: string;
+  expires_at: string;
+  purged_at: string | null;
+  available: boolean;
+};
+
+export type OnboardingPreview = {
+  sheet: string;
+  header_row: number;
+  headers: string[];
+  fields: { key: string; label: string }[];
+  identifier_fields: string[];
+  suggested_mapping: Record<string, number>;
+  mapping: Record<string, number>;
+  data_rows: number;
+  rows_with_problems: number;
+  rows_without_identifier: number;
+  formula_cells_ignored: number;
+  truncated_cells: number;
+  sample: { row: number; values: Record<string, string>; problems: Record<string, string>; has_identifier: boolean }[];
+};
+
+export type OnboardingEligibility = {
+  generations: { id: string; instance: string; published_at: string | null; data_basis: string; hierarchy_status: string; row_count: number }[];
+  blocked: { code: string; detail: string } | null;
+  stale: boolean;
+};
+
+export type ReconciliationSummary = {
+  logic_version: string;
+  expected_rows: number;
+  classifications: Partial<Record<Classification, number>>;
+  secondary_flags: Record<string, number>;
+  matched_devices: number;
+  snapshot_devices: number;
+  unexpected_vsa_assets: number;
+  unexpected_pending_review: number;
+  parameters: { offline_hours: number; stale_agent_days: number; stale_source: boolean; flags_not_evaluated: Record<string, string> };
+  notes: string[];
+  generation: { id: string; published_at: string; data_basis: string };
+};
+
+export type ReconciliationRun = {
+  id: string;
+  upload: string;
+  upload_name: string;
+  upload_sha256: string;
+  sheet: string;
+  header_row: number;
+  mapping: Record<string, number>;
+  mapping_hash: string;
+  logic_version: string;
+  generation: string;
+  data_basis: string;
+  stale_source_acknowledged: boolean;
+  requested_by: string;
+  state: "queued" | "running" | "completed" | "failed";
+  error_code: string;
+  summary: Partial<ReconciliationSummary>;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export type Placement = {
+  source_id: string;
+  hostname: string;
+  organization_id: string;
+  organization: string;
+  site_id: string;
+  site: string;
+  group_id: string;
+  group: string;
+  last_seen_online: string;
+  agent_installed?: boolean | null;
+};
+
+export type ReconciliationResult = {
+  id: string;
+  kind: "expected" | "unexpected";
+  row_number: number | null;
+  input: Record<string, string>;
+  classification: Classification | "";
+  effective_classification: Classification | "";
+  flags: string[];
+  evidence: Record<string, unknown>;
+  asset: string | null;
+  actual: Partial<Placement>;
+  candidates: (Placement & { asset_id: string })[];
+  pending_review_row: number | null;
+  review_state: "not_required" | "pending" | "decided";
+  reviewed_classification: Classification | "";
+  reviewed_asset: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string;
+};
