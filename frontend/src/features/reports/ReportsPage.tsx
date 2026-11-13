@@ -18,6 +18,7 @@ import {
   type ReportScheduleRow,
   type ReportTemplate,
 } from "../../lib/types";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -254,7 +255,7 @@ export function ReportsPage() {
     <>
       <PageHeader title="Reports" subtitle={selected ? `${selected.code} — ${selected.name}` : undefined} />
       <Tabs label="Report sections" active={tab} onChange={setTab} tabs={[
-        { id: "new", label: "New report", content: !selected ? <EmptyState title="Select a customer">Reports are generated for exactly one customer.</EmptyState>
+        { id: "new", label: "New report", content: !selected ? <SelectCustomer>Reports are generated for exactly one customer.</SelectCustomer>
             : !canExport ? <EmptyState title="You do not have export permission for this customer." />
             : <QueryBoundary query={templates}>{(t) => <NewReport customer={selected} templates={allowedTemplates(t, selected)} />}</QueryBoundary> },
         { id: "history", label: "History", content: selected && canExport ? <RunHistory customer={selected} /> : <EmptyState title="Select a customer you can export for." /> },

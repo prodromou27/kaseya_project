@@ -3,12 +3,13 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
-import { EmptyState, QueryBoundary } from "../../components/States";
+import { QueryBoundary } from "../../components/States";
 import { Badge, Field, Notice, PageHeader } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import type { ChangeDevice, ChangeItem, ChangeKind, ChangeSummary, ComparableSnapshot, Customer, Paginated } from "../../lib/types";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 export const CHANGE_LABEL: Record<ChangeKind, string> = {
   device_added: "Newly observed devices",
@@ -118,7 +119,7 @@ export function ChangesPage() {
   return (
     <>
       <PageHeader title="Inventory changes" subtitle="What differs between two complete VSA X snapshots: devices, placement, OS, agent, IP addresses and software." />
-      {!selected ? <EmptyState title="Select a customer" /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View customer={selected} />}
     </>
   );
 }

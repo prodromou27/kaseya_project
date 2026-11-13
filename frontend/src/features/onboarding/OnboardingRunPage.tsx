@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
-import { EmptyState, QueryBoundary } from "../../components/States";
+import { QueryBoundary } from "../../components/States";
 import { Badge, Notice, PageHeader, type Tone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
@@ -16,6 +16,7 @@ import {
   type ReconciliationResult,
   type ReconciliationRun,
 } from "../../lib/types";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 export const CLASS_LABEL: Record<Classification, string> = {
   MATCHED_CORRECT: "Matched, correct",
@@ -231,7 +232,7 @@ export function OnboardingRunPage() {
   return (
     <>
       <p className="mb-1 text-sm"><Link to="/onboarding" className="text-sky-800 hover:underline">← Onboarding check</Link></p>
-      {!selected ? <EmptyState title="Select a customer" /> : <View customer={selected} runId={runId} />}
+      {!selected ? <SelectCustomer /> : <View customer={selected} runId={runId} />}
     </>
   );
 }

@@ -23,6 +23,7 @@ import { softwareColumns } from "../inventory/AssetDetailPage";
 import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { DataSources } from "../inventory/DataSources";
 import { ExportButton } from "../reports/ExportButton";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 const STATES: ComplianceState[] = ["outdated", "current", "newer", "unknown", "excluded", "unsupported"];
 const PAGE_SIZE = 50;
@@ -244,7 +245,7 @@ export function SoftwarePage() {
   return (
     <>
       <PageHeader title="Software versions" subtitle={selected ? `${selected.code} — ${selected.name}` : undefined} />
-      {!selected ? <EmptyState title="Select a customer" /> : <SoftwareView customer={selected} />}
+      {!selected ? <SelectCustomer /> : <SoftwareView customer={selected} />}
     </>
   );
 }

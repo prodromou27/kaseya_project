@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
-import { EmptyState, QueryBoundary } from "../../components/States";
+import { QueryBoundary } from "../../components/States";
 import { Badge, PageHeader } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
@@ -13,6 +13,7 @@ import type { AssetRow, Customer, Paginated } from "../../lib/types";
 import { ExportButton } from "../reports/ExportButton";
 import { DataSources } from "./DataSources";
 import { SavedViews } from "./SavedViews";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 const PAGE_SIZE = 50;
 
@@ -149,7 +150,7 @@ export function AssetsPage() {
     <>
       <PageHeader title="Assets" subtitle={selected ? `${selected.code} — ${selected.name}` : undefined} />
       {!selected ? (
-        <EmptyState title="Select a customer">Inventory is always shown for exactly one customer.</EmptyState>
+        <SelectCustomer>Inventory is always shown for exactly one customer.</SelectCustomer>
       ) : (
         <>
           <DataSources customer={selected} />

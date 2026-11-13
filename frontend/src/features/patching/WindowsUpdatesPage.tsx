@@ -20,6 +20,7 @@ import {
 } from "../../lib/types";
 import { DataSources } from "../inventory/DataSources";
 import { ExportButton } from "../reports/ExportButton";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 const PAGE_SIZE = 50;
 const STATUSES: UpdateStatus[] = ["collected", "not_collected", "not_supported", "failed", "not_requested", "carried_forward"];
@@ -165,7 +166,7 @@ export function WindowsUpdatesPage() {
   return (
     <>
       <PageHeader title="Windows updates" subtitle={selected ? `${selected.code} — ${selected.name}` : undefined} />
-      {!selected ? <EmptyState title="Select a customer" /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View customer={selected} />}
     </>
   );
 }

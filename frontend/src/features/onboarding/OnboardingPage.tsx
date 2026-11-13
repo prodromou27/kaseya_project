@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
-import { EmptyState, QueryBoundary } from "../../components/States";
+import { QueryBoundary } from "../../components/States";
 import { Badge, Field, Notice, PageHeader, statusTone } from "../../components/ui";
 import { api, apiUpload, describeError } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
@@ -17,6 +17,7 @@ import {
   type Paginated,
   type ReconciliationRun,
 } from "../../lib/types";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 function Eligibility({ customer }: { customer: Customer }) {
   const query = useQuery({
@@ -207,7 +208,7 @@ export function OnboardingPage() {
       <PageHeader title="Onboarding check"
         subtitle="Compare a customer's expected device list with the latest complete VSA X snapshot. Read-only: nothing is changed in VSA X." />
       {!selected ? (
-        <EmptyState title="Select a customer" />
+        <SelectCustomer />
       ) : (
         <>
           <Eligibility customer={selected} />

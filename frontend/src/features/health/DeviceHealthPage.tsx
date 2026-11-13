@@ -17,6 +17,7 @@ import {
   type HealthThresholdsRow,
   type Paginated,
 } from "../../lib/types";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 const DIMENSION_TITLE: Record<HealthDimension, string> = {
   connectivity: "Connectivity (last seen)",
@@ -206,7 +207,7 @@ export function DeviceHealthPage() {
   return (
     <>
       <PageHeader title="Device health" subtitle="Agent connectivity and version, disk space and security state from the latest VSA X snapshot." />
-      {!selected ? <EmptyState title="Select a customer" /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View customer={selected} />}
     </>
   );
 }

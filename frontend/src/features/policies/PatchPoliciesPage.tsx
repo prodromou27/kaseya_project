@@ -20,6 +20,7 @@ import {
   type PolicySummary,
 } from "../../lib/types";
 import { PolicyDefinitionView } from "./PolicyDefinitionView";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 const DRIFT_TONE: Record<DriftState, Tone> = {
   no_baseline: "neutral",
@@ -213,7 +214,7 @@ export function PatchPoliciesPage() {
   return (
     <>
       <PageHeader title="Patch policies" subtitle="Assigned VSA X Patch Management policies, their configuration, and drift from the approved expectation." />
-      {!selected ? <EmptyState title="Select a customer" /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View customer={selected} />}
     </>
   );
 }

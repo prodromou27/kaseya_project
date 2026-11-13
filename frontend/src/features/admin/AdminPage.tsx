@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
@@ -71,10 +72,10 @@ function IntegrationsPanel() {
   const [provider, setProvider] = useState<Provider>("vsa_x");
   const [baseUrl, setBaseUrl] = useState("");
   const [isFixture, setIsFixture] = useState(false);
-  const [budget, setBudget] = useState("0");
-  const [policyBudget, setPolicyBudget] = useState("0");
-  const [notifBudget, setNotifBudget] = useState("0");
-  const [cfBudget, setCfBudget] = useState("0");
+  const [budget, setBudget] = useState("100");
+  const [policyBudget, setPolicyBudget] = useState("100");
+  const [notifBudget, setNotifBudget] = useState("100");
+  const [cfBudget, setCfBudget] = useState("100");
   const [discoverId, setDiscoverId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ name: string; result: ConnectionTestResult } | null>(null);
   const [tokenFor, setTokenFor] = useState<Integration | null>(null);
@@ -121,8 +122,6 @@ function IntegrationsPanel() {
       ) },
     { header: "TLS verify", cell: ({ row }) => (row.original.verify_tls ? "On (enforced)" : "OFF") },
     { header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
-    { header: "Detail budget", cell: ({ row }) => row.original.installed_updates_budget || "off" },
-    { header: "Policy budget", cell: ({ row }) => row.original.applied_policies_budget || "off" },
     { header: "Status", accessorKey: "status", cell: ({ getValue }) => <Badge tone={statusTone[String(getValue())]}>{String(getValue())}</Badge> },
     { header: "Last connection test", cell: ({ row }) => row.original.last_test_at
         ? <span className="text-xs"><Badge tone={row.original.last_test_outcome === "ok" ? "good" : "bad"}>{row.original.last_test_outcome}</Badge> {formatUtc(row.original.last_test_at)}</span>
@@ -180,53 +179,65 @@ function IntegrationsPanel() {
         ))}
       </section>
       <ConnectorHostsPanel />
-      <form onSubmit={submit} aria-label="Add integration" className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-3">
-        <Field label="Name">{(id) => <input id={id} className="input w-48" required value={name} onChange={(e) => setName(e.target.value)} />}</Field>
-        <Field label="Provider">
-          {(id) => (
-            <select id={id} className="input" value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
-              {(available.length ? available.map((p) => p.key as Provider) : (["vsa_x"] as Provider[])).map((p) => (
-                <option key={p} value={p}>
-                  {PROVIDER_LABEL[p] ?? p}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
-        <Field label="Base URL" hint={isFixture ? "Fixture URLs must end in .invalid" : providerSpec?.base_url_help ?? "https only, allowed host"}>
-          {(id, hint) => <input id={id} aria-describedby={hint} className="input w-64" required value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://" />}
-        </Field>
-        <Field label="InstalledUpdates budget / sync" hint="Per-device detail calls (0 = off; limit 3600 req/h)">
-          {(id, hint) => (
-            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
-                   onChange={(e) => setBudget(e.target.value)} />
-          )}
-        </Field>
-        <Field label="Notifications budget / sync" hint="Per-device notification calls (0 = off; limit 3600 req/h)">
-          {(id, hint) => (
-            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={notifBudget}
-                   onChange={(e) => setNotifBudget(e.target.value)} />
-          )}
-        </Field>
-        <Field label="Custom fields budget / sync" hint="Used only for customers with approved field names">
-          {(id, hint) => (
-            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={cfBudget}
-                   onChange={(e) => setCfBudget(e.target.value)} />
-          )}
-        </Field>
-        <Field label="Applied policies budget / sync" hint="Per-device policy calls (0 = off; limit 3600 req/h)">
-          {(id, hint) => (
-            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={policyBudget}
-                   onChange={(e) => setPolicyBudget(e.target.value)} />
-          )}
-        </Field>
-        <label className="flex items-center gap-2 pb-1.5 text-sm">
-          <input type="checkbox" checked={isFixture} onChange={(e) => setIsFixture(e.target.checked)} />
-          Fixture (demo) instance
-        </label>
-        <button type="submit" className="btn-primary" disabled={create.isPending}>
-          Add
-        </button>
+      <form onSubmit={submit} aria-label="Add integration" className="space-y-3 rounded border border-slate-200 bg-white p-3">
+        <h3 className="font-semibold">Add an integration</h3>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Name">{(id) => <input id={id} className="input w-48" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. VSA production" />}</Field>
+          <Field label="Provider">
+            {(id) => (
+              <select id={id} className="input" value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
+                {(available.length ? available.map((p) => p.key as Provider) : (["vsa_x"] as Provider[])).map((p) => (
+                  <option key={p} value={p}>
+                    {PROVIDER_LABEL[p] ?? p}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <Field label="Base URL" hint={isFixture ? "Fixture URLs must end in .invalid" : providerSpec?.base_url_help ?? "https only, allowed host"}>
+            {(id, hint) => <input id={id} aria-describedby={hint} className="input w-72" required value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://" />}
+          </Field>
+          <label className="flex items-center gap-2 pb-1.5 text-sm">
+            <input type="checkbox" checked={isFixture} onChange={(e) => setIsFixture(e.target.checked)} />
+            Fixture (demo) instance
+          </label>
+          <button type="submit" className="btn-primary" disabled={create.isPending}>
+            Add
+          </button>
+        </div>
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-700">Advanced: per-device API calls per sync</summary>
+          <p className="mt-1 text-xs text-slate-500">
+            How many per-device detail calls each sync may make, per data type. VSA X documents a limit of 3,600 requests
+            per hour per endpoint; devices not reached this sync are collected next time. 0 switches that data type off.
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-3">
+          <Field label="Windows update details / sync" hint="Per-device InstalledUpdates calls (0 = off)">
+            {(id, hint) => (
+              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
+                     onChange={(e) => setBudget(e.target.value)} />
+            )}
+          </Field>
+          <Field label="Applied policies / sync" hint="Per-device policy calls (0 = off)">
+            {(id, hint) => (
+              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={policyBudget}
+                     onChange={(e) => setPolicyBudget(e.target.value)} />
+            )}
+          </Field>
+          <Field label="Notifications / sync" hint="Per-device notification calls (0 = off)">
+            {(id, hint) => (
+              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={notifBudget}
+                     onChange={(e) => setNotifBudget(e.target.value)} />
+            )}
+          </Field>
+          <Field label="Custom fields / sync" hint="Only for customers with approved field names">
+            {(id, hint) => (
+              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={cfBudget}
+                     onChange={(e) => setCfBudget(e.target.value)} />
+            )}
+          </Field>
+          </div>
+        </details>
         {create.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(create.error)}</p> : null}
       </form>
       {toggle.isError ? <p role="alert" className="text-sm text-red-700">{describeError(toggle.error)}</p> : null}
@@ -342,7 +353,10 @@ function MappingReviewPanel() {
 
 export function AdminPage() {
   const me = useMe();
-  const [tab, setTab] = useState("mappings");
+  // The open tab lives in the URL (?tab=integrations) so links, bookmarks and reloads land on the right section.
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") ?? "mappings";
+  const setTab = (id: string) => setParams((p) => { p.set("tab", id); return p; }, { replace: true });
   if (!me.is_super_admin) {
     return (
       <>

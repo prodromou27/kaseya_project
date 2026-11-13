@@ -3,12 +3,13 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
-import { EmptyState, QueryBoundary } from "../../components/States";
+import { QueryBoundary } from "../../components/States";
 import { Badge, Field, Notice, PageHeader, type Tone } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import type { Customer, NotificationRow, NotificationSummary, Paginated } from "../../lib/types";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 export const PRIORITY_TONE: Record<string, Tone> = { critical: "bad", high: "bad", elevated: "warn", normal: "neutral", low: "neutral" };
 
@@ -90,7 +91,7 @@ export function NotificationsPage() {
   return (
     <>
       <PageHeader title="Notifications" subtitle="Recent VSA X device notifications and recurring patterns." />
-      {!selected ? <EmptyState title="Select a customer" /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View customer={selected} />}
     </>
   );
 }

@@ -2,13 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
-import { EmptyState, QueryBoundary } from "../../components/States";
+import { QueryBoundary } from "../../components/States";
 import { Badge, Notice, PageHeader } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import type { Adapter, Customer, GroupNetwork } from "../../lib/types";
 import { NetworkReview } from "./ExpectedSubnets";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 export function AdapterList({ adapters }: { adapters: Adapter[] }) {
   if (adapters.length === 0) return <span className="text-xs text-slate-400">no adapters reported</span>;
@@ -114,7 +115,7 @@ export function GroupNetworkPage() {
   return (
     <>
       <p className="mb-1 text-sm"><Link to="/groups" className="text-sky-800 hover:underline">← Groups & network</Link></p>
-      {!selected ? <EmptyState title="Select a customer" /> : <View customer={selected} groupId={groupId} />}
+      {!selected ? <SelectCustomer /> : <View customer={selected} groupId={groupId} />}
     </>
   );
 }

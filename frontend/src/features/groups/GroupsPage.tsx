@@ -9,6 +9,7 @@ import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import type { Customer, HierarchyResponse, NodeCounts } from "../../lib/types";
 import { DataSources } from "../inventory/DataSources";
+import { SelectCustomer } from "../../components/SelectCustomer";
 
 function Counts({ c }: { c: NodeCounts }) {
   return (
@@ -100,7 +101,7 @@ export function GroupsPage() {
   return (
     <>
       <PageHeader title="Groups & network" subtitle={selected ? `${selected.code} — ${selected.name}` : undefined} />
-      {!selected ? <EmptyState title="Select a customer" /> : (
+      {!selected ? <SelectCustomer /> : (
         <>
           <DataSources customer={selected} />
           <Tree customer={selected} />
