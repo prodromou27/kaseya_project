@@ -64,6 +64,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Start directly as the image's non-root "redis" user. As root, the image entrypoint switches user with su-exec,
+    # which needs SETUID/SETGID: those are removed by cap_drop below, so Redis would exit (found on first host boot).
+    user: redis
     command: ["redis-server", "--appendonly", "yes", "--protected-mode", "yes"]
     volumes: [redisdata:/data]
     healthcheck:

@@ -229,7 +229,11 @@ infra/almalinux/prepare-secrets.sh "$SECRETS" | sed 's/^/    /'
 step "Building images (first run takes several minutes)"
 "${COMPOSE[@]}" build --pull
 step "Starting the stack"
-"${COMPOSE[@]}" up -d --remove-orphans
+if ! "${COMPOSE[@]}" up -d --remove-orphans; then
+  "${COMPOSE[@]}" ps -a
+  "${COMPOSE[@]}" logs --tail 30 || true
+  die "A container failed to start (see the status and logs above; SELinux: ausearch -m avc -ts recent)."
+fi
 info "waiting for the portal to become ready..."
 ready=0
 for _ in $(seq 1 60); do
