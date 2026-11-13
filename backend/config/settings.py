@@ -235,6 +235,9 @@ ONBOARDING_STORAGE_DIR = Path(env_str("ONBOARDING_STORAGE_DIR", str(BASE_DIR / "
 ONBOARDING_UPLOAD_TTL_HOURS = env_int("ONBOARDING_UPLOAD_TTL_HOURS", 72)
 ONBOARDING_MAX_UPLOAD_BYTES = env_int("ONBOARDING_MAX_UPLOAD_BYTES", 5 * 1024 * 1024)
 ONBOARDING_MAX_ROWS = env_int("ONBOARDING_MAX_ROWS", 20_000)
+# VSA4-03 device notifications: keep only this window, at most N most recent per device per sync.
+NOTIFICATION_WINDOW_DAYS = env_int("NOTIFICATION_WINDOW_DAYS", 14)
+NOTIFICATIONS_PER_DEVICE = env_int("NOTIFICATIONS_PER_DEVICE", 50)
 CELERY_BEAT_SCHEDULE["purge-expired-onboarding-uploads"] = {
     "task": "apps.onboarding.tasks.purge_expired_uploads",
     "schedule": 3600.0,

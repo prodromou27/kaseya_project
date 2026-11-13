@@ -72,6 +72,8 @@ export type Integration = {
   max_rps: string;
   installed_updates_budget: number;
   applied_policies_budget: number;
+  notifications_budget: number;
+  custom_fields_budget: number;
   last_test_at: string | null;
   last_test_outcome: string;
   last_test_result: Partial<ConnectionTestResult>;
@@ -200,6 +202,8 @@ export type AssetDetail = {
   policies: DevicePolicies | null;
   health?: (HealthRow & { thresholds: HealthThresholdValues }) | null;
   reconciliation?: DeviceReconciliation[];
+  notifications?: DeviceFetchMeta & { window_days: number; items: DeviceNotificationItem[] } | null;
+  custom_fields?: DeviceFetchMeta & { items: { name: string; value: string; type: string }[] } | null;
   id: string;
   external_id: string;
   active: boolean;
@@ -818,4 +822,33 @@ export type DeviceReconciliation = {
   reviewed_classification: string;
   flags: string[];
   role: "matched" | "candidate" | "reviewed_match";
+};
+
+// ---------------------------------------------------------------- VSA4-03: notifications + custom fields
+
+export type DeviceFetchMeta = { status: string; collected_at: string | null; reported: number | null; stored: number | null; dropped: number | null };
+export type DeviceNotificationItem = { priority: string; occurred_at: string | null; occurred_raw: string; message: string; redactions: number };
+export type NotificationRow = DeviceNotificationItem & { id: string; asset: string; hostname: string; vendor_id: string };
+export type NotificationSummary = {
+  as_of: (string | null)[];
+  window_days: number;
+  per_device_limit: number;
+  devices: number;
+  collection_status: Record<string, number>;
+  devices_without_fetch_row: number;
+  notifications: number;
+  devices_with_notifications: number;
+  by_priority: Record<string, number>;
+  recurring: { pattern: string; count: number; devices: number }[];
+  note: string;
+};
+export type CustomFieldAllow = {
+  id: string;
+  name: string;
+  reason: string;
+  state: "proposed" | "approved" | "rejected" | "retired";
+  proposed_by: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 };

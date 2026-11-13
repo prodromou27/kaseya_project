@@ -61,6 +61,17 @@ class IntegrationInstance(models.Model):
         help_text="Max per-device GET /api/v3/devices/:id/appliedpolicies calls per sync (0 = disabled). "
         "Documented limit is 3600 requests/hour.",
     )
+    notifications_budget = models.PositiveIntegerField(
+        default=0,
+        validators=[MaxValueValidator(3000)],
+        help_text="Max per-device GET /api/v3/devices/:id/notifications calls per sync (0 = disabled).",
+    )
+    custom_fields_budget = models.PositiveIntegerField(
+        default=0,
+        validators=[MaxValueValidator(3000)],
+        help_text="Max per-device GET /api/v3/devices/:id/customfields calls per sync (0 = disabled). Used only for "
+        "customers with approved custom field names.",
+    )
     # VSA1-01: result of the last administrator connection test (no credentials or raw bodies are stored).
     last_test_at = models.DateTimeField(null=True, blank=True)
     last_test_outcome = models.CharField(max_length=32, blank=True)
@@ -182,6 +193,8 @@ class SyncRun(models.Model):
     source_total_count = models.PositiveIntegerField(null=True, blank=True)
     installed_updates_requested = models.PositiveIntegerField(default=0)
     applied_policies_requested = models.PositiveIntegerField(default=0)
+    notifications_requested = models.PositiveIntegerField(default=0)
+    custom_fields_requested = models.PositiveIntegerField(default=0)
     initial_total_count = models.PositiveIntegerField(
         null=True, blank=True, help_text="TotalCount reported by the first page; every later page must match."
     )

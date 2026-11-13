@@ -144,6 +144,17 @@ class FixtureVsaTransport:
             return FakeResponse(400)
         if top < 1 or skip < 0:
             return FakeResponse(400)
+        detail = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)/(notifications|customfields)", path)
+        if detail:
+            dev = next((a for a in self.assets if str(a.get("Identifier")) == detail.group(1)), None)
+            if dev is None:
+                return FakeResponse(404)
+            if detail.group(2) == "notifications":
+                if params.get("$orderby") != "DateTime desc":
+                    return FakeResponse(400)
+                rows = sorted(dev.get("_Notifications", []), key=lambda r: str(r.get("DateTime")), reverse=True)
+                return self._list(rows, skip, top)
+            return self._list(list(dev.get("_CustomFields", [])), skip, min(top, 100))
         applied = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)/appliedpolicies", path)
         if applied:
             asset = next((a for a in self.assets if str(a.get("Identifier")) == applied.group(1)), None)

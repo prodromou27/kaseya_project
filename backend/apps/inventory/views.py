@@ -167,7 +167,8 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         asset = Asset.objects.filter(pk=_uuid(kwargs["pk"])).first()
         scope.get_customer_or_404(request.user, asset.customer_id if asset else None, Cap.CUSTOMER_READ, request)
-        assert asset is not None  # noqa: S101 - get_customer_or_404 raised otherwise
+        if asset is None:  # unreachable: get_customer_or_404 already raised; explicit for python -O
+            raise NotFound()
         current = current_observations(asset.customer_id).filter(asset=asset).first()
         history = (
             AssetObservation.objects.filter(asset=asset, generation__state__in=["published", "superseded"])
@@ -282,10 +283,54 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             from .health import device_for
 
             device_health = device_for(current)
+        device_notifications = None
+        custom_fields = None
+        if current is not None:
+            from django.conf import settings as dj_settings
+
+            from .models import DeviceDetailFetch
+
+            fetches = {f.kind: f for f in DeviceDetailFetch.objects.filter(observation=current)}
+
+            def fetch_meta(kind: str) -> dict[str, Any]:
+                f = fetches.get(kind)
+                return {
+                    "status": f.status if f else "not_collected",
+                    "collected_at": f.collected_at.isoformat() if f and f.collected_at else None,
+                    "reported": f.reported if f else None,
+                    "stored": f.stored if f else None,
+                    "dropped": f.dropped if f else None,
+                }
+
+            nf = fetches.get("notifications")
+            device_notifications = {
+                **fetch_meta("notifications"),
+                "window_days": dj_settings.NOTIFICATION_WINDOW_DAYS,
+                "items": [
+                    {
+                        "priority": n.priority,
+                        "occurred_at": n.occurred_at.isoformat() if n.occurred_at else None,
+                        "occurred_raw": n.occurred_raw,
+                        "message": n.message,
+                        "redactions": n.redactions,
+                    }
+                    for n in (nf.notifications.order_by("-occurred_at")[:100] if nf else [])
+                ],
+            }
+            cf = fetches.get("custom_fields")
+            custom_fields = {
+                **fetch_meta("custom_fields"),
+                "items": [
+                    {"name": c.name, "value": c.value, "type": c.type}
+                    for c in (cf.custom_fields.order_by("name") if cf else [])
+                ],
+            }
         return Response(
             {
                 "details": details,
                 "health": device_health,
+                "notifications": device_notifications,
+                "custom_fields": custom_fields,
                 "reconciliation": recon,
                 "policies": policies,
                 "third_party_patch_status": THIRD_PARTY_PATCH_STATUS,

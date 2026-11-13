@@ -39,6 +39,16 @@ class CustomerScopedMixin:
             )
         return self._customer
 
+    def initial(self, request: Request, *args: Any, **kwargs: Any) -> None:
+        """Authorise the customer *before* any handler or input validation runs (VSAP-03).
+
+        Without this, a create/update could return 400 (input validated) for a customer the caller may not access,
+        revealing that it exists. Now every nested route answers 404 for unknown and unauthorised customers alike.
+        """
+        super().initial(request, *args, **kwargs)  # type: ignore[misc]  # authentication, permissions, throttling
+        if "customer_pk" in self.kwargs and not getattr(self, "swagger_fake_view", False):
+            self.get_customer()
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerSerializer

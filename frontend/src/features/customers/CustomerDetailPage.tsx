@@ -10,6 +10,7 @@ import { useMe } from "../../lib/auth";
 import { CAP, type Customer, type CustomerStatus } from "../../lib/types";
 import { CustomerReports } from "../reports/CustomerReports";
 import { AuditTable } from "./AuditTable";
+import { CustomFieldsPanel } from "./CustomFieldsPanel";
 import { MappingsPanel } from "./MappingsPanel";
 import { MembersPanel } from "./MembersPanel";
 
@@ -104,6 +105,7 @@ export function CustomerDetailPage() {
         if (caps.has(CAP.auditRead))
           tabs.push({ id: "audit", label: "Audit", content: <AuditTable path={`/customers/${customer.id}/audit-events/`} caption={`${customer.code} audit events`} /> });
         if (caps.has(CAP.export)) tabs.push({ id: "reports", label: "Reports", content: <CustomerReports customer={customer} /> });
+        if (caps.has(CAP.manageExceptions)) tabs.push({ id: "custom-fields", label: "Custom fields", content: <CustomFieldsPanel customer={customer} /> });
         return (
           <>
             <PageHeader

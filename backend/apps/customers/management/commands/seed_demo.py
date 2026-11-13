@@ -75,6 +75,8 @@ class Command(BaseCommand):
                     "max_rps": 20,
                     "installed_updates_budget": 60,  # rotate per-device InstalledUpdates over the 130-device demo org
                     "applied_policies_budget": 200,  # VSA3-04: covers every demo device in one sync
+                    "notifications_budget": 200,  # VSA4-03
+                    "custom_fields_budget": 200,  # VSA4-03: used only once a customer approves field names
                 },
             )
             reviewer = User.objects.get(email="demo.reviewer@demo.invalid")

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 MAX_TEXT = 255
@@ -718,3 +718,69 @@ def normalize_rate_limits(body: Any) -> dict[str, Any]:
             if isinstance(e, dict)
         ],
     }
+
+
+# ---------------------------------------------------------------------------------------------- VSA4-03
+
+
+@dataclass(frozen=True)
+class NotificationItem:
+    vendor_id: str
+    message: str
+    priority: str
+    occurred_at: datetime | None
+    occurred_raw: str
+
+
+@dataclass(frozen=True)
+class CustomFieldItem:
+    field_id: str
+    name: str
+    value: str
+    type: str
+
+
+def _notification_time(value: Any) -> tuple[datetime | None, str]:
+    """Documented examples use both ISO-8601 strings and epoch seconds; anything else is kept raw, never guessed."""
+    if isinstance(value, bool) or value is None:
+        return None, ""
+    if isinstance(value, int) and 0 < value < 10_000_000_000:
+        return datetime.fromtimestamp(value, tz=UTC), str(value)
+    if isinstance(value, str):
+        try:
+            return _datetime(value), value[:40]
+        except RecordInvalid:
+            return None, value[:40]
+    return None, str(value)[:40]
+
+
+def normalize_notifications(rows: list[dict[str, Any]]) -> tuple[NotificationItem, ...]:
+    items = []
+    for row in rows:
+        when, raw = _notification_time(row.get("DateTime"))
+        message = row.get("Message")
+        items.append(
+            NotificationItem(
+                vendor_id=_id(row.get("Id")),
+                message=message[:1000] if isinstance(message, str) else "",
+                priority=_text(row.get("Priority")).lower()[:32],
+                occurred_at=when,
+                occurred_raw=raw,
+            )
+        )
+    return tuple(items)
+
+
+def normalize_custom_fields(rows: list[dict[str, Any]]) -> tuple[CustomFieldItem, ...]:
+    out = []
+    for row in rows:
+        value = row.get("Value")
+        out.append(
+            CustomFieldItem(
+                field_id=_id(row.get("Id")),
+                name=_text(row.get("Name"))[:120],
+                value=("" if value is None else str(value))[:255],
+                type=_text(row.get("Type"))[:32],
+            )
+        )
+    return tuple(out)

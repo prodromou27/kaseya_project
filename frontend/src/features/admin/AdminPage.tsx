@@ -71,6 +71,8 @@ function IntegrationsPanel() {
   const [isFixture, setIsFixture] = useState(false);
   const [budget, setBudget] = useState("0");
   const [policyBudget, setPolicyBudget] = useState("0");
+  const [notifBudget, setNotifBudget] = useState("0");
+  const [cfBudget, setCfBudget] = useState("0");
   const [discoverId, setDiscoverId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ name: string; result: ConnectionTestResult } | null>(null);
   const testConn = useMutation({
@@ -86,7 +88,7 @@ function IntegrationsPanel() {
   });
   const create = useMutation({
     mutationFn: () =>
-      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture, installed_updates_budget: Number(budget), applied_policies_budget: Number(policyBudget) }),
+      api.post<Integration>("/integrations/", { name, provider, base_url: baseUrl, credential_ref: isFixture ? "" : credentialRef, is_fixture: isFixture, installed_updates_budget: Number(budget), applied_policies_budget: Number(policyBudget), notifications_budget: Number(notifBudget), custom_fields_budget: Number(cfBudget) }),
     onSuccess: () => {
       setName("");
       setBaseUrl("");
@@ -158,6 +160,18 @@ function IntegrationsPanel() {
           {(id, hint) => (
             <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
                    onChange={(e) => setBudget(e.target.value)} />
+          )}
+        </Field>
+        <Field label="Notifications budget / sync" hint="Per-device notification calls (0 = off; limit 3600 req/h)">
+          {(id, hint) => (
+            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={notifBudget}
+                   onChange={(e) => setNotifBudget(e.target.value)} />
+          )}
+        </Field>
+        <Field label="Custom fields budget / sync" hint="Used only for customers with approved field names">
+          {(id, hint) => (
+            <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={cfBudget}
+                   onChange={(e) => setCfBudget(e.target.value)} />
           )}
         </Field>
         <Field label="Applied policies budget / sync" hint="Per-device policy calls (0 = off; limit 3600 req/h)">

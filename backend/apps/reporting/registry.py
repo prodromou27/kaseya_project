@@ -505,6 +505,30 @@ def _change_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -
                 ]
 
 
+class NotificationFilters(serializers.Serializer):
+    priority = serializers.CharField(required=False, allow_blank=True, max_length=32)
+
+
+def _notification_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    from apps.inventory.models import DeviceNotification
+
+    qs = DeviceNotification.objects.filter(customer=customer, generation_id__in=pins["generation_ids"]).select_related(
+        "asset", "fetch__observation", "generation"
+    )
+    if filters.get("priority"):
+        qs = qs.filter(priority=filters["priority"].lower())
+    for n in qs.order_by("-occurred_at", "id").iterator(chunk_size=2000):
+        yield [
+            n.asset.external_id,
+            n.fetch.observation.hostname,
+            n.priority,
+            n.occurred_at.isoformat() if n.occurred_at else (n.occurred_raw or "unknown"),
+            n.message,
+            n.redactions,
+            n.generation.published_at.isoformat(),
+        ]
+
+
 class ChangeFilters(serializers.Serializer):
     kind = serializers.ChoiceField(
         choices=[
@@ -687,6 +711,28 @@ REPORT_TYPES: dict[str, ReportType] = {
         limitations="Assignment is configuration, not deployment: an assigned policy is not evidence that patches "
         "were installed. 'unknown' = not collected; 'not_reported' = no Patch Management entry in the response. "
         "Drift uses the expectations approved at report generation time.",
+    ),
+    "device_notifications": ReportType(
+        key="device_notifications",
+        title="Device notifications (R15)",
+        description="VSA X device notifications inside the retention window, redacted for credentials and "
+        "personal data.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=NotificationFilters,
+        columns=(
+            "device_id",
+            "hostname",
+            "priority",
+            "occurred_utc",
+            "message_redacted",
+            "redactions",
+            "source_as_of_utc",
+        ),
+        rows=_notification_rows,
+        pin=_pin_generations,
+        limitations="Only devices within the per-sync notification budget are collected; a device with no rows may "
+        "not have been collected. Messages are redacted (credentials, e-mail addresses, DOMAIN\\user) before storage.",
     ),
     "inventory_changes": ReportType(
         key="inventory_changes",

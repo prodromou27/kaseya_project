@@ -41,6 +41,8 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "enabled",
             "installed_updates_budget",
             "applied_policies_budget",
+            "notifications_budget",
+            "custom_fields_budget",
             "last_test_at",
             "last_test_outcome",
             "last_test_result",

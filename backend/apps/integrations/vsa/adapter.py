@@ -31,6 +31,10 @@ ALLOWED_PATHS = [
     re.compile(r"/api/v3/patchmanagement/policies/[0-9]{1,18}"),
     # VSA1-01 connection test (docs-verified 2026-11-13): read-only rate-limit status for the token.
     re.compile(r"/api/v3/ratelimits"),
+    # VSA4-03 (docs-verified 2026-11-13): per-device notifications and custom fields. The tenant-wide
+    # /api/v3/notifications route is deliberately NOT allowed: it cannot be filtered by organisation.
+    re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/notifications"),
+    re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/customfields"),
 ]
 _DEVICE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
@@ -114,6 +118,26 @@ class VsaXAdapter:
             raise ValueError("Unsafe device identifier.")
         rows: list[dict[str, Any]] = []
         for page in self._paged(f"/api/v3/devices/{identifier}/appliedpolicies", {}, 100, max_pages=5):
+            rows.extend(page.records)
+        return rows
+
+    def get_notifications(self, identifier: str, top: int) -> list[dict[str, Any]]:
+        """Most recent ``top`` device notifications (``$orderby=DateTime desc``). The time window is applied by the
+        caller: the OData date-literal syntax for ``$filter`` on DateTime is not documented."""
+        if not _DEVICE_ID.fullmatch(identifier or ""):
+            raise ValueError("Unsafe device identifier.")
+        result = self.client.get_json(
+            f"/api/v3/devices/{identifier}/notifications",
+            {"$orderby": "DateTime desc", "$top": str(max(1, min(top, 500))), "$skip": "0"},
+        )
+        return parse_page(result.json).records
+
+    def get_custom_fields(self, identifier: str) -> list[dict[str, Any]]:
+        """``GET /api/v3/devices/:id/customfields`` (``$top`` max 100). Callers keep only allowlisted names."""
+        if not _DEVICE_ID.fullmatch(identifier or ""):
+            raise ValueError("Unsafe device identifier.")
+        rows: list[dict[str, Any]] = []
+        for page in self._paged(f"/api/v3/devices/{identifier}/customfields", {}, 100, max_pages=10):
             rows.extend(page.records)
         return rows
 

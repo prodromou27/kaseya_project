@@ -24,6 +24,34 @@ jobs:
       - name: npm audit (production deps)
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
+      - name: npm audit (all deps incl. build/test tooling)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Bandit (Python SAST, medium+ fails)
+        run: uvx bandit -q -r backend/apps backend/config -ll
+      - name: Semgrep (Django/Python/secrets/TypeScript/React rules)
+        run: >
+          uvx semgrep scan --metrics=off --error
+          --config p/django --config p/python --config p/secrets --config p/typescript --config p/react
+          --exclude node_modules --exclude "*.test.tsx"
+          backend/apps backend/config frontend/src infra
+      - name: ShellCheck (host scripts)
+        run: uvx --from shellcheck-py shellcheck -S warning infra/almalinux/*.sh infra/backup/*.sh
+      - name: Django deployment checks (errors fail; W008 is intentional, see docs/THREAT_MODEL.md)
+        working-directory: backend
+        env:
+          DJANGO_ENV: production
+          DJANGO_SECRET_KEY: ci-only-not-a-secret-ci-only-not-a-secret-ci-only-not-a-secret-xx
+          DJANGO_ALLOWED_HOSTS: portal.example.internal
+          DJANGO_CSRF_TRUSTED_ORIGINS: https://portal.example.internal
+          TRUST_PROXY_TLS_HEADER: "true"
+        run: uv run python manage.py check --deploy --fail-level ERROR
 
   secrets:
     runs-on: ubuntu-latest

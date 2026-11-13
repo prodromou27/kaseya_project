@@ -140,6 +140,17 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
     asset["_GroupName"] = kind
     asset["_SiteName"] = site
     asset["_AppliedPolicies"] = _applied_policies(index, kind)
+    asset["_Notifications"] = _notifications(index, name)
+    asset["_CustomFields"] = [
+        {
+            "Id": 123,
+            "Name": "Asset Owner Department",
+            "Value": "Finance" if index % 2 else "Engineering",
+            "Type": "Text",
+        },
+        {"Id": 124, "Name": "Local Admin Password", "Value": "should-never-be-stored", "Type": "Text"},
+        {"Id": 125, "Name": "Rack", "Value": f"R{index % 4}", "Type": "Text"},
+    ]
     _add_network_and_hardware(rng, asset, org_id, index)
     if asset["Type"] == "windows" and index % 37 != 0:  # every 37th Windows device omits OS update sections
         available = [u for u in _DEMO_UPDATES if rng.random() < u["_p"]]
@@ -215,6 +226,33 @@ def _add_network_and_hardware(rng: random.Random, asset: dict[str, Any], org_id:
     asset["UacEnabled"] = True
     asset["AntivirusEnabled"] = "enabled" if index % 13 else "disabled"
     asset["AntivirusUpToDate"] = "yes" if index % 7 else "no"
+
+
+def _notifications(index: int, name: str) -> list[dict[str, Any]]:
+    """Deterministic VSA4-03 fixture shaped like the documented example; some messages carry PII to be redacted."""
+    if index % 4:
+        return []
+    rows: list[dict[str, Any]] = [
+        {
+            "Id": 5000 + index,
+            "Message": f"The free space on disk drive C: on the computer '{name}' is below 9% "
+            f"({index % 30 + 1}.5 GB free).",
+            "DateTime": (FIXTURE_NOW - timedelta(hours=index % 48)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "Priority": "elevated",
+        }
+    ]
+    if index % 12 == 0:
+        rows.append(
+            {
+                "Id": 9000 + index,
+                "Message": f"Logon failure for DEMO\\svc-backup{index} reported by admin{index}@demo.invalid",
+                "DateTime": int((FIXTURE_NOW - timedelta(hours=2)).timestamp()),  # epoch form, as in the docs example
+                "Priority": "critical",
+            }
+        )
+    if index % 40 == 0:
+        rows.append({"Id": 1, "Message": "Very old event", "DateTime": "2025-01-01T00:00:00Z", "Priority": "normal"})
+    return rows
 
 
 def _applied_policies(index: int, kind: str) -> list[dict[str, Any]]:

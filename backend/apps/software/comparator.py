@@ -93,7 +93,8 @@ def parse_dotted(version: str) -> tuple[int, ...] | None:
 def compare_versions(installed: str, reference: str) -> int:
     """-1 / 0 / 1. Callers must have validated both with ``parse_dotted``."""
     a, b = parse_dotted(installed), parse_dotted(reference)
-    assert a is not None and b is not None  # noqa: S101 - internal contract
+    if a is None or b is None:  # internal contract; explicit so it survives python -O
+        raise ValueError("compare_versions requires dotted numeric versions")
     length = max(len(a), len(b))
     a += (0,) * (length - len(a))
     b += (0,) * (length - len(b))

@@ -159,6 +159,39 @@ function Policies({ detail }: { detail: AssetDetail }) {
   );
 }
 
+function DeviceNotifications({ detail }: { detail: AssetDetail }) {
+  const n = detail.notifications;
+  const cf = detail.custom_fields;
+  if (!n) return <Notice tone="warn">No notification record for this device in the current dataset.</Notice>;
+  return (
+    <div className="space-y-3">
+      <p className="text-sm">
+        <Badge tone={n.status === "collected" ? "good" : n.status === "failed" ? "bad" : "neutral"}>{n.status.replace(/_/g, " ")}</Badge>
+        {n.collected_at ? ` · fetched ${formatUtc(n.collected_at)}` : ""}
+        {n.status === "collected" ? ` · ${n.reported ?? 0} returned, ${n.dropped ?? 0} older than ${n.window_days} days not stored` : ""}
+      </p>
+      {n.status !== "collected" ? <p className="text-xs text-slate-500">Not collected in this sync (outside the per-sync budget or failed). This does not mean the device has no notifications.</p> : null}
+      <DataTable caption="Notifications for this device" rows={n.items} getRowId={(r) => `${r.occurred_raw}-${r.message}`} emptyTitle="No notifications in the window."
+        columns={[
+          { header: "When", cell: ({ row }) => row.original.occurred_at ? formatUtc(row.original.occurred_at) : (row.original.occurred_raw || "unknown") },
+          { header: "Priority", accessorKey: "priority" },
+          { header: "Message (redacted)", cell: ({ row }) => <span className="text-xs">{row.original.message}</span> },
+        ]} />
+      {cf ? (
+        <section aria-label="Approved custom fields">
+          <h3 className="mb-1 text-sm font-semibold">Approved custom fields</h3>
+          {cf.status === "collected" ? (
+            <dl className="grid max-w-xl grid-cols-[12rem_1fr] gap-y-1 text-sm">
+              {cf.items.map((i) => <div key={i.name} className="contents"><dt className="text-slate-500">{i.name}</dt><dd>{i.value || "—"}</dd></div>)}
+              {cf.items.length === 0 ? <dd className="col-span-2 text-xs text-slate-500">None of the approved fields are set on this device.</dd> : null}
+            </dl>
+          ) : <p className="text-xs text-slate-500">Not collected ({cf.status.replace(/_/g, " ")}). Custom fields are read only for names approved on the customer page.</p>}
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
 function Reconciliation({ detail }: { detail: AssetDetail }) {
   const rows = detail.reconciliation ?? [];
   return (
@@ -238,6 +271,7 @@ export function AssetDetailPage() {
             { id: "policies", label: "Policies", content: <Policies detail={detail} /> },
             { id: "network", label: "Network", content: <Network detail={detail} /> },
             { id: "onboarding", label: "Onboarding", content: <Reconciliation detail={detail} /> },
+            { id: "notifications", label: "Notifications", content: <DeviceNotifications detail={detail} /> },
             { id: "hardware", label: "Hardware & security", content: <HardwareSecurity detail={detail} /> },
             { id: "history", label: "Observation history", content: (
               <DataTable caption="Observation history" getRowId={(h) => h.generation_id} rows={detail.history} columns={[

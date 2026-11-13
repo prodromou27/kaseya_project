@@ -158,13 +158,15 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
     if run.state != SyncRun.State.RUNNING:
         return run
     generation = run.generation
-    assert generation is not None  # noqa: S101
+    if generation is None:  # explicit check (asserts are stripped under python -O)
+        raise ConsistencyError("missing_generation")
     try:
         adapter = adapter_factory(run.integration_instance)
         for page in adapter.iter_asset_pages(run.mapping.external_org_id, start_skip=run.next_skip):
             _ingest_page(run, generation, page)
         _collect_installed_updates(run, generation, adapter)
         _collect_applied_policies(run, generation, adapter)
+        _collect_device_details(run, generation, adapter)
         collect_hierarchy(run, generation, adapter)
         _finalize(run, generation)
     except VendorAuthError:
@@ -415,6 +417,47 @@ def _collect_applied_policies(run: SyncRun, generation: DatasetGeneration, adapt
             )
         except (VendorClientError, RecordInvalid, ValueError):
             policies.record_definition_failure(generation, policy_id)
+    run.refresh_from_db()
+
+
+def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter: VsaXAdapter) -> None:
+    """VSA4-03: budgeted per-device notifications and (only for customers with approved names) custom fields.
+
+    Per-device 4xx/malformed responses mark only that device ``failed``; auth/rate/outage errors propagate.
+    """
+    from django.conf import settings as dj_settings
+
+    from apps.inventory import details
+
+    from .http import VendorClientError
+    from .vsa.schema import normalize_custom_fields, normalize_notifications
+
+    inst = run.integration_instance
+    details.ensure_fetches(generation, "notifications")
+    remaining = max(0, inst.notifications_budget - run.notifications_requested)
+    for fetch in details.pending(generation, "notifications", remaining):
+        SyncRun.objects.filter(pk=run.pk).update(
+            notifications_requested=F("notifications_requested") + 1, api_requests=F("api_requests") + 1
+        )
+        try:
+            rows = adapter.get_notifications(fetch.asset.external_id, dj_settings.NOTIFICATIONS_PER_DEVICE)
+            details.record_notifications(fetch, normalize_notifications(rows))
+        except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
+            details.record_failure(fetch)
+
+    details.ensure_fetches(generation, "custom_fields")
+    approved = details.approved_field_keys(run.customer_id)
+    if approved:  # data minimisation: nothing is requested unless the customer approved specific field names
+        remaining = max(0, inst.custom_fields_budget - run.custom_fields_requested)
+        for fetch in details.pending(generation, "custom_fields", remaining):
+            SyncRun.objects.filter(pk=run.pk).update(
+                custom_fields_requested=F("custom_fields_requested") + 1, api_requests=F("api_requests") + 1
+            )
+            try:
+                rows = adapter.get_custom_fields(fetch.asset.external_id)
+                details.record_custom_fields(fetch, normalize_custom_fields(rows), approved)
+            except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
+                details.record_failure(fetch)
     run.refresh_from_db()
 
 

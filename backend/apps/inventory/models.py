@@ -336,3 +336,116 @@ class ExpectedSubnet(models.Model):
 
     def __str__(self) -> str:
         return f"{self.scope_type}:{self.scope_external_id} {self.cidr}"
+
+
+# ---------------------------------------------------------------------------------------------- VSA4-03
+
+
+class DeviceDetailFetch(models.Model):
+    """Per device, per generation, per kind: whether a budgeted per-device detail call was made and what it yielded."""
+
+    class Kind(models.TextChoices):
+        NOTIFICATIONS = "notifications", "Notifications"
+        CUSTOM_FIELDS = "custom_fields", "Custom fields"
+
+    class Status(models.TextChoices):
+        COLLECTED = "collected", "Collected"
+        NOT_REQUESTED = "not_requested", "Not requested (disabled, outside budget or nothing approved)"
+        FAILED = "failed", "Collection failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    observation = models.ForeignKey(AssetObservation, on_delete=models.CASCADE, related_name="detail_fetches")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name="+")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NOT_REQUESTED)
+    collected_at = models.DateTimeField(null=True, blank=True)
+    reported = models.PositiveIntegerField(null=True, blank=True, help_text="Rows returned by the source.")
+    stored = models.PositiveIntegerField(null=True, blank=True)
+    dropped = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Not stored: outside the time window or custom field not allowlisted."
+    )
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["observation", "kind"], name="inventory_detailfetch_unique")]
+        indexes = [models.Index(fields=["generation", "kind", "status"], name="inventory_detailfetch_gen_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.asset_id}:{self.kind}:{self.status}"
+
+
+class DeviceNotification(models.Model):
+    """A VSA X device notification inside the retention window. Message text is PII/secret-redacted before storage."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    fetch = models.ForeignKey(DeviceDetailFetch, on_delete=models.CASCADE, related_name="notifications")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name="+")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    vendor_id = models.CharField(max_length=32, blank=True)
+    priority = models.CharField(max_length=32, blank=True)
+    occurred_at = models.DateTimeField(null=True, blank=True)
+    occurred_raw = models.CharField(max_length=40, blank=True)
+    message = models.CharField(max_length=1000)
+    redactions = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        indexes = [models.Index(fields=["customer", "generation", "priority"], name="inventory_notif_cust_gen_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.priority}: {self.message[:40]}"
+
+
+class CustomFieldAllowlist(models.Model):
+    """Customer-approved VSA custom field names (VSA-18). Only these are kept; credential-like names are refused.
+
+    Proposed by a customer admin, approved by a *different* admin.
+    """
+
+    class State(models.TextChoices):
+        PROPOSED = "proposed", "Proposed"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        RETIRED = "retired", "Retired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="custom_field_allowlist")
+    name = models.CharField(max_length=120)
+    name_key = models.CharField(max_length=120, help_text="casefolded name used for matching")
+    reason = models.CharField(max_length=500)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PROPOSED)
+    proposed_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="+")
+    reviewed_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer", "name_key"],
+                condition=models.Q(state__in=["proposed", "approved"]),
+                name="inventory_customfield_allow_active_unique",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.customer_id}:{self.name} ({self.state})"
+
+
+class DeviceCustomField(models.Model):
+    """An allowlisted custom field value as reported by VSA X (text, max 255)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    fetch = models.ForeignKey(DeviceDetailFetch, on_delete=models.CASCADE, related_name="custom_fields")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT, related_name="+")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    field_id = models.CharField(max_length=32, blank=True)
+    name = models.CharField(max_length=120)
+    value = models.CharField(max_length=255, blank=True)
+    type = models.CharField(max_length=32, blank=True)
+
+    def __str__(self) -> str:
+        return self.name
