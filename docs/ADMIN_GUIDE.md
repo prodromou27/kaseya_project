@@ -128,3 +128,8 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
 14. **Expected patch policies:** Patch policies → *Expected policies*. A customer administrator proposes an
     expectation for an organisation, site or group, and a **different** administrator approves it. Retire an
     expectation to stop it driving drift. Every step is audited.
+15. **Health thresholds:** Device health → *Thresholds*. A customer administrator proposes the offline hours, stale
+    days, disk warning and critical percentages, and an optional minimum agent version; a **different** administrator
+    approves. The documented defaults (24 h, 7 days, 15 %, 5 %, no minimum) apply until then and are labelled as
+    defaults. Approving a new proposal supersedes the previous thresholds, and the history is kept. Without an approved
+    minimum version, agent age is *not evaluated*.

@@ -80,6 +80,17 @@ Policy rules describe configuration, not what was installed. Drift appears only 
 expectation covers the device. Each device's **Policies** tab shows its applied policies and the rules of its patch
 policy.
 
+## 8c. Device health
+
+**Device health** groups devices on six dimensions: connectivity, agent installed, agent version, system disk free
+space, antivirus and firewall.
+
+* Each dimension covers every device, so its counts add up to the total.
+* "Unknown", "not reported" and "not collected" are separate rows. They are neither healthy nor unhealthy.
+* Click a row to list those devices.
+* All values come from the last VSA X snapshot, not live monitoring.
+* The thresholds banner shows whether documented defaults or customer-approved values are in use.
+
 ## 9. Interpretation reference
 
 | State | Meaning | Appropriate action |

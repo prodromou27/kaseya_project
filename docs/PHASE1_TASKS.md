@@ -41,8 +41,8 @@
 
 ## VSA4 — Deep operations
 
-- [ ] **VSA4-01 [P1]** Agent health thresholds, offline/old version/stale, complete cohort denominators. AC: source timestamps. — *PARTIAL: offline filter, stale-devices report, per-group stale/never-seen/no-agent counts; thresholds/old-agent cohorts pending.*
-- [ ] **VSA4-02 [P1]** Hardware, disk threshold, security status tri-state. AC: not-live telemetry clearly labelled.
+- [x] **VSA4-01 [P1]** Agent health thresholds, offline/old version/stale, complete cohort denominators. AC: source timestamps. — *Done `b345b8f` (fixture): two-person-approved thresholds (documented defaults until approved); connectivity, agent installed and agent version vs approved minimum as complete partitions; last-seen and snapshot timestamps per device; R09; `test_device_health.py`, E2E `vsa4-health.spec.ts`. LIVE_VALIDATION_PENDING.*
+- [x] **VSA4-02 [P1]** Hardware, disk threshold, security status tri-state. AC: not-live telemetry clearly labelled. — *Done `b345b8f` (fixture): worst system-disk free % vs thresholds, antivirus/firewall tri-state with unknown buckets, documented aggregates and CPU/memory kept verbatim; 'not live monitoring telemetry' stated in UI and reports; CpuUsage/MemoryUsage deliberately not stored; R13, R14. LIVE_VALIDATION_PENDING.*
 - [ ] **VSA4-03 [P1]** Notifications + approved custom fields; sensitive-field allowlist. AC: audit/PII minimization.
 - [ ] **VSA4-04 [P1]** Historical snapshot diff: group/IP/software/agent/OS changes. AC: no fabricated actor/time. — *PARTIAL (`c483a8f`): retained generations, trends, per-device observation history; generation diff pending.*
 - [ ] **VSA4-05 [P2]** Software/OS lifecycle catalog + sources/end dates; confidence. AC: unverified entries unknown.
