@@ -21,6 +21,9 @@ All implementation claims require linked evidence. Use semantic versions for app
 Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-tested only; no live VSA validation.**
 
 ### Added (deployment)
+- Simplified UI: *Connect VSA* wizard (address + token, tick organisations; replaces eight manual steps), a short main menu (Dashboard, Devices, Device health, Windows updates, Software, Reports) with specialist pages under *More*, *Settings* instead of Administration (opens on Integrations), explanatory notes folded into "About this view", calmer dashboard tiles.
+- Single-administrator approvals by default (`REQUIRE_SECOND_APPROVER` restores two-person approval).
+- Fixes from the first host deployment: Redis protected mode blocked the worker; approved mappings never got a sync schedule; queued runs that never reached a worker blocked *Sync now*; accepted counts were always 0. `manage.py sync_status` diagnoses sync problems.
 - VSA4-05: **Lifecycle (end of support)** for OS releases and software version lines from a reviewed, cited catalog (two-person approval, immutable once approved); Lifecycle page, dashboard tile, admin catalog tab, report R17. Unverified or missing entries are shown as unknown. The software state previously labelled "Unsupported (not catalogued)" is now labelled **Not catalogued**.
 - UI: dashboard summary tiles, setup checklist, in-place customer picker, grouped and responsive navigation.
 - `install.sh`: one-command, idempotent AlmaLinux installer/updater (packages, Docker, firewall 80/443, settings, secrets, TLS, build, health wait, first admin, optional backups, preflight). Not yet run on a host.

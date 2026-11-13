@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState, type FormEvent } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
@@ -160,7 +160,14 @@ function IntegrationsPanel() {
   };
   return (
     <div className="space-y-3">
-      <Notice tone="warn">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4">
+        <div>
+          <p className="font-medium text-slate-900">Connect a VSA X server</p>
+          <p className="text-sm text-slate-600">Address, API token, pick organisations: done. The steps below are for manual setup.</p>
+        </div>
+        <Link to="/setup" className="btn-primary">Connect VSA</Link>
+      </div>
+      <Notice title="How manual setup works">
         All integrations are configured here. Connectors are read-only and TLS verification cannot be disabled.
         Credentials (API keys, tokens, secrets) are stored encrypted and never shown again. Setup: 1) allow the API
         hostname, 2) add the integration, 3) <em>Set credentials</em>, 4) <em>Test connection</em>, 5){" "}
@@ -356,31 +363,31 @@ export function AdminPage() {
   const me = useMe();
   // The open tab lives in the URL (?tab=integrations) so links, bookmarks and reloads land on the right section.
   const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") ?? "mappings";
+  const tab = params.get("tab") ?? "integrations";
   const setTab = (id: string) => setParams((p) => { p.set("tab", id); return p; }, { replace: true });
   if (!me.is_super_admin) {
     return (
       <>
-        <PageHeader title="Administration" />
-        <EmptyState title="Administration requires the super administrator role." />
+        <PageHeader title="Settings" />
+        <EmptyState title="Settings require the super administrator role." />
       </>
     );
   }
   return (
     <>
-      <PageHeader title="Administration" subtitle="System configuration · all changes are audited" />
+      <PageHeader title="Settings" subtitle="All changes are audited." />
       <Tabs
-        label="Administration sections"
+        label="Settings sections"
         active={tab}
         onChange={setTab}
         tabs={[
-          { id: "mappings", label: "Mapping review", content: <MappingReviewPanel /> },
           { id: "integrations", label: "Integrations", content: <IntegrationsPanel /> },
+          { id: "users", label: "Users", content: <UsersPanel /> },
+          { id: "mappings", label: "Approvals", content: <MappingReviewPanel /> },
           { id: "catalog", label: "Software catalog", content: <CatalogPanel /> },
           { id: "lifecycle", label: "Lifecycle catalog", content: <LifecycleCatalogPanel /> },
           { id: "quarantine", label: "Sync quarantine", content: <QuarantinePanel /> },
           { id: "sync-schedules", label: "Sync schedules", content: <SyncSchedulesPanel /> },
-          { id: "users", label: "Users", content: <UsersPanel /> },
           { id: "audit", label: "Audit log", content: <AuditTable path="/audit-events/" caption="System audit events" /> },
         ]}
       />

@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+
+import { openNav, showNotes } from "./nav";
 import fs from "node:fs";
 
 /** P2 path on the fixture-backed demo stack. Runs after p1.spec.ts (which syncs DEMO-A). Fixture data only. */
@@ -14,9 +16,10 @@ async function login(page: Page, email: string) {
 
 test("windows updates distinguishes reported, not collected and non-Windows devices", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Windows updates" }).click();
+  await openNav(page, "Windows updates");
   await expect(page.getByText("Devices with available updates")).toBeVisible();
   await expect(page.getByText(/never counted as zero/)).toBeVisible();
+  await showNotes(page);
   await expect(page.getByText(/does not document a per-device update-scan timestamp/)).toBeVisible();
   await page.getByRole("button", { name: /Not supported \(non-Windows\)/ }).click();
   await expect(page.getByRole("table", { name: /Devices: Not supported/ })).toContainText("mac");
@@ -25,7 +28,7 @@ test("windows updates distinguishes reported, not collected and non-Windows devi
 for (const [format, magic] of [["xlsx", "PK"], ["pdf", "%PDF"]] as const) {
   test(`exports ${format.toUpperCase()} from the Reports page`, async ({ page }) => {
     await login(page, "demo.engineer.a@demo.invalid");
-    await page.getByRole("link", { name: "Reports" }).click();
+    await openNav(page, "Reports");
     await page.getByLabel("Report", { exact: true }).selectOption({ label: "Operating system updates (RPT-04)" });
     await page.getByLabel("Format").selectOption(format);
     await page.getByRole("button", { name: "Generate" }).click();
@@ -43,7 +46,7 @@ for (const [format, magic] of [["xlsx", "PK"], ["pdf", "%PDF"]] as const) {
 
 test("a report can be regenerated from its pinned snapshot", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Reports" }).click();
+  await openNav(page, "Reports");
   await page.getByRole("tab", { name: "History" }).click();
   await page.getByRole("button", { name: "Regenerate" }).first().click();
   await expect(page.getByText("regenerated").first()).toBeVisible({ timeout: 20_000 });
@@ -51,7 +54,7 @@ test("a report can be regenerated from its pinned snapshot", async ({ page }) =>
 
 test("definition + schedule with an unauthorised recipient is rejected, authorised accepted", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Reports" }).click();
+  await openNav(page, "Reports");
   page.once("dialog", (d) => void d.accept("Weekly inventory"));
   await page.getByRole("button", { name: "Save as definition" }).click();
   await expect(page.getByText("Definition saved.")).toBeVisible();

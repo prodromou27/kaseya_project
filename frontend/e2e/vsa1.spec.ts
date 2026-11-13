@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav, showNotes } from "./nav";
+
 /** VSA1 hierarchy + group network on the fixture demo stack (runs after p1.spec.ts synced DEMO-A). Fixture only. */
 const PASSWORD = process.env.DEMO_USER_PASSWORD ?? "";
 
@@ -13,13 +15,14 @@ async function login(page: Page, email: string) {
 
 test("engineer browses org > site > group and the group's reported network", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Groups & network" }).click();
+  await openNav(page, "Groups & network");
   const orgs = page.getByRole("list", { name: "Organisations" });
   await expect(orgs).toBeVisible();
   await expect(orgs.getByText("130 devices").first()).toBeVisible();
   // Demo data places a deliberate duplicate IP on a device in the HQ site's Servers group.
   await orgs.getByRole("list", { name: "Groups of HQ" }).first().getByRole("link", { name: "Servers" }).click();
   await expect(page.getByRole("table", { name: "Derived subnets" })).toBeVisible();
+  await showNotes(page);
   await expect(page.getByText(/not discovered topology/)).toBeVisible();
   await expect(page.getByText("duplicate IP").first()).toBeVisible();
   await page.getByRole("link", { name: "Open in Assets" }).click();
@@ -28,7 +31,7 @@ test("engineer browses org > site > group and the group's reported network", asy
 
 test("device page shows network, hardware and security tabs and the third-party status notice", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Assets" }).click();
+  await openNav(page, "Devices");
   await page.getByLabel("Search").fill("10.1.10.86");
   await expect(page.getByText("2 records · page 1 of 1")).toBeVisible();
   await page.getByRole("table", { name: "DEMO-A assets" }).getByRole("link").first().click();

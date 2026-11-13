@@ -60,8 +60,8 @@ describe("application shell", () => {
     mockFetch({ "GET /api/v1/auth/me/": { body: makeMe() }, "GET /api/v1/customers/": { body: page([customerA]) } });
     renderApp("/");
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    expect(within(nav).queryByRole("link", { name: "Administration" })).not.toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: /Customers/ })).toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Devices" })).toBeInTheDocument();
     expect(screen.getByText("Eng One")).toBeInTheDocument();
   });
 

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav, showNotes } from "./nav";
+
 /**
  * VSA2 onboarding reconciliation on the fixture demo stack (runs after p1.spec.ts synced DEMO-A). Fixture only.
  * Demo naming: DEMOA-WS001 (HQ/Workstations), DEMOA-WS002 (HQ/Workstations), DEMOA-WS003 (Branch/Workstations).
@@ -27,7 +29,7 @@ const CSV = [
 
 test("engineer reconciles an expected device list and downloads the workbook", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Onboarding check" }).click();
+  await openNav(page, "Onboarding check");
   await expect(page.getByText(/Compared against VSA snapshot/)).toBeVisible();
   await page.getByLabel("Expected inventory file").setInputFiles({ name: "expected.csv", mimeType: "text/csv", buffer: Buffer.from(CSV) });
   const preview = page.getByRole("table", { name: "Preview of mapped rows" });
@@ -43,6 +45,7 @@ test("engineer reconciles an expected device list and downloads the workbook", a
   await expect(tile("Wrong site / org")).toContainText("1");
   await expect(tile("Not found")).toContainText("1");
   await expect(tile("Duplicate / invalid")).toContainText("2");
+  await showNotes(page);
   await expect(page.getByText(/is not proof that an agent is not installed/)).toBeVisible();
 
   await page.getByRole("button", { name: "Wrong group" }).click();
@@ -57,7 +60,7 @@ test("engineer reconciles an expected device list and downloads the workbook", a
 
 test("macro-enabled workbook is refused before anything is stored", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Onboarding check" }).click();
+  await openNav(page, "Onboarding check");
   await page.getByLabel("Expected inventory file").setInputFiles({ name: "evil.xlsm", mimeType: "application/vnd.ms-excel.sheet.macroEnabled.12", buffer: Buffer.from("PK\u0003\u0004") });
   await expect(page.getByRole("alert")).toContainText("Only .xlsx and .csv files are accepted");
 });

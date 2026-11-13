@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav } from "./nav";
+
 /**
  * VSA4-03 notifications + custom fields on the fixture demo stack (runs after p1.spec.ts synced DEMO-A). Fixture only.
  * Demo notifications carry DEMO\svc-backupN accounts and adminN@demo.invalid addresses that must never be shown.
@@ -16,7 +18,7 @@ async function login(page: Page, email: string) {
 
 test("notifications are redacted and not-collected devices are explicit", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Notifications" }).click();
+  await openNav(page, "Notifications");
   await expect(page.getByText("Devices not collected", { exact: true })).toBeVisible();
   const table = page.getByRole("table", { name: "Device notifications" });
   await page.getByLabel("Priority").selectOption("critical");
@@ -32,7 +34,7 @@ test("notifications are redacted and not-collected devices are explicit", async 
 
 test("customer admin cannot approve a credential-like custom field", async ({ page }) => {
   await login(page, "demo.admin.a@demo.invalid");
-  await page.getByRole("link", { name: "Customers" }).click();
+  await openNav(page, "Customers");
   await page.getByRole("link", { name: /DEMO-A/ }).first().click();
   await page.getByRole("tab", { name: "Custom fields" }).click();
   await page.getByLabel("Custom field name (exact)").fill("Local Admin Password");

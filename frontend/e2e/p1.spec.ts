@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav } from "./nav";
+
 /**
  * P1 path on the fixture-backed demo stack. Runs after foundation.spec.ts (which approves DEMO-A's mapping).
  * Data is the bundled fictional fixture tenant — NOT a live VSA X instance.
@@ -15,8 +17,9 @@ async function login(page: Page, email: string) {
 }
 
 test("engineer syncs the approved fixture source and browses inventory", async ({ page }) => {
+  test.setTimeout(90_000); // the sync itself runs inside this test
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Assets" }).click();
+  await openNav(page, "Devices");
   await page.getByRole("button", { name: "Sync now (read-only)" }).click();
   await expect(page.getByText("as of", { exact: false }).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/130 devices/)).toBeVisible({ timeout: 30_000 });
@@ -40,7 +43,7 @@ test("engineer syncs the approved fixture source and browses inventory", async (
 
 test("software versions show separate populations and the non-patch disclaimer", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Software versions" }).click();
+  await openNav(page, "Software");
   await expect(page.getByText(/Not evidence of missing third-party patches/)).toBeVisible();
   await expect(page.getByText("Version compliance")).toBeVisible();
   await expect(page.getByRole("button", { name: /Not catalogued/ })).toBeVisible();
@@ -52,7 +55,7 @@ test("software versions show separate populations and the non-patch disclaimer",
 
 test("engineer exports a scoped inventory CSV with provenance", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Assets" }).click();
+  await openNav(page, "Devices");
   await page.getByRole("button", { name: "Export inventory CSV" }).click();
   const link = page.getByRole("link", { name: /Download CSV \(130 rows\)/ });
   await expect(link).toBeVisible({ timeout: 15_000 });
@@ -77,13 +80,13 @@ test("viewer of DEMO-B cannot reach DEMO-A inventory and cannot sync", async ({ 
   await login(page, "demo.viewer.b@demo.invalid");
   expect((await page.request.get(`/api/v1/customers/${a.results[0].id}/assets/`)).status()).toBe(404);
   expect((await page.request.get(`/api/v1/assets/${assets.results[0].id}/`)).status()).toBe(404);
-  await page.getByRole("link", { name: "Assets" }).click();
+  await openNav(page, "Devices");
   await expect(page.getByRole("button", { name: "Sync now (read-only)" })).toHaveCount(0);
 });
 
 test("catalog import cannot be approved by its own submitter", async ({ page }) => {
   await login(page, "demo.superadmin@demo.invalid");
-  await page.getByRole("link", { name: "Administration" }).click();
+  await openNav(page, "Settings");
   await page.getByRole("tab", { name: "Software catalog" }).click();
   await page.getByRole("button", { name: "Preview (dry run)" }).click();
   await expect(page.getByText(/Row 1:/).first()).toBeVisible();

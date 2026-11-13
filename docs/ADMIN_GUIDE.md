@@ -156,3 +156,15 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
     admin approves it. Approved entries cannot be edited: retire and propose a corrected one. Use *secondary*
     confidence for anything not from the vendor; such entries never classify devices. Engineers see the result under
     *Lifecycle (end of support)* and in report R17; devices without an approved official entry show as **unknown**.
+21. **Connect VSA (recommended setup):** Dashboard → *Connect VSA* (or Settings → Integrations → *Connect VSA*):
+    enter the VSA X address and a read-only API token ID and secret, then tick the organisations to bring in, each as
+    a new customer or into an existing one. The portal allows the host, stores the token encrypted, tests the
+    connection, approves the mappings, enables the integration and starts the first sync. Approved mappings sync
+    daily (`SYNC_DEFAULT_INTERVAL_HOURS`); change the interval under Settings → Sync schedules.
+22. **One administrator:** by default an administrator may approve their own catalog, lifecycle, threshold, subnet,
+    baseline and custom-field changes (audited). Set `REQUIRE_SECOND_APPROVER=true` in `.env.prod` to require a
+    second administrator.
+23. **Sync troubleshooting:** `docker compose -f compose.prod.yml --env-file .env.prod exec backend python manage.py
+    sync_status` lists integrations, mappings, schedules, recent runs and the worker, and ends with findings. A run
+    that stays *queued* more than 10 minutes without starting is re-sent automatically on the next Sync now or
+    schedule tick.

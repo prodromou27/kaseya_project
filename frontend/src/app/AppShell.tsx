@@ -1,43 +1,38 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
 import { api } from "../lib/api";
 import { useMe } from "../lib/auth";
 import { useCustomers } from "../lib/customerContext";
 
 type NavItem = { to: string; label: string; adminOnly?: boolean };
-type NavSection = { title: string; items: NavItem[] };
 
-export const NAV_SECTIONS: NavSection[] = [
-  { title: "Overview", items: [
-    { to: "/", label: "Dashboard" },
-    { to: "/customers", label: "Customers" },
-  ] },
-  { title: "Inventory", items: [
-    { to: "/assets", label: "Assets" },
-    { to: "/device-health", label: "Device health" },
-    { to: "/changes", label: "Inventory changes" },
-    { to: "/notifications", label: "Notifications" },
-    { to: "/groups", label: "Groups & network" },
-  ] },
-  { title: "Patching & software", items: [
-    { to: "/windows-updates", label: "Windows updates" },
-    { to: "/patch-policies", label: "Patch policies" },
-    { to: "/software", label: "Software versions" },
-    { to: "/lifecycle", label: "Lifecycle (end of support)" },
-  ] },
-  { title: "Onboarding & reports", items: [
-    { to: "/onboarding", label: "Onboarding check" },
-    { to: "/reports", label: "Reports" },
-  ] },
-  { title: "Administration", items: [
-    { to: "/admin", label: "Administration", adminOnly: true },
-  ] },
+/** The everyday pages: always visible. */
+export const MAIN_NAV: NavItem[] = [
+  { to: "/", label: "Dashboard" },
+  { to: "/assets", label: "Devices" },
+  { to: "/device-health", label: "Device health" },
+  { to: "/windows-updates", label: "Windows updates" },
+  { to: "/software", label: "Software" },
+  { to: "/reports", label: "Reports" },
 ];
 
+/** Specialist views: folded under "More" (opened automatically when one of them is the current page). */
+export const MORE_NAV: NavItem[] = [
+  { to: "/customers", label: "Customers" },
+  { to: "/lifecycle", label: "Lifecycle" },
+  { to: "/patch-policies", label: "Patch policies" },
+  { to: "/changes", label: "Inventory changes" },
+  { to: "/notifications", label: "Notifications" },
+  { to: "/groups", label: "Groups & network" },
+  { to: "/onboarding", label: "Onboarding check" },
+];
+
+export const SETTINGS_NAV: NavItem = { to: "/admin", label: "Settings", adminOnly: true };
+
 /** Flat list (kept for callers/tests that iterate all destinations). */
-export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((section) => section.items);
+export const NAV_ITEMS: NavItem[] = [...MAIN_NAV, ...MORE_NAV, SETTINGS_NAV];
 
 function CustomerSelector() {
   const { customers, selected, select, isLoading, isError } = useCustomers();
@@ -91,37 +86,53 @@ function AccountStatus() {
   );
 }
 
+function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  return (
+    <li>
+      <NavLink
+        to={item.to}
+        end={item.to === "/"}
+        onClick={onNavigate}
+        className={({ isActive }) =>
+          `block rounded-md px-3 py-2 text-sm ${isActive ? "bg-sky-50 font-medium text-sky-800" : "text-slate-700 hover:bg-slate-100"}`
+        }
+      >
+        {item.label}
+      </NavLink>
+    </li>
+  );
+}
+
 function MainNav({ onNavigate }: { onNavigate?: () => void }) {
   const me = useMe();
+  const { pathname } = useLocation();
+  const inMore = MORE_NAV.some((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
+  const [moreOpen, setMoreOpen] = useState(inMore);
+  const open = moreOpen || inMore;
   return (
-    <nav aria-label="Main" className="px-2 py-3">
-      {NAV_SECTIONS.map((section) => {
-        const items = section.items.filter((item) => !item.adminOnly || me.is_super_admin);
-        if (!items.length) return null;
-        return (
-          <div key={section.title} className="mb-3">
-            <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{section.title}</p>
-            <ul className="space-y-0.5">
-              {items.map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    end={item.to === "/"}
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      `block rounded px-2 py-1.5 text-sm ${
-                        isActive ? "bg-sky-50 font-medium text-sky-800" : "text-slate-700 hover:bg-slate-100"
-                      }`
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
+    <nav aria-label="Main" className="flex h-full flex-col px-2 py-4">
+      <ul className="space-y-0.5">
+        {MAIN_NAV.map((item) => <NavItemLink key={item.to} item={item} onNavigate={onNavigate} />)}
+      </ul>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="nav-more"
+        onClick={() => setMoreOpen((v) => !v)}
+        className="mt-3 flex items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-700"
+      >
+        More <span aria-hidden="true">{open ? "−" : "+"}</span>
+      </button>
+      {open ? (
+        <ul id="nav-more" className="space-y-0.5">
+          {MORE_NAV.map((item) => <NavItemLink key={item.to} item={item} onNavigate={onNavigate} />)}
+        </ul>
+      ) : null}
+      {me.is_super_admin ? (
+        <ul className="mt-auto border-t border-slate-100 pt-3">
+          <NavItemLink item={SETTINGS_NAV} onNavigate={onNavigate} />
+        </ul>
+      ) : null}
     </nav>
   );
 }

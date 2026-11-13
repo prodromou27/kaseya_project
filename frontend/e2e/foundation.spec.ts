@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav } from "./nav";
+
 const PASSWORD = process.env.DEMO_USER_PASSWORD ?? "";
 
 async function login(page: Page, email: string) {
@@ -33,7 +35,7 @@ test("engineer sees only their customer and cannot reach another by URL or API",
   expect((await search.json()).count).toBe(0);
   const foreign = await page.request.get("/api/v1/customers/00000000-0000-4000-8000-000000000000/");
   expect(foreign.status()).toBe(404);
-  await expect(page.getByRole("link", { name: "Administration" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
 });
 
 test("engineer cannot open Customer B using its real ID (IDOR)", async ({ browser }) => {
@@ -59,8 +61,8 @@ test("engineer cannot open Customer B using its real ID (IDOR)", async ({ browse
 
 test("super admin approves the demo source mapping and the audit trail records it", async ({ page }) => {
   await login(page, "demo.superadmin@demo.invalid");
-  await page.getByRole("link", { name: "Administration" }).click();
-  await expect(page.getByRole("tab", { name: "Mapping review" })).toHaveAttribute("aria-selected", "true");
+  await openNav(page, "Settings");
+  await page.getByRole("tab", { name: "Approvals" }).click();
   const row = page.getByRole("row", { name: /Demo Org A \(fixture\)/ });
   page.once("dialog", (d) => void d.accept());
   await row.getByRole("button", { name: "Approve" }).click();
@@ -73,7 +75,7 @@ test("super admin approves the demo source mapping and the audit trail records i
 
 test("customer admin generates and downloads a scoped audit report", async ({ page }) => {
   await login(page, "demo.admin.a@demo.invalid");
-  await page.getByRole("link", { name: "Reports" }).click();
+  await openNav(page, "Reports");
   await page.getByLabel("Report", { exact: true }).selectOption({ label: "Customer audit log" });
   await page.getByRole("button", { name: "Generate" }).click();
   await page.getByRole("tab", { name: "History" }).click();

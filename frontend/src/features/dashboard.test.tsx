@@ -67,16 +67,15 @@ describe("dashboard", () => {
     expect(screen.getByLabelText("Customer")).toHaveValue(customerB.id);
   });
 
-  it("guides a super admin through setup until data can flow", async () => {
+  it("asks a super admin to connect VSA until data can flow", async () => {
     routes({ superAdmin: true, customers: [] });
     renderApp("/");
-    const checklist = await screen.findByRole("region", { name: "Setup checklist" });
-    expect(checklist).toHaveTextContent("0 of 7 steps done");
-    expect(within(checklist).getByRole("link", { name: "Allow your VSA X hostname" })).toHaveAttribute("href", "/admin?tab=integrations");
-    expect(within(checklist).getByRole("link", { name: "Create a customer" })).toHaveAttribute("href", "/customers");
+    const card = await screen.findByRole("region", { name: "Get started" });
+    expect(card).toHaveTextContent("Connect VSA X to get started");
+    expect(within(card).getByRole("link", { name: "Connect VSA" })).toHaveAttribute("href", "/setup");
   });
 
-  it("hides the setup checklist once everything is done", async () => {
+  it("hides the call to action once VSA is connected", async () => {
     routes({
       superAdmin: true,
       approved: 1,
@@ -84,17 +83,19 @@ describe("dashboard", () => {
     });
     renderApp("/");
     expect(await screen.findByRole("region", { name: "Summary" })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Setup checklist" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Get started" })).not.toBeInTheDocument();
   });
 
-  it("groups the main navigation into sections", async () => {
+  it("keeps the main navigation short and folds specialist pages under More", async () => {
     routes();
     renderApp("/");
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    for (const section of ["Overview", "Inventory", "Patching & software", "Onboarding & reports"]) {
-      expect(within(nav).getByText(section)).toBeInTheDocument();
+    for (const label of ["Dashboard", "Devices", "Device health", "Windows updates", "Software", "Reports"]) {
+      expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
     }
-    expect(within(nav).queryByText("Administration")).not.toBeInTheDocument(); // not a super admin
-    expect(within(nav).queryByRole("link", { name: /IT Glue/ })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "Patch policies" })).not.toBeInTheDocument();
+    await userEvent.click(within(nav).getByRole("button", { name: /More/ }));
+    expect(within(nav).getByRole("link", { name: "Patch policies" })).toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "Settings" })).not.toBeInTheDocument(); // not a super admin
   });
 });

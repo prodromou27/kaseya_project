@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 
-import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
 import { formatUtc } from "../../lib/format";
 import type { Customer, HealthSummary, LifecycleSummary, TrendResponse } from "../../lib/types";
@@ -16,7 +15,7 @@ function TileCard({ tile }: { tile: Tile }) {
     >
       <span className="flex items-start justify-between gap-2">
         <span className="text-xs font-medium text-slate-600">{tile.label}</span>
-        {tile.attention ? <Badge tone="warn">attention</Badge> : null}
+        {tile.attention ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500" title="Needs attention" aria-label="needs attention" /> : null}
       </span>
       <span className="mt-1 block text-2xl font-semibold tabular-nums text-slate-900">{tile.value ?? "—"}</span>
       <span className="mt-0.5 block text-xs text-slate-500">{tile.sub}</span>
@@ -97,8 +96,7 @@ export function KpiTiles({ customer }: { customer: Customer }) {
         ))}
       </div>
       <p className="mt-1 text-xs text-slate-500">
-        {asOf ? `As of ${formatUtc(asOf)}. ` : ""}Figures come from the latest published read-only snapshot; software figures are
-        version comparisons, not patch applicability.
+        {asOf ? `Latest snapshot ${formatUtc(asOf)}` : ""}
       </p>
     </section>
   );

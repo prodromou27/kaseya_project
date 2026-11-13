@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav } from "./nav";
+
 /**
  * VSA3-04 patch policies on the fixture demo stack (runs after p1.spec.ts synced DEMO-A). Fixture only.
  * Demo (index-based): 130 devices; every 17th has no Patch Management entry (7), every 11th explicit No Policy (11).
@@ -23,14 +25,14 @@ const tile = (page: Page, label: string) => page.locator("div.rounded", { has: p
 
 test("engineer sees assignment states kept apart and policy configuration labelled", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Patch policies" }).click();
+  await openNav(page, "Patch policies");
   await expect(tile(page, "Policy assigned")).toContainText("112");
   await expect(tile(page, "No Policy (explicit)")).toContainText("11");
   await expect(tile(page, "No Patch Management entry")).toContainText("7");
   await expect(tile(page, "Coverage")).toContainText("112 of 123 verified; 7 excluded");
   await expect(page.getByText("configuration, not deployment status").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Propose expectation" })).toHaveCount(0);
-  await page.getByRole("link", { name: "Assets" }).click();
+  await openNav(page, "Devices");
   await page.getByLabel("Search").fill("DEMOA-WS011");
   await page.getByRole("table", { name: "DEMO-A assets" }).getByRole("link").first().click();
   await page.getByRole("tab", { name: "Policies" }).click();
@@ -39,7 +41,7 @@ test("engineer sees assignment states kept apart and policy configuration labell
 
 test("expectation needs a second administrator, then drives drift", async ({ page }) => {
   await login(page, "demo.admin.a@demo.invalid");
-  await page.getByRole("link", { name: "Patch policies" }).click();
+  await openNav(page, "Patch policies");
   await page.getByLabel("Scope type").selectOption("group");
   await page.getByLabel("Scope", { exact: true }).selectOption("20011"); // HQ / Workstations
   await page.getByLabel("Expected policy").selectOption("301");
@@ -53,7 +55,7 @@ test("expectation needs a second administrator, then drives drift", async ({ pag
 
   await login(page, "demo.superadmin@demo.invalid");
   await selectDemoA(page);
-  await page.getByRole("link", { name: "Patch policies" }).click();
+  await openNav(page, "Patch policies");
   await page.getByRole("table", { name: "Expected policies" }).getByRole("button", { name: "Approve" }).click();
   await expect(page.getByRole("table", { name: "Expected policies" })).toContainText("approved");
   // Group 20011 (HQ/Workstations, 75 devices): 58 on 301, 7 explicit No Policy, 6 drifted to 302, 4 not reported.

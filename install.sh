@@ -346,8 +346,9 @@ Also by IP: $(printf '%s' "$SERVER_IPS" | sed -e 's#[^,][^,]*#https://&/#g' -e '
 
 Next steps:
   1. Sign in as the administrator (password in $CRED_FILE on first install).
-  2. Admin → Integrations: allow your VSA X hostname, add the integration (base URL https://<your VSA host>),
-     "Set credentials" with a READ-ONLY token (stored encrypted), then "Test connection".
-  3. Map VSA organisations to customers (Admin → Mappings), approve, then enable the integration.
+  2. Click "Connect VSA" on the dashboard: enter your VSA X address and a READ-ONLY API token, then tick the
+     organisations to bring in. Each becomes a customer that syncs now and every day.
+  3. If a sync does not start, run in this folder:
+     docker compose -f compose.prod.yml --env-file .env.prod exec backend python manage.py sync_status
   Update later with: git pull && sudo ./install.sh -y
 EOF

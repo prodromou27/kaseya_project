@@ -4,7 +4,7 @@ import { Fragment, useState, type FormEvent } from "react";
 
 import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
-import { Badge, Field, Notice, PageHeader, statusTone } from "../../components/ui";
+import { Badge, Field, PageHeader, statusTone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
@@ -43,7 +43,7 @@ function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: Complian
   const pct = (v: number | null) => (v === null ? "n/a" : `${v}%`);
   return (
     <>
-      <Notice tone="info">{s.disclaimer}</Notice>
+      <p className="text-sm text-slate-600">{s.disclaimer}</p>
       <div className="mt-2"><ThirdPartyPatchNotice status={s.third_party_patch_status} /></div>
       <div className="my-3 grid grid-cols-2 gap-2 md:grid-cols-4">
         <Metric label="Version compliance" value={pct(s.version_compliance_pct)}

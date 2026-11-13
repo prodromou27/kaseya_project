@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav, showNotes } from "./nav";
+
 /**
  * VSA4-04 inventory changes on the fixture demo stack. A second sync of the unchanged demo data must report zero
  * differences (nothing fabricated) and list the devices whose sections could not be compared. Fixture only.
@@ -15,8 +17,9 @@ async function login(page: Page, email: string) {
 }
 
 test("a resync of unchanged data shows no fabricated changes", async ({ page }) => {
+  test.setTimeout(120_000); // two syncs run inside this test
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Assets" }).click();
+  await openNav(page, "Devices");
   await page.getByRole("button", { name: "Sync now (read-only)" }).click();
   // The "130 devices" status is already visible from the first sync, so wait for the new snapshot explicitly.
   const customers = await (await page.request.get("/api/v1/customers/")).json();
@@ -26,9 +29,10 @@ test("a resync of unchanged data shows no fabricated changes", async ({ page }) 
       timeout: 60_000,
     })
     .toBeGreaterThanOrEqual(2);
-  await page.getByRole("link", { name: "Inventory changes" }).click();
-  await expect(page.getByText(/No person is attributed|no person is attributed/)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/130 devices in both/)).toBeVisible();
+  await openNav(page, "Inventory changes");
+  await expect(page.getByText(/130 devices in both/)).toBeVisible({ timeout: 30_000 });
+  await showNotes(page);
+  await expect(page.getByText(/No person is attributed|no person is attributed/)).toBeVisible();
   await expect(page.getByText("No differences between these snapshots.")).toBeVisible();
   // Every 23rd demo device has no network section in either snapshot: 5 devices cannot be compared.
   await expect(page.getByText(/IP addresses 5 device\(s\)/)).toBeVisible();

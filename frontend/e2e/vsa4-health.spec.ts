@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { openNav, showNotes } from "./nav";
+
 /**
  * VSA4-01/02 device health on the fixture demo stack (runs after p1.spec.ts synced DEMO-A). Fixture only.
  * Deterministic demo agent versions: every 9th device 5.0.7 (14), index 50 "dev-build", the rest 5.1.2.
@@ -16,8 +18,9 @@ async function login(page: Page, email: string) {
 
 test("every health dimension partitions the whole population", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
-  await page.getByRole("link", { name: "Device health" }).click();
+  await openNav(page, "Device health");
   await expect(page.getByRole("region", { name: "System disk free space" })).toBeVisible();
+  await showNotes(page);
   await expect(page.getByText(/not live monitoring telemetry/)).toBeVisible();
   const customers = await (await page.request.get("/api/v1/customers/")).json();
   const a = customers.results.find((c: { code: string }) => c.code === "DEMO-A");
@@ -34,7 +37,7 @@ test("every health dimension partitions the whole population", async ({ page }) 
 
 test("minimum agent version takes effect only after a second administrator approves", async ({ page }) => {
   await login(page, "demo.admin.a@demo.invalid");
-  await page.getByRole("link", { name: "Device health" }).click();
+  await openNav(page, "Device health");
   await page.getByLabel("Minimum agent version").fill("5.1");
   await page.getByLabel("Reason").fill("Agent baseline (E2E)");
   await page.getByRole("button", { name: "Propose thresholds" }).click();
@@ -47,7 +50,7 @@ test("minimum agent version takes effect only after a second administrator appro
   await login(page, "demo.superadmin@demo.invalid");
   const value = await page.locator("#customer-selector option", { hasText: "DEMO-A" }).getAttribute("value");
   await page.locator("#customer-selector").selectOption(value ?? "");
-  await page.getByRole("link", { name: "Device health" }).click();
+  await openNav(page, "Device health");
   await page.getByRole("table", { name: "Threshold history" }).getByRole("button", { name: "Approve" }).click();
   await expect(page.getByText("approved", { exact: true }).first()).toBeVisible();
   const versions = page.getByRole("region", { name: "Agent version" });
