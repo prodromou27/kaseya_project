@@ -229,7 +229,12 @@ SYNC_MAX_DROP_RATIO = float(env_str("SYNC_MAX_DROP_RATIO", "0.5"))
 # Approving a source mapping creates a sync schedule with this interval (editable under Admin -> Sync schedules).
 SYNC_DEFAULT_INTERVAL_HOURS = env_int("SYNC_DEFAULT_INTERVAL_HOURS", 24)
 DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
-CATALOG_REQUIRE_SEPARATE_REVIEWER = env_bool("CATALOG_REQUIRE_SEPARATE_REVIEWER", default=True)
+# Two-person approval for catalog, lifecycle, thresholds, subnets, patch baselines and custom fields. Off by default
+# so a single administrator can approve their own changes (always audited). Set REQUIRE_SECOND_APPROVER=true to require
+# a different approver. CATALOG_REQUIRE_SEPARATE_REVIEWER is the older name and is still honoured.
+CATALOG_REQUIRE_SEPARATE_REVIEWER = env_bool(
+    "REQUIRE_SECOND_APPROVER", default=env_bool("CATALOG_REQUIRE_SEPARATE_REVIEWER", default=False)
+)
 
 # --- Report artifacts: private filesystem storage, never served directly by the proxy ---
 REPORT_STORAGE_DIR = Path(env_str("REPORT_STORAGE_DIR", str(BASE_DIR / "var" / "reports")))

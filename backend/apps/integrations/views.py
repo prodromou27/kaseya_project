@@ -33,6 +33,15 @@ class CredentialSerializer(serializers.Serializer):
     fields = serializers.DictField(child=serializers.CharField(allow_blank=True, max_length=1000), write_only=True)
 
 
+class ConnectSerializer(serializers.Serializer):
+    """Connect VSA wizard input. The token values are write-only and never echoed, logged or audited."""
+
+    base_url = serializers.CharField(max_length=500)
+    token_id = serializers.CharField(max_length=200, write_only=True)
+    token_secret = serializers.CharField(max_length=500, write_only=True)
+    name = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+
+
 class IntegrationInstanceSerializer(serializers.ModelSerializer):
     """``credential_ref`` is write-only: responses only say whether one is configured."""
 
@@ -259,6 +268,25 @@ class IntegrationInstanceViewSet(
             metadata={"replaced": replaced, "server_reference_also_set": bool(instance.credential_ref)},
         )
         return Response(self.get_serializer(instance).data)
+
+    @extend_schema(request=ConnectSerializer, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"], url_path="connect")
+    def connect(self, request: Request) -> Response:
+        """Connect VSA wizard, step 1: allow host, create/reuse integration, store credentials, test, list orgs."""
+        from .connect import connect
+
+        body = ConnectSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        return Response(connect(request.user, request, **body.validated_data))
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["post"], url_path="import-orgs")
+    def import_orgs(self, request: Request, pk: str | None = None) -> Response:
+        """Connect VSA wizard, step 2: ticked organisations become customers that sync now and daily."""
+        from .connect import import_organizations
+
+        picks = request.data.get("organizations") if isinstance(request.data, dict) else None
+        return Response(import_organizations(request.user, request, self.get_object(), picks or []))
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="providers")

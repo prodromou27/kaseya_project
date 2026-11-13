@@ -56,7 +56,22 @@ export function Field({
   );
 }
 
-export function Notice({ tone = "info", children }: { tone?: Tone; children: ReactNode }) {
+/**
+ * Warnings and errors are always shown in full. Informational notes (tone "info", the default) are explanations
+ * most users do not need every time: they fold into a single "About this view" line that expands on click.
+ */
+export function Notice({ tone = "info", title, children }: { tone?: Tone; title?: string; children: ReactNode }) {
+  if (tone === "info") {
+    return (
+      <details className="group text-sm text-slate-600">
+        <summary className="inline-flex cursor-pointer select-none items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800">
+          <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold">i</span>
+          {title ?? "About this view"}
+        </summary>
+        <div className="mt-1.5 rounded bg-slate-50 px-3 py-2 ring-1 ring-inset ring-slate-200">{children}</div>
+      </details>
+    );
+  }
   return <div className={`rounded px-3 py-2 text-sm ring-1 ring-inset ${BADGE_TONES[tone]}`}>{children}</div>;
 }
 

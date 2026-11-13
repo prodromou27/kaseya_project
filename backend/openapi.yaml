@@ -3757,6 +3757,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/IntegrationInstance'
           description: ''
+  /api/v1/integrations/{id}/import-orgs/:
+    post:
+      operationId: integrations_import_orgs_create
+      description: 'Connect VSA wizard, step 2: ticked organisations become customers
+        that sync now and daily.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/integrations/{id}/organizations/:
     get:
       operationId: integrations_organizations_retrieve
@@ -3797,6 +3828,29 @@ paths:
         required: true
       tags:
       - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/integrations/connect/:
+    post:
+      operationId: integrations_connect_create
+      description: 'Connect VSA wizard, step 1: allow host, create/reuse integration,
+        store credentials, test, list orgs.'
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Connect'
+        required: true
       security:
       - sessionAuth: []
       responses:
@@ -4585,6 +4639,30 @@ components:
       description: |-
         * `official` - Vendor lifecycle page / official announcement
         * `secondary` - Secondary source (not used to classify)
+    Connect:
+      type: object
+      description: Connect VSA wizard input. The token values are write-only and never
+        echoed, logged or audited.
+      properties:
+        base_url:
+          type: string
+          maxLength: 500
+        token_id:
+          type: string
+          writeOnly: true
+          maxLength: 200
+        token_secret:
+          type: string
+          writeOnly: true
+          maxLength: 500
+        name:
+          type: string
+          default: ''
+          maxLength: 120
+      required:
+      - base_url
+      - token_id
+      - token_secret
     ConnectorHost:
       type: object
       properties:

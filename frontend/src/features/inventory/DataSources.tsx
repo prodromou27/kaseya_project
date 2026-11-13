@@ -15,6 +15,19 @@ export function useDatasets(customerId: string) {
   });
 }
 
+/** Plain-language explanation of the commonest sync outcomes (codes come from the backend). */
+const SYNC_ERRORS: Record<string, string> = {
+  auth_failed: "VSA X rejected the API credentials. Re-enter them under Settings → Integrations.",
+  credential_unavailable: "No usable API credentials. Enter them under Settings → Integrations.",
+  egress_blocked: "The VSA host is not allowed or resolves to a private address. Check Allowed API hosts.",
+  vendor_unavailable: "VSA X did not respond. The server may be unable to reach it (DNS, firewall or proxy).",
+  rate_limited: "VSA X rate limit reached. The sync continues automatically later.",
+  retry_budget_exhausted: "VSA X kept failing; the sync gave up. Try again later.",
+  row_count_drop_guard: "Far fewer devices than last time, so the previous data was kept. Check the VSA organisation.",
+  internal_error: "Unexpected error on the server. An administrator should check the worker logs.",
+};
+const STUCK_AFTER_MS = 2 * 60 * 1000;
+
 /** Source freshness and sync state. Stale/never-synced data is always shown explicitly, never hidden. */
 export function DataSources({ customer }: { customer: Customer }) {
   const queryClient = useQueryClient();
@@ -51,6 +64,13 @@ export function DataSources({ customer }: { customer: Customer }) {
           </button>
         ) : null}
       </div>
+      {syncNow.isSuccess ? <p role="status" className="mb-2 text-sm text-slate-600">Sync requested. Status updates below.</p> : null}
+      {datasets.data.some((d) => d.last_run?.state === "queued" && Date.now() - Date.parse(d.last_run.created_at) > STUCK_AFTER_MS) ? (
+        <p role="alert" className="mb-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+          A sync has been waiting for more than two minutes, so the background worker is probably not running. An
+          administrator can check it on the server with <code>python manage.py sync_status</code>.
+        </p>
+      ) : null}
       {syncNow.isError ? (
         <p role="alert" className="mb-2 text-sm text-red-700">
           {describeError(syncNow.error)}
@@ -72,6 +92,9 @@ export function DataSources({ customer }: { customer: Customer }) {
               <span className="text-xs text-slate-500">
                 last run: <Badge tone={statusTone[d.last_run.state]}>{d.last_run.state}</Badge>
                 {d.last_run.error_code ? ` (${d.last_run.error_code})` : ""}
+                {d.last_run.error_code && SYNC_ERRORS[d.last_run.error_code] ? (
+                  <span className="block text-red-700">{SYNC_ERRORS[d.last_run.error_code]}</span>
+                ) : null}
                 {d.last_run.quarantined ? ` · ${d.last_run.quarantined} quarantined` : ""}
               </span>
             ) : null}

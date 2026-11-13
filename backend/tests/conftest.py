@@ -20,6 +20,8 @@ def _isolate(settings, tmp_path):
     settings.REPORT_STORAGE_DIR = tmp_path / "reports"
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]  # test speed only
+    # Existing suites exercise the stricter two-person mode; test_single_admin.py covers the default (off).
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = True
     yield
     cache.clear()
 
