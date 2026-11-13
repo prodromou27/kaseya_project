@@ -23,7 +23,8 @@ RUN mkdir -p /app/var/reports /app/var/onboarding /app/staticfiles && chown -R p
  && chmod +x /app/docker-entrypoint.sh
 USER portal
 EXPOSE 8000
+# Host 'backend' is in DJANGO_ALLOWED_HOSTS in production; 127.0.0.1 is not (DisallowedHost -> unhealthy).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live/', timeout=4).status == 200 else 1)"
+  CMD python -c "import urllib.request as u,sys; r=u.Request('http://127.0.0.1:8000/api/v1/health/live/', headers={'Host': 'backend'}); sys.exit(0 if u.urlopen(r, timeout=4).status == 200 else 1)"
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60", "--access-logfile", "-"]
