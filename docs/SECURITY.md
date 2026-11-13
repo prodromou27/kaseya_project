@@ -4,6 +4,8 @@
 
 ## 1. Threat model
 
+> **As implemented (2026-11-13):** see [THREAT_MODEL.md](THREAT_MODEL.md) for the STRIDE review, scanner results, fixed findings, accepted design decisions and open residual risks.
+
 Assets: vendor API credentials, customer topology/hostnames/software, ticket metadata, report artifacts, user sessions, catalog approvals, and audit evidence.
 
 Threats: cross-customer data leakage, IDOR, privilege escalation, stolen connector credentials, query injection/SSRF, hostile source data (stored XSS, CSV injection), exposed exports, poisoned software reference versions, incorrect patch/compliance claims, job queue replay, supply-chain compromise, unmonitored or untested backups.

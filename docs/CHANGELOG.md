@@ -30,6 +30,8 @@ Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-te
 - VSA4-04: **Inventory changes** shows the differences between two complete snapshots and adds report R16. No change time or person is invented. A device **Onboarding** tab lists the onboarding checks that involved the device (commit `136ddb6`).
 - AlmaLinux deployment: an as-implemented runbook, `.env.prod.example`, a host preflight script and a secrets preparation script (owners, modes, SELinux labels), and SELinux-aware Compose binds. Docker-published ports bypass firewalld, so the runbook adds `PORTAL_BIND_ADDRESS` and DOCKER-USER guidance. Not yet executed on a host.
 - VSAP-02: **encrypted backups**: `pg_dump` inside the db container is encrypted with GnuPG to a public key, with a checksum, manifest, off-host copy, retention and a systemd timer. Also an **isolated restore drill** with `manage.py restore_check` and a JSON drill record. Drill-tested locally; not yet run on the host.
+- VSA4-03: **Notifications** (redacted, recurring patterns, R15) and a customer-approved **custom field allowlist**; credential-like fields can never be stored.
+- VSAP-03: a threat model, SAST in CI, and a generic IDOR route sweep. **Security fix:** customer-scoped routes now authorise the customer before validating input; they previously returned 400 instead of 404 for a customer outside the caller's access. Dev-tooling advisories fixed (vitest 4.1.12, minimatch override).
 
 ### Not changed
 - VSA X stays read-only. Device moves remain disabled (VSA5 BLOCKED_APPROVAL).

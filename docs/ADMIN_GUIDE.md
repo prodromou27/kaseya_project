@@ -140,3 +140,7 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
 17. **Expected subnets:** Groups & network → a group → *Network review*. A customer administrator proposes a subnet for
     the group or its site, and a **different** administrator approves it. Addresses outside approved subnets are
     review flags, not proof of misconfiguration. Addresses of an IP version with no expectation are *not evaluated*.
+18. **Notifications and custom fields:** set "Notifications budget / sync" (and "Custom fields budget / sync") on the
+    integration. Notifications older than `NOTIFICATION_WINDOW_DAYS` (14) are not stored, and message text is redacted
+    before storage. Custom fields are read **only** for names approved on Customer → *Custom fields* (customer admin
+    proposes, a different admin approves). Names that look like credentials are refused and never stored.
