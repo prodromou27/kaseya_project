@@ -142,8 +142,15 @@ class IntegrationInstanceViewSet(
     def perform_update(self, serializer: IntegrationInstanceSerializer) -> None:
         changed = sorted(serializer.validated_data.keys())
         # From the DB: ``validate()`` has already applied the new values to ``serializer.instance``.
-        old_url = IntegrationInstance.objects.values_list("base_url", flat=True).get(pk=serializer.instance.pk)
+        old_url, was_enabled = IntegrationInstance.objects.values_list("base_url", "enabled").get(
+            pk=serializer.instance.pk
+        )
         inst = serializer.save()
+        if inst.enabled and not was_enabled:
+            # Schedules may have been skipped while the integration was disabled: sync now instead of in a day.
+            SyncSchedule.objects.filter(
+                mapping__integration_instance=inst, mapping__mapping_status="approved", enabled=True
+            ).update(next_run_at=timezone.now())
         if inst.base_url != old_url and inst.credential_ciphertext:
             # Never send a token entered for one server to another: the admin must enter it again.
             _clear_portal_credential(inst)

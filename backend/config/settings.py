@@ -226,6 +226,8 @@ CELERY_BEAT_SCHEDULE = {
 CELERY_TASK_ROUTES["apps.reporting.tasks.purge_expired_artifacts"] = {"queue": "maintenance"}
 CELERY_TASK_ROUTES["apps.reporting.tasks.dispatch_schedules"] = {"queue": "maintenance"}
 SYNC_MAX_DROP_RATIO = float(env_str("SYNC_MAX_DROP_RATIO", "0.5"))
+# Approving a source mapping creates a sync schedule with this interval (editable under Admin -> Sync schedules).
+SYNC_DEFAULT_INTERVAL_HOURS = env_int("SYNC_DEFAULT_INTERVAL_HOURS", 24)
 DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
 CATALOG_REQUIRE_SEPARATE_REVIEWER = env_bool("CATALOG_REQUIRE_SEPARATE_REVIEWER", default=True)
 

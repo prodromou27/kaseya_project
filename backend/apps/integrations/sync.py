@@ -358,6 +358,7 @@ def _ingest_page(run: SyncRun, generation: DatasetGeneration, page: AssetPage) -
             next_skip=page.skip + len(page.records),
             pages_fetched=run.pages_fetched + 1,
             fetched_count=run.fetched_count + fetched,
+            accepted_count=run.accepted_count + (fetched - quarantined),
             quarantined_count=run.quarantined_count + quarantined,
             source_total_count=page.total_count,
             initial_total_count=page.total_count if run.initial_total_count is None else run.initial_total_count,

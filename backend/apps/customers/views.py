@@ -259,6 +259,25 @@ class SourceMappingViewSet(
         )
 
 
+def ensure_sync_schedule(mapping: CustomerSourceMapping) -> None:
+    """An approved mapping syncs automatically: create its schedule (first run due now) if it has none.
+
+    An existing schedule is left as the administrator configured it (interval, enabled).
+    """
+    from django.conf import settings
+
+    from apps.integrations.models import SyncSchedule
+
+    SyncSchedule.objects.get_or_create(
+        mapping=mapping,
+        defaults={
+            "interval_hours": settings.SYNC_DEFAULT_INTERVAL_HOURS,
+            "next_run_at": timezone.now(),
+            "enabled": True,
+        },
+    )
+
+
 class MappingReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """System-wide mapping review queue (super admin). Approve / reject / revoke."""
 
@@ -286,6 +305,8 @@ class MappingReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
             mapping.reviewed_at = timezone.now()
             mapping.review_note = review.validated_data.get("note", "")
             mapping.save()
+            if to == CustomerSourceMapping.Status.APPROVED:
+                ensure_sync_schedule(mapping)
         record_event(
             action=f"mapping.{action_name}",
             outcome="success",

@@ -79,7 +79,7 @@ def test_full_sync_publishes_and_counts_reconcile(world, vsa):
     run = run_with(new_run(mapping, world.engineer_a), FixtureVsaTransport(assets(150)))
     assert run.state == "completed", run.error_code
     gen = current(world.customer_a)
-    assert gen.row_count == 150 == run.fetched_count == run.source_total_count
+    assert gen.row_count == 150 == run.fetched_count == run.source_total_count == run.accepted_count
     assert gen.software_row_count == 300 == SoftwareInstallation.objects.filter(generation=gen).count()
     assert gen.data_basis == "fixture" and run.pages_fetched == 2 and run.api_requests == 2
     assert Asset.objects.filter(customer=world.customer_a, active=True).count() == 150
@@ -115,6 +115,7 @@ def test_records_from_other_organisations_are_quarantined_never_attributed(world
     )
     run = run_with(new_run(mapping, world.engineer_a), transport)
     assert run.state == "completed" and run.quarantined_count == 2
+    assert run.accepted_count == run.fetched_count - 2
     assert set(SyncQuarantine.objects.values_list("reason", flat=True)) == {"organization_mismatch"}
     assert not Asset.objects.filter(external_id__startswith="other").exists()
     assert current(world.customer_a).row_count == 3
