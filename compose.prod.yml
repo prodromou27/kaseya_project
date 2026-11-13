@@ -1,5 +1,7 @@
 # Production-shaped stack for the AlmaLinux host (docs/DEPLOYMENT.md). NOT yet validated on the target host.
-# Secrets are files under ./secrets (chmod 600, never committed) mounted as Docker secrets.
+# Secrets are files under ./secrets (never committed), prepared by infra/almalinux/prepare-secrets.sh:
+#   owner root, group = the container user that reads them (10001 app, 101 nginx), mode 0640, SELinux type
+#   container_file_t. Compose (non-swarm) bind-mounts secret files with these host permissions.
 #   docker compose -f compose.prod.yml --env-file .env.prod up -d --build
 name: okp
 
@@ -121,9 +123,12 @@ services:
       PORTAL_HOSTNAME: ${PORTAL_HOSTNAME}
       NGINX_ENVSUBST_FILTER: PORTAL_HOSTNAME
     volumes:
-      - ./infra/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+      # ",z" relabels for SELinux (shared, read-only); ignored on hosts without SELinux.
+      - ./infra/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro,z
     secrets: [tls_cert, tls_key]
-    ports: ["80:8080", "443:8443"]
+    # Docker-published ports bypass firewalld zone rules: bind to the service address and restrict sources in
+    # the DOCKER-USER chain (docs/DEPLOYMENT.md section 5).
+    ports: ["${PORTAL_BIND_ADDRESS:-0.0.0.0}:80:8080", "${PORTAL_BIND_ADDRESS:-0.0.0.0}:443:8443"]
     depends_on:
       backend: { condition: service_healthy }
     networks: [web]

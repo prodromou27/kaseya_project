@@ -20,6 +20,9 @@ frontend/playwright-report/
 .env
 .env.*
 !.env.example
+!.env.prod.example
+# Production secret files (infra/almalinux/prepare-secrets.sh) — never commit
+secrets/
 *.pem
 *.key
 

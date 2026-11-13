@@ -28,6 +28,7 @@ Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-te
 - VSA4: **Device health** covers connectivity, agent installed, agent version (against an approved minimum), system disk free space, antivirus and firewall. Each is a complete partition with explicit unknown buckets, under two-person-approved thresholds. The documented CPU, memory and aggregate security fields are kept verbatim. Adds reports R09, R13 and R14; the onboarding `OLD_AGENT` flag is now evaluated (commit `b345b8f`).
 - VSA1-01: an administrator **connection test** (`GET /api/v3/ratelimits`) reports an explicit outcome, latency and the reported per-endpoint rate limits. VSA2-05: **expected subnets** per site/group, two-person approved, flag addresses outside them, and addresses that changed since the previous snapshot are flagged too. Both are review observations only (commit `5dbb567`).
 - VSA4-04: **Inventory changes** shows the differences between two complete snapshots and adds report R16. No change time or person is invented. A device **Onboarding** tab lists the onboarding checks that involved the device (commit `136ddb6`).
+- AlmaLinux deployment: an as-implemented runbook, `.env.prod.example`, a host preflight script and a secrets preparation script (owners, modes, SELinux labels), and SELinux-aware Compose binds. Docker-published ports bypass firewalld, so the runbook adds `PORTAL_BIND_ADDRESS` and DOCKER-USER guidance. Not yet executed on a host.
 
 ### Not changed
 - VSA X stays read-only. Device moves remain disabled (VSA5 BLOCKED_APPROVAL).
