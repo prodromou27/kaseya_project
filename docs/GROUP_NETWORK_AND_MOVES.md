@@ -8,6 +8,20 @@ Summarize **reported** per-device network adapters: IPv4/IPv6, mask/CIDR, gatewa
 
 Report duplicate IPs, MAC reuse, changing IPs, IPs outside expected subnet and missing fields. These are review flags; **do not claim discovered physical LAN topology, switch-port, VLAN or subnet authority from VSA group membership alone**. Site Maps/Advanced Reporting discovered devices may be explored only through supported approved machine interfaces (VSA 10.26+, one site map per report).
 
+### Implementation notes (`ea26682`, `5dbb567`; fixture-tested only)
+
+* The expected-subnet policy is per site or group. A customer admin proposes it and a different admin approves it.
+  It uses a strict CIDR with no host bits and no `/0`, and the scope must exist in the customer's snapshot.
+* An address counts as outside only when an approved expectation of the **same IP version** covers the group or its
+  site. Otherwise it is counted as *not evaluated*. Link-local and loopback addresses are never evaluated.
+* Changing IPs (NET-02) are compared with the previous **complete** snapshot of the same VSA instance. Only devices
+  whose network section was collected in both snapshots are compared. With several or no current snapshots the check
+  is *not evaluated*.
+* The review-flag summary lists: duplicate IP, MAC reuse, outside expected subnet, address changed, network not
+  collected, and address without a derivable subnet. A flag is raised at any non-zero count, and flags that could not
+  be evaluated are labelled as such.
+* Device moves remain **disabled** (BLOCKED_APPROVAL). Nothing in this view calls a write endpoint.
+
 ## Group move — exception to read-only policy
 
 Documented vendor route: `PUT /api/v3/devices/{deviceId}/move`, JSON `{"GroupId": <integer>}`. This operation is **not active by default**. It requires a written owner/security approval for instance/customer, separate vaulted write-capable token, named identities and explicit portal permissions `vsa.move.propose`, `vsa.move.approve`, `vsa.move.execute`. Do not implement cross-customer transfers or unapproved group creation.

@@ -26,6 +26,7 @@ Evidence: [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). **Fixture-te
 - `defusedxml` dependency (hardens workbook XML parsing).
 - VSA3-04: **Patch policies**, covering budgeted per-device applied policies, policy definitions (configuration only) and an explicit No Policy state that is kept distinct from unknown. Also a two-person-approved expected-policy baseline with drift, a device Policies tab and report R08. The onboarding `NO_PATCH_POLICY` flag is now evaluated (commit `ff7a956`).
 - VSA4: **Device health** covers connectivity, agent installed, agent version (against an approved minimum), system disk free space, antivirus and firewall. Each is a complete partition with explicit unknown buckets, under two-person-approved thresholds. The documented CPU, memory and aggregate security fields are kept verbatim. Adds reports R09, R13 and R14; the onboarding `OLD_AGENT` flag is now evaluated (commit `b345b8f`).
+- VSA1-01: an administrator **connection test** (`GET /api/v3/ratelimits`) reports an explicit outcome, latency and the reported per-endpoint rate limits. VSA2-05: **expected subnets** per site/group, two-person approved, flag addresses outside them, and addresses that changed since the previous snapshot are flagged too. Both are review observations only (commit `5dbb567`).
 
 ### Not changed
 - VSA X stays read-only. Device moves remain disabled (VSA5 BLOCKED_APPROVAL).

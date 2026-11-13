@@ -133,3 +133,10 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
     approves. The documented defaults (24 h, 7 days, 15 %, 5 %, no minimum) apply until then and are labelled as
     defaults. Approving a new proposal supersedes the previous thresholds, and the history is kept. Without an approved
     minimum version, agent age is *not evaluated*.
+16. **Connection test:** Administration → Integrations → *Test connection*. It makes one read-only
+    `GET /api/v3/ratelimits` call, then shows the outcome, latency and per-endpoint remaining/limit values; use these
+    to size the per-sync budgets. An invalid token shows `auth_failed` and is never retried. Fixture instances show
+    the documented example. The last result is stored on the integration, without credentials.
+17. **Expected subnets:** Groups & network → a group → *Network review*. A customer administrator proposes a subnet for
+    the group or its site, and a **different** administrator approves it. Addresses outside approved subnets are
+    review flags, not proof of misconfiguration. Addresses of an IP version with no expectation are *not evaluated*.

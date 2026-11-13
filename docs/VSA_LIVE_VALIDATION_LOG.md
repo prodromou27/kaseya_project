@@ -9,6 +9,7 @@
 | — | unknown until pilot | `GET /api/v3/assets/:id?include=InstalledUpdates` | — | LIVE_VALIDATION_PENDING | docs only | `test_patching.py` | — |
 | — | unknown until pilot | `GET /api/v3/organizations`, `/sites`, `/groups`, `/devices` | — | LIVE_VALIDATION_PENDING | docs only | `test_vsa1_hierarchy_network.py` | — |
 | — | unknown until pilot | `GET /api/v3/devices/:id/appliedpolicies`, `GET /api/v3/patchmanagement/policies/:id` | — | LIVE_VALIDATION_PENDING | docs only | `test_patch_policies.py` | — |
+| — | unknown until pilot | `GET /api/v3/ratelimits` (connection test) | — | LIVE_VALIDATION_PENDING | docs only | `test_connection_test.py` | — |
 | — | unknown until pilot | third-party patch status (any source) | — | LIVE_VALIDATION_PENDING; public docs show no route | — | `THIRD_PARTY_PATCH_STATUS` | — |
 
 Store secrets only in approved secret store. Do not paste raw API responses from customer systems into Git.
