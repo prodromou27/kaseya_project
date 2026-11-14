@@ -69,3 +69,7 @@ Production gates remain open. VSA0-02/P0-02 needs Docker; VSAP requires real SSO
 ## CIDR-01 - onboarding group suggestions
 
 Delivered legitimate temporary onboarding-group settings and reviewed source-qualified CIDR suggestions in device Operations. Transfers remain manual in VSA; no automatic placement correction. Fixture validation: 589 backend, 78 frontend, new browser workflow passed. Existing live/Docker/production gates remain open. See ONBOARDING_GROUPS.md.
+
+## LIST-01 usability continuation
+
+User-prioritized device/group workflows now have focused controls, keyboard-safe filtering, persisted named device layouts, consistent table navigation and a searchable group directory. Reporting migration 0003 is additive; existing filter-only saved views remain valid. See LIST_USABILITY.md for actual tests, screenshots, failures corrected and rollout limits. Next product work: simplify software and Windows-update investigation lists; then a guided reconciliation flow. Docker/host/live/SSO/restore/security gates remain open.

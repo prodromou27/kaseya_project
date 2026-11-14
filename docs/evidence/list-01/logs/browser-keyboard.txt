@@ -1,0 +1,16 @@
+
+Running 3 tests using 1 worker
+
+npx.cmd : (node:51528) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At line:2 char:96
++ ... nly-2026!'; npx.cmd playwright test e2e/z-list-usability.spec.ts > .. ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:51528) Wa... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\z-list-usability.spec.ts:11:1 › engineer saves a layout and retains it across reload, paging, filtering and investigation (7.2s)
+  ok 2 [chromium] › e2e\z-list-usability.spec.ts:50:1 › group directory filters by site and links the exact source population (3.2s)
+  ok 3 [chromium] › e2e\z-list-usability.spec.ts:73:1 › phone list controls stay in the viewport and keyboard search recovers empty results (3.2s)
+
+  3 passed (16.6s)

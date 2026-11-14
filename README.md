@@ -1,5 +1,7 @@
 # Odyssey Kaseya Analytics & Reporting Portal
 
+**Latest usability delivery (LIST-01):** simpler device/group workflows, persistent named device layouts and keyboard-safe filtering. Verified with **603 backend tests, 85 frontend tests and 40 browser scenarios**. [Changes and screenshots](docs/LIST_USABILITY.md). Vendor access remains read-only; validation uses labelled fixtures.
+
 **2026-11-14 application remediation:** the existing VSA portal now has workflow navigation, responsive investigation views, persistent filters, current dashboard drilldowns, matching list/export filters, source-qualified groups, network exports and internal independent move review. Verified locally with 585 PostgreSQL tests, 74 frontend tests and browser workflows. Start with [verification and screenshots](docs/CODEX_VERIFICATION.md), [remaining work](docs/CODEX_REMEDIATION_BACKLOG.md) and [deployment/rollback](docs/CODEX_DEPLOYMENT_AND_ROLLBACK.md). Fixture validation does not close production gates; vendor writes remain disabled.
 
 **Project state:** P0 foundation, P1 VSA X inventory and software versions, and P2 Windows updates, CSV/XLSX/PDF reports, schedules and history are implemented and **fixture-tested** (no live VSA X validation yet). The phase gates stay open until a Docker boot, a green CI run, a live pilot and owner sign-off. See [PHASE_ACCEPTANCE_P2.md](docs/PHASE_ACCEPTANCE_P2.md).
@@ -163,3 +165,5 @@ These references must be rechecked during implementation. All product API assump
 - [CHANGELOG.md](docs/CHANGELOG.md): documentation release history.
 
 **Onboarding groups (CIDR-01):** generic installation groups can be marked as valid temporary destinations. Administrators manage source-qualified reviewed subnets; device Operations shows advisory CIDR matches. Transfers remain manual. [Workflow and verification](docs/ONBOARDING_GROUPS.md).
+
+**Device/group usability (LIST-01):** focused filters, fast keyboard search, persistent named device layouts, better paging and searchable source-qualified group navigation. [Before/after and verification](docs/LIST_USABILITY.md).

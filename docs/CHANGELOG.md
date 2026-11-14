@@ -1,5 +1,13 @@
 # Changelog
 
+## LIST-01 - 2026-11-14
+
+- Simplified Devices controls, added filter chips/quick filters, debounced keyboard-safe search and source-qualified named facets.
+- Added server-persisted private/shared device layouts with validated columns, density/page size; inline create/update/delete and audit. Duplicate names return validation errors.
+- Added sortable headers, page sizes/direct paging, empty-page recovery and protection against stale-row actions.
+- Added searchable group directory with site/purpose filters and scoped device links while retaining Hierarchy.
+- Added reporting migration 0003, compatibility proof and before/after evidence. Final validation is recorded in LIST_USABILITY.md; live/deployment gates remain open.
+
 All implementation claims require linked evidence. Use semantic versions for application releases once a working application exists.
 
 ## [Unreleased] - 2026-11-14 - VSA application remediation

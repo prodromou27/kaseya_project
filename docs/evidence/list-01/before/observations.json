@@ -1,0 +1,70 @@
+{
+  "fixture": true,
+  "errors": [],
+  "observations": [
+    {
+      "name": "devices",
+      "width": 1440,
+      "path": "/assets",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "software",
+      "width": 1440,
+      "path": "/software",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 1440,
+      "path": "/windows-updates",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "groups",
+      "width": 1440,
+      "path": "/groups",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "devices",
+      "width": 390,
+      "path": "/assets",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "software",
+      "width": 390,
+      "path": "/software",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 390,
+      "path": "/windows-updates",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "groups",
+      "width": 390,
+      "path": "/groups",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    }
+  ]
+}

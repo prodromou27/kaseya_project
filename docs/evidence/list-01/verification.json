@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-14",
+  "task": "LIST-01",
+  "baseline": "ddaefa1",
+  "implementation_commit": "fae7e6f",
+  "data_origin": "synthetic fixtures only",
+  "backend_tests": 603,
+  "frontend_tests": 85,
+  "full_browser_tests": 40,
+  "screenshots_after": 34,
+  "browser_errors_after": 0,
+  "page_overflow_after": 0,
+  "migration_rollback_forward": "passed; legacy filters and ownership retained",
+  "production_deployed": false,
+  "live_vendor_requests": false,
+  "ci_claimed": false
+}

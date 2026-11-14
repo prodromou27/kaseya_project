@@ -144,3 +144,11 @@ section was missing in either snapshot, that device is listed as "not compared" 
 ## Generic installations and group suggestions
 
 A device may legitimately remain in an onboarding agent group after generic installation. Open its **Operations** tab to see reviewed CIDR-based destination hints, matching reported addresses and any overlapping candidates. A missing match does not indicate incorrect placement. VPNs and shared networks can create misleading matches; check policy inheritance and customer/source identity. Choosing **Use [group]** fills the target only. Portal review records a proposal; an administrator transfers the agent manually in VSA.
+
+## Faster device lists and group navigation
+
+Use Devices search for a hostname, serial, source ID, MAC or IP; typing stays immediate while requests settle. Select a named site or a quick filter, open More filters for group/OS/type/last-seen window, and remove individual active chips. Click Device, Group, OS or Last seen column headers to sort. Columns and Density change presentation; Rows per page, First/Last and Go control paging. Updating rows temporarily stop accepting actions until replacement results arrive.
+
+Open Saved views to name the current filters, visible columns, density and page size. Views are private by default; explicitly share when appropriate. Load a view, Update view to revise your own, or Delete view and confirm. Current presentation also survives a device investigation through its return URL. Exports use the report's defined columns.
+
+Groups & network starts with a searchable group list. Search names, site, organization, source or ID, refine by site/purpose, click a device total for the exact source population, or open a group name for network evidence. The Hierarchy tab retains organization/site/group browsing. Onboarding labels identify legitimate temporary destinations; transfers remain manual.

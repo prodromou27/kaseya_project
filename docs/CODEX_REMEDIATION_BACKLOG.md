@@ -26,3 +26,12 @@ CX-08 completes the bounded normalized-inventory benchmark (100k devices), not c
 Remaining refinement work: dashboard sub-customer scope controls; saved column layouts; dark theme; a fully separated multi-screen reconciliation wizard; richer related-data/concurrent load; report branding review. Existing customer-first upload is retained so files always have an authorized owner before storage. These are not represented as completed by the narrower remediation acceptance conditions above.
 
 Next acceptance work: approved representative pilot, Docker/AlmaLinux health, independent security environment and live field/capability verification. No real credentials may be used without approval. Detailed query timing and workload limitations: CODEX_PERFORMANCE.md. Production deployment/rollback: CODEX_DEPLOYMENT_AND_ROLLBACK.md.
+
+## User-prioritized usability continuation
+
+- **LIST-01** Devices and group navigation, saved device layouts and faster filtering: completed and fixture-verified (603 backend, 85 frontend, 40 browser scenarios); proof in LIST_USABILITY.md. Includes named private/shared layouts, filter chips, keyboard-safe debounce, paging, source-qualified group directory and stale-row protection.
+- **LIST-02** Next: software and Windows-update lists with clearer summary-to-investigation navigation and consistent filter controls.
+- **LIST-03** Guided Excel reconciliation progression and clearer review/result actions.
+- **LIST-04** Extend saved presentation beyond device inventory, report layout/branding review and additional mobile list refinement.
+
+This sequence follows the user's explicit priority. The entire application and its production gates are not marked complete by LIST-01.

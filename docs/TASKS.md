@@ -100,3 +100,12 @@ Final local evidence: **585 PostgreSQL tests**, **74 frontend tests**, **36-test
 Plan/dependencies: reuse current approved mapping/snapshot queries, ExpectedSubnet review lifecycle, group network screen and existing device Operations proposal UI. Add persistent source-qualified purpose settings and nullable source identity for legacy subnet rules; qualify new rules; test role/customer/source isolation, ambiguous overlaps and absent evidence; regenerate schema and run affected backend/frontend/browser checks. P0-02/VSA0-02 remains externally blocked by Docker. No new vendor endpoints or credentials are required.
 
 Result: implemented and fixture-verified. Full PostgreSQL suite 589 passed; full frontend suite 78 passed; dedicated administrator-to-independent-reviewer browser workflow passed. Vendor writes remain absent. See ONBOARDING_GROUPS.md for controls, exact checks and evidence.
+
+
+## LIST-01 - simplify device lists and group navigation
+
+- [x] **LIST-01** User-prioritized device/group usability and persistent named list layouts.
+
+Plan: extend existing customer/owner-scoped SavedView with validated presentation (columns, density, page size); retain filter-only compatibility. Simplify device toolbar, debounce server search, expose active removable filters, source-qualified site/group options and sortable table headers. Improve shared table paging/empty/update feedback and controlled layouts. Add searchable group list with scoped device links and onboarding purpose, retaining hierarchy. Dependencies: existing scoped inventory/facets/hierarchy, SavedView API/RBAC, bounded pagination and read-only fixtures. Validate backend ownership/IDOR/layout input and UI keyboard/layout/search/paging/navigation with desktop/mobile browser evidence. First unchecked historical gate remains P0-02/VSA0-02 (Docker unavailable).
+
+LIST-01 result: source commit fae7e6f; 603 PostgreSQL tests, 85 frontend tests, 40/40 full browser scenarios, migration rollback/forward compatibility, schema/types/lint/build passed. Before/after and actual failures corrected: LIST_USABILITY.md. Fixture-only; production/live gates remain open.
