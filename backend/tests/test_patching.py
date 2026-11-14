@@ -340,8 +340,12 @@ def test_one_unresponsive_device_does_not_stop_the_sync(world, vsa):
     assert st == {"d-001": "failed", "d-002": "collected"}
 
 
-def test_vsa_failing_all_detail_calls_still_publishes_the_inventory(world, vsa):
+def test_a_failing_detail_endpoint_stops_only_its_own_kind(world, vsa):
+    """Live host: VSA X GetSystemAppliedPolicies returned 500 "The given key was not present in the dictionary"
+    for devices. Policies stop after three consecutive failures; installed updates and notifications still run,
+    the inventory is published, and each failing call is retried only once."""
     from apps.audit.models import AuditEvent
+    from apps.inventory.models import DeviceDetailFetch
 
     inst, mapping = vsa
     IntegrationInstance.objects.filter(pk=inst.pk).update(
@@ -349,12 +353,20 @@ def test_vsa_failing_all_detail_calls_still_publishes_the_inventory(world, vsa):
     )
     transport = FixtureVsaTransport([device(i, available=[], installed=[]) for i in range(1, 6)])
     original_get = transport.get
-    detail = ("/assets/d-", "/appliedpolicies", "/notifications")
-    transport.get = lambda url, **kw: FakeResponse(503) if any(d in url for d in detail) else original_get(url, **kw)  # type: ignore[method-assign]
+    policy_calls = []
+
+    def get(url, **kw):
+        if "/appliedpolicies" in url:
+            policy_calls.append(url)
+            return FakeResponse(500)
+        return original_get(url, **kw)
+
+    transport.get = get  # type: ignore[method-assign]
     r = run(mapping, world.engineer_a, transport)
     assert r.state == "completed", r.error_code
-    gen = DatasetGeneration.objects.get(is_current=True)
-    assert gen.row_count == 5
-    # It gave up after a few consecutive failures instead of hammering an unhealthy server.
-    assert r.installed_updates_requested == 3
-    assert AuditEvent.objects.filter(action="sync.details_incomplete", target_id=str(r.id)).exists()
+    assert DatasetGeneration.objects.get(is_current=True).row_count == 5
+    assert r.applied_policies_requested == 3 and len(policy_calls) == 6  # 3 devices x (1 try + 1 retry)
+    assert set(PatchObservation.objects.values_list("installed_status", flat=True)) == {"collected"}
+    assert DeviceDetailFetch.objects.filter(kind="notifications", status="collected").count() == 5
+    ev = AuditEvent.objects.get(action="sync.details_incomplete", target_id=str(r.id))
+    assert ev.metadata["kind"] == "applied_policies"

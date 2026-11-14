@@ -56,6 +56,12 @@ class AssetPage:
     request_count: int
 
 
+# Per-device detail calls: one retry on timeout/5xx. A device VSA X fails on deterministically (observed live:
+# GetSystemAppliedPolicies -> 500 "The given key was not present in the dictionary") is marked failed quickly
+# instead of being retried with backoff. Asset paging keeps the client default.
+DETAIL_RETRIES = 1
+
+
 class VsaXAdapter:
     provider = "vsa_x"
 
@@ -110,14 +116,18 @@ class VsaXAdapter:
         """``GET /api/v3/assets/:id?include=InstalledUpdates`` → raw body. Identifier is validated before use."""
         if not _DEVICE_ID.fullmatch(identifier or ""):
             raise ValueError("Unsafe device identifier.")
-        return self.client.get_json(f"/api/v3/assets/{identifier}", {"include": DETAIL_INCLUDE}).json
+        return self.client.get_json(
+            f"/api/v3/assets/{identifier}", {"include": DETAIL_INCLUDE}, max_retries=DETAIL_RETRIES
+        ).json
 
     def get_applied_policies(self, identifier: str) -> list[dict[str, Any]]:
         """``GET /api/v3/devices/:id/appliedpolicies`` (documented ``$top`` max 100) → raw policy dicts."""
         if not _DEVICE_ID.fullmatch(identifier or ""):
             raise ValueError("Unsafe device identifier.")
         rows: list[dict[str, Any]] = []
-        for page in self._paged(f"/api/v3/devices/{identifier}/appliedpolicies", {}, 100, max_pages=5):
+        for page in self._paged(
+            f"/api/v3/devices/{identifier}/appliedpolicies", {}, 100, max_pages=5, max_retries=DETAIL_RETRIES
+        ):
             rows.extend(page.records)
         return rows
 
@@ -129,6 +139,7 @@ class VsaXAdapter:
         result = self.client.get_json(
             f"/api/v3/devices/{identifier}/notifications",
             {"$orderby": "DateTime desc", "$top": str(max(1, min(top, 500))), "$skip": "0"},
+            max_retries=DETAIL_RETRIES,
         )
         return parse_page(result.json).records
 
@@ -137,7 +148,9 @@ class VsaXAdapter:
         if not _DEVICE_ID.fullmatch(identifier or ""):
             raise ValueError("Unsafe device identifier.")
         rows: list[dict[str, Any]] = []
-        for page in self._paged(f"/api/v3/devices/{identifier}/customfields", {}, 100, max_pages=10):
+        for page in self._paged(
+            f"/api/v3/devices/{identifier}/customfields", {}, 100, max_pages=10, max_retries=DETAIL_RETRIES
+        ):
             rows.extend(page.records)
         return rows
 
@@ -149,12 +162,23 @@ class VsaXAdapter:
         """``GET /api/v3/patchmanagement/policies/:id`` → raw body (policy *configuration*, not deployment state)."""
         if not _ORG_ID.fullmatch(policy_id or ""):
             raise ValueError("Unsafe policy identifier.")
-        return self.client.get_json(f"/api/v3/patchmanagement/policies/{policy_id}", {}).json
+        return self.client.get_json(
+            f"/api/v3/patchmanagement/policies/{policy_id}", {}, max_retries=DETAIL_RETRIES
+        ).json
 
-    def _paged(self, path: str, params: dict[str, str], page_size: int, max_pages: int = 2000) -> Iterator[Page]:
+    def _paged(
+        self,
+        path: str,
+        params: dict[str, str],
+        page_size: int,
+        max_pages: int = 2000,
+        max_retries: int | None = None,
+    ) -> Iterator[Page]:
         skip = 0
         for _ in range(max_pages):
-            result = self.client.get_json(path, {**params, "$top": str(page_size), "$skip": str(skip)})
+            result = self.client.get_json(
+                path, {**params, "$top": str(page_size), "$skip": str(skip)}, max_retries=max_retries
+            )
             page = parse_page(result.json)
             yield page
             if len(page.records) < page_size:

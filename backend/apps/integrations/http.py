@@ -189,7 +189,11 @@ class ReadOnlyHttpClient:
         self._last_request_at = self.clock()
 
     # -- request ----------------------------------------------------------------------------------
-    def get_json(self, path: str, params: Mapping[str, str] | None = None) -> HttpResult:
+    def get_json(
+        self, path: str, params: Mapping[str, str] | None = None, *, max_retries: int | None = None
+    ) -> HttpResult:
+        """``max_retries`` overrides the client default for timeouts and 5xx (not for 429)."""
+        retries = self.max_retries if max_retries is None else max_retries
         self._check_path(path)
         self._check_egress()
         url = f"{self.base_url}{path}"
@@ -203,7 +207,7 @@ class ReadOnlyHttpClient:
                     url, params=dict(params or {}), headers={"Accept": "application/json"}, auth=self.auth
                 )
             except (requests.Timeout, requests.ConnectionError) as exc:
-                if attempt > self.max_retries:
+                if attempt > retries:
                     raise VendorUnavailable("Timed out or connection failed.") from exc
                 self.sleep(min(2**attempt, 60))
                 continue
@@ -220,7 +224,7 @@ class ReadOnlyHttpClient:
             if 300 <= status < 400:
                 raise EgressBlocked("Redirects are not followed.", status=status)
             if status >= 500:
-                if attempt > self.max_retries:
+                if attempt > retries:
                     raise VendorUnavailable("Vendor server error.", status=status)
                 self.sleep(min(2**attempt, 60))
                 continue
