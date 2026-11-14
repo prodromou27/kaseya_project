@@ -65,3 +65,7 @@ Coding agents must update `TASKS.md` checkboxes and this roadmap **only after ve
 CX-00 through CX-09 are implemented and fixture-verified: workflow navigation/design system, responsive device investigation, exact current dashboard drilldowns, persistent filters, scoped selected-device exports, reconciliation progression, source-qualified groups and new R10 network CSV/XLSX/PDF, report history fixes, internal immutable move review, and measured health-summary/bundle improvements. Evidence: CODEX_VERIFICATION.md.
 
 Production gates remain open. VSA0-02/P0-02 needs Docker; VSAP requires real SSO/MFA, approved key custody/backup/restore and a representative live pilot. Independent security review needs the required isolated execution environment. Move execution remains unavailable without a separately authorized implementation/pilot. Broader UI refinements and related-data/concurrent load remain in CODEX_REMEDIATION_BACKLOG.md. IT Glue/PSA/Tenable/MCP remain outside this improvement phase.
+
+## CIDR-01 - onboarding group suggestions
+
+Delivered legitimate temporary onboarding-group settings and reviewed source-qualified CIDR suggestions in device Operations. Transfers remain manual in VSA; no automatic placement correction. Fixture validation: 589 backend, 78 frontend, new browser workflow passed. Existing live/Docker/production gates remain open. See ONBOARDING_GROUPS.md.

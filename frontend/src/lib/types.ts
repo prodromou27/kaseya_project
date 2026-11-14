@@ -511,6 +511,7 @@ export type GroupNetwork = {
 };
 
 export type ExpectedSubnet = {
+  integration_instance?: string | null;
   id: string;
   scope_type: "site" | "group";
   scope_external_id: string;

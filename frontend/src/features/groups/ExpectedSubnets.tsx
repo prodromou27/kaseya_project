@@ -36,7 +36,7 @@ export function NetworkReview({ customer, groupId, net }: { customer: Customer; 
     void qc.invalidateQueries({ queryKey: ["group-network", customer.id, groupId] });
   };
   const propose = useMutation({
-    mutationFn: () => api.post<ExpectedSubnet>(base, { scope_type: scopeType, scope_external_id: scopeType === "group" ? groupId : siteId, cidr, reason }),
+    mutationFn: () => api.post<ExpectedSubnet>(base, { scope_type: scopeType, scope_external_id: scopeType === "group" ? groupId : siteId, cidr, reason, integration_instance: net.instance_id }),
     onSuccess: () => { setCidr(""); setReason(""); refresh(); },
   });
   const act = useMutation({ mutationFn: ({ id, verb }: { id: string; verb: string }) => api.post<ExpectedSubnet>(`${base}${id}/${verb}/`), onSuccess: refresh });
@@ -83,7 +83,7 @@ export function NetworkReview({ customer, groupId, net }: { customer: Customer; 
       </div>
       <QueryBoundary query={list}>
         {(rows) => {
-          const relevant = rows.filter((r) => (r.scope_type === "group" && r.scope_external_id === groupId) || (r.scope_type === "site" && r.scope_external_id === siteId));
+          const relevant = rows.filter((r) => (!r.integration_instance || r.integration_instance === net.instance_id) && ((r.scope_type === "group" && r.scope_external_id === groupId) || (r.scope_type === "site" && r.scope_external_id === siteId)));
           return (
             <DataTable caption="Expected subnets" rows={relevant} getRowId={(r) => r.id} emptyTitle="No expected subnets for this group or its site."
               columns={[

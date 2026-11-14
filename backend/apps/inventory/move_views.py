@@ -123,8 +123,12 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         except serializers.ValidationError as exc:
             raise ValidationError({"asset": "Provide a device UUID."}) from exc
         observation, groups = moves.options(customer.id, asset_id)
+        from .group_suggestions import suggestions
+
+        hints = suggestions(observation, groups)
         return Response(
             {
+                **hints,
                 "asset": str(observation.asset_id),
                 "source_group": observation.group_name,
                 "policy_impact": moves.POLICY_IMPACT,

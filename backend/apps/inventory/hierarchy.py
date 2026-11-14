@@ -337,7 +337,18 @@ def _expected_subnet_review(
         )
         for kind, model in (("group", GroupNode), ("site", SiteNode))
     }
-    rows = [rule for rule in rows if counts_by_scope[rule.scope_type].get(rule.scope_external_id) == 1]
+    instance_ids = {m.generation.integration_instance_id for m in members}
+    if node is not None:
+        instance_ids.add(node.generation.integration_instance_id)
+    rows = [
+        rule
+        for rule in rows
+        if (
+            rule.integration_instance_id in instance_ids
+            if rule.integration_instance_id
+            else counts_by_scope[rule.scope_type].get(rule.scope_external_id) == 1
+        )
+    ]
     nets = [ipaddress.ip_network(e.cidr) for e in rows]
     outside: list[dict[str, Any]] = []
     not_evaluated = 0

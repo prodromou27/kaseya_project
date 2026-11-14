@@ -21,6 +21,8 @@ type Proposal = {
 };
 type MoveOptions = {
   source_group: string; policy_impact: string; execution_enabled: false;
+  source_is_onboarding: boolean; suggestion_note: string; suggestions_ambiguous: boolean;
+  suggestions: { id: string; name: string; matches: { cidr: string; addresses: string[] }[] }[];
   groups: { id: string; name: string; external_id: string; site: string }[];
 };
 
@@ -41,6 +43,16 @@ export function ProposeGroupMove({ customer, assetId }: { customer: Customer; as
       <h2 className="text-sm font-semibold">Request a group assignment change</h2>
       <Notice tone="warn">{data.policy_impact}</Notice>
       <p className="text-xs text-slate-500">Source group: {data.source_group}. Destinations are restricted to active groups in the same customer, VSA instance and organization.</p>
+      <section aria-label="CIDR group suggestions" className="space-y-2 text-sm">
+        <h3 className="font-semibold">Suggested destination groups</h3>
+        {data.source_is_onboarding ? <p>This is an onboarding group, a valid temporary installation destination. Transfer is manual when an administrator is ready.</p> : null}
+        <p className="text-xs text-slate-500">{data.suggestion_note}</p>
+        {data.suggestions_ambiguous ? <Notice tone="warn">Several groups match. Review overlapping subnets and adapter evidence before choosing.</Notice> : null}
+        {data.suggestions?.length ? <ul>{data.suggestions.map((suggestion) => <li key={suggestion.id} className="mb-2">
+          <strong>{suggestion.name}</strong>: {suggestion.matches.map((match) => `${match.addresses.join(", ")} in ${match.cidr}`).join("; ")}
+          {customer.my_capabilities.includes("customer.group_move.propose") ? <button type="button" className="btn-secondary ml-2" onClick={() => setTarget(suggestion.id)}>Use {suggestion.name}</button> : null}
+        </li>)}</ul> : <p>No approved group subnet matches the reported addresses. Placement is not classified as incorrect.</p>}
+      </section>
       {customer.my_capabilities.includes("customer.group_move.propose") ? (
         <form className="flex flex-wrap items-end gap-3" aria-label="Group move proposal" onSubmit={(event) => { event.preventDefault(); propose.mutate(); }}>
           <Field label="Target group">{(id) => <select id={id} className="input" required value={target} onChange={(event) => setTarget(event.target.value)}>

@@ -32,10 +32,13 @@ class ExpectedSubnetSerializer(serializers.ModelSerializer):
     proposed_by = serializers.SlugRelatedField(slug_field="email", read_only=True)
     reviewed_by = serializers.SlugRelatedField(slug_field="email", read_only=True)
 
+    integration_instance = serializers.UUIDField(source="integration_instance_id", required=False, allow_null=True)
+
     class Meta:
         model = ExpectedSubnet
         fields = [
             "id",
+            "integration_instance",
             "scope_type",
             "scope_external_id",
             "cidr",
@@ -100,13 +103,21 @@ class ExpectedSubnetViewSet(
         customer = self.get_customer()
         d = serializer.validated_data
         node = SiteNode if d["scope_type"] == "site" else GroupNode
-        if not node.objects.filter(
+        sources = node.objects.filter(
             customer=customer, generation__in=current_generations(customer.pk), external_id=d["scope_external_id"]
-        ).exists():
-            raise ValidationError({"scope_external_id": "Not a site/group in this customer's snapshot."})
+        )
+        if d.get("integration_instance_id"):
+            sources = sources.filter(generation__integration_instance_id=d["integration_instance_id"])
+        ids = set(sources.values_list("generation__integration_instance_id", flat=True))
+        if len(ids) != 1:
+            raise ValidationError({"integration_instance": "Select one source containing this customer's site/group."})
+        d.pop("integration_instance_id", None)
+        instance_id = ids.pop()
         try:
             with transaction.atomic():
-                obj = serializer.save(customer=customer, proposed_by=self.request.user)
+                obj = serializer.save(
+                    customer=customer, proposed_by=self.request.user, integration_instance_id=instance_id
+                )
         except IntegrityError as exc:
             raise ValidationError({"cidr": "This subnet is already proposed or approved for the scope."}) from exc
         self._audit("expected_subnet.proposed", obj)

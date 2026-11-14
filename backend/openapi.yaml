@@ -1552,6 +1552,69 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/groups/{id}/settings/:
+    get:
+      operationId: customers_groups_settings_retrieve
+      description: '``/customers/{id}/groups/{group_id}/network/`` — reported network
+        facts for one VSA group (VSA2-05).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]{1,18}$
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: customers_groups_settings_create
+      description: '``/customers/{id}/groups/{group_id}/network/`` — reported network
+        facts for one VSA group (VSA2-05).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]{1,18}$
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/health-thresholds/:
     get:
       operationId: customers_health_thresholds_list
@@ -5208,6 +5271,10 @@ components:
           type: string
           format: uuid
           readOnly: true
+        integration_instance:
+          type: string
+          format: uuid
+          nullable: true
         scope_type:
           $ref: '#/components/schemas/ExpectedSubnetScopeTypeEnum'
         scope_external_id:

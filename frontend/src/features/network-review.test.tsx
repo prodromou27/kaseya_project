@@ -7,6 +7,7 @@ import { customerA, makeMe, mockFetch, page, renderApp } from "../test/utils";
 
 const base = `/api/v1/customers/${customerA.id}`;
 const net: GroupNetwork = {
+  instance_id: "source-1",
   group: { external_id: "51", name: "Workstations", is_active: true, site_external_id: "5", organization_external_id: "11" },
   group_listed: true, as_of: ["2026-11-13T09:00:00Z"], data_basis: ["fixture"],
   counts: { devices: 2, with_reported_addresses: 2, network_not_collected: 0, multi_adapter: 1 },
@@ -36,12 +37,22 @@ function routes(caps: string[] = customerA.my_capabilities, n: GroupNetwork = ne
     "GET /api/v1/auth/me/": { body: makeMe() },
     "GET /api/v1/customers/": { body: page([customer]) },
     [`GET ${base}/groups/51/network/`]: { body: n },
+    [`GET ${base}/groups/51/settings/`]: { body: { is_onboarding: false } },
+    [`POST ${base}/groups/51/settings/`]: { body: { is_onboarding: true } },
     [`GET ${base}/expected-subnets/`]: { body: [subnet] },
     [`POST ${base}/expected-subnets/`]: { status: 201, body: { ...subnet, id: "s2", state: "proposed" } },
   } as never);
 }
 
 describe("network review", () => {
+  it("an administrator marks a temporary onboarding group without vendor changes", async () => {
+    const { calls } = routes([...customerA.my_capabilities, "customer.manage_exceptions"]);
+    renderApp("/groups/51");
+    await userEvent.click(await screen.findByLabelText("Use as an onboarding group"));
+    const post = calls.find((c) => c.method === "POST" && c.url.includes("/settings/?instance=source-1"));
+    expect(JSON.parse(String(post?.init?.body))).toEqual({ is_onboarding: true });
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(1);
+  });
   it("shows review flags, outside addresses and address changes as observations", async () => {
     routes();
     renderApp("/groups/51");
@@ -72,6 +83,6 @@ describe("network review", () => {
     await userEvent.type(screen.getByLabelText("Reason"), "Second floor");
     await userEvent.click(screen.getByRole("button", { name: "Propose subnet" }));
     const post = calls.find((c) => c.method === "POST" && c.url === `${base}/expected-subnets/`);
-    expect(JSON.parse(String(post?.init?.body))).toEqual({ scope_type: "group", scope_external_id: "51", cidr: "10.0.2.0/24", reason: "Second floor" });
+    expect(JSON.parse(String(post?.init?.body))).toEqual({ scope_type: "group", scope_external_id: "51", cidr: "10.0.2.0/24", reason: "Second floor", integration_instance: "source-1" });
   });
 });

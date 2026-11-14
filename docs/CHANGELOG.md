@@ -113,3 +113,10 @@ Evidence: [PHASE_ACCEPTANCE_P0.md](PHASE_ACCEPTANCE_P0.md).
 ## [App release] — Not yet released
 
 Coding agent must add actual commits, passing test evidence, migrations, deployment/validation results and limitations before publishing an application version.
+
+## CIDR-01 - 2026-11-14
+
+- Added administrator-managed onboarding-group purpose, preserving temporary installation placement as valid.
+- Qualified new expected subnet rules by VSA instance and reused independent subnet approval for destination suggestions.
+- Device Operations explains matching IP/CIDR evidence and overlapping candidates; no automatic selection, submission or vendor transfer.
+- Additive inventory migrations 0011/0012 preserve legacy rules and their uniqueness. Full PostgreSQL suite 589 passed, frontend 78 passed, dedicated browser workflow passed.

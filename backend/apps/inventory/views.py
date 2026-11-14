@@ -464,6 +464,51 @@ class CustomerGroupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
     queryset = AssetObservation.objects.none()
     lookup_value_regex = "[0-9]{1,18}"
 
+    def get_customer(self) -> Any:
+        self.customer_capability = (
+            Cap.CUSTOMER_MANAGE_EXCEPTIONS if self.request.method == "POST" else Cap.CUSTOMER_READ
+        )
+        return super().get_customer()
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["get", "post"], url_path="settings")
+    def group_settings(self, request: Request, pk: str | None = None, **kwargs: Any) -> Response:
+        from apps.audit.services import record_event
+
+        from .models import GroupNode, GroupSetting
+
+        customer = self.get_customer()
+        instance = _uuid(request.query_params.get("instance"))
+        if not GroupNode.objects.filter(
+            customer=customer,
+            generation__in=current_generations(customer.id),
+            generation__integration_instance_id=instance,
+            external_id=pk,
+        ).exists():
+            raise NotFound()
+        key = {"customer": customer, "integration_instance_id": instance, "group_external_id": pk}
+        if request.method == "POST":
+
+            class Input(serializers.Serializer):
+                is_onboarding = serializers.BooleanField()
+
+            data = Input(data=request.data)
+            data.is_valid(raise_exception=True)
+            obj, _ = GroupSetting.objects.update_or_create(**key, defaults=data.validated_data)
+            record_event(
+                action="group_setting.updated",
+                outcome="success",
+                actor=request.user,
+                customer=customer,
+                target_type="group_setting",
+                target_id=str(obj.id),
+                request=request,
+                metadata={"is_onboarding": obj.is_onboarding, "instance": str(instance), "group": pk},
+            )
+        else:
+            obj = GroupSetting.objects.filter(**key).first()
+        return Response({"is_onboarding": obj.is_onboarding if obj else False})
+
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=True, methods=["get"])
     def network(self, request: Request, pk: str | None = None, *args: Any, **kwargs: Any) -> Response:

@@ -361,6 +361,9 @@ class ExpectedSubnet(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="expected_subnets")
+    integration_instance = models.ForeignKey(
+        "integrations.IntegrationInstance", null=True, blank=True, on_delete=models.PROTECT
+    )
     scope_type = models.CharField(max_length=8, choices=ScopeType.choices)
     scope_external_id = models.CharField(max_length=20)
     cidr = models.CharField(max_length=49, help_text="Normalised network (strict), IPv4 or IPv6.")
@@ -375,14 +378,39 @@ class ExpectedSubnet(models.Model):
         ordering = ["scope_type", "scope_external_id", "cidr"]
         constraints = [
             models.UniqueConstraint(
-                fields=["customer", "scope_type", "scope_external_id", "cidr"],
+                fields=["customer", "integration_instance", "scope_type", "scope_external_id", "cidr"],
                 condition=models.Q(state__in=["proposed", "approved"]),
                 name="inventory_expected_subnet_active_unique",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["customer", "scope_type", "scope_external_id", "cidr"],
+                condition=models.Q(state__in=["proposed", "approved"], integration_instance__isnull=True),
+                name="inventory_legacy_subnet_unique",
+            ),
         ]
 
     def __str__(self) -> str:
         return f"{self.scope_type}:{self.scope_external_id} {self.cidr}"
+
+
+class GroupSetting(models.Model):
+    """Portal-owned purpose; keyed independently of replaceable vendor snapshots."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT)
+    integration_instance = models.ForeignKey("integrations.IntegrationInstance", on_delete=models.PROTECT)
+    group_external_id = models.CharField(max_length=20)
+    is_onboarding = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer", "integration_instance", "group_external_id"], name="inventory_group_setting_unique"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.customer_id}:{self.integration_instance_id}:{self.group_external_id}"
 
 
 # ---------------------------------------------------------------------------------------------- VSA4-03

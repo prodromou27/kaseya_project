@@ -91,3 +91,12 @@ The historical P0-P5 checkboxes above remain acceptance history. Current VSA-onl
 - [ ] **CX-11** Independent security audit in the required isolated environment; local scans passed.
 
 Final local evidence: **585 PostgreSQL tests**, **74 frontend tests**, **36-test full browser pass** including the network-export browser test, **34 desktop/mobile screens** with no overflow/JavaScript errors, clean lint/type/schema/build checks. No production deployment or new live vendor validation. First unchecked historical task remains **P0-02 / VSA0-02**, requiring Docker. Remaining UI refinements are explicitly recorded in the remediation backlog.
+
+
+## Onboarding agent groups - CIDR-01
+
+- [x] **CIDR-01** Treat onboarding groups as legitimate temporary installation destinations; allow administrators to mark group purpose and propose source-qualified group subnets; show evidence-based destination suggestions without executing a move.
+
+Plan/dependencies: reuse current approved mapping/snapshot queries, ExpectedSubnet review lifecycle, group network screen and existing device Operations proposal UI. Add persistent source-qualified purpose settings and nullable source identity for legacy subnet rules; qualify new rules; test role/customer/source isolation, ambiguous overlaps and absent evidence; regenerate schema and run affected backend/frontend/browser checks. P0-02/VSA0-02 remains externally blocked by Docker. No new vendor endpoints or credentials are required.
+
+Result: implemented and fixture-verified. Full PostgreSQL suite 589 passed; full frontend suite 78 passed; dedicated administrator-to-independent-reviewer browser workflow passed. Vendor writes remain absent. See ONBOARDING_GROUPS.md for controls, exact checks and evidence.

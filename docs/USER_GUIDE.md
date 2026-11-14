@@ -140,3 +140,7 @@ section was missing in either snapshot, that device is listed as "not compared" 
 **Can I deploy patches from this portal?** No; v1 has no vendor write actions.
 
 **Why did this month's historical compliance differ from a new report for the same date?** Historical report uses pinned source and catalog generations; a new run may use a newer catalog unless the user explicitly selects a historical revision.
+
+## Generic installations and group suggestions
+
+A device may legitimately remain in an onboarding agent group after generic installation. Open its **Operations** tab to see reviewed CIDR-based destination hints, matching reported addresses and any overlapping candidates. A missing match does not indicate incorrect placement. VPNs and shared networks can create misleading matches; check policy inheritance and customer/source identity. Choosing **Use [group]** fills the target only. Portal review records a proposal; an administrator transfers the agent manually in VSA.

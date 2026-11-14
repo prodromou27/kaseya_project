@@ -161,3 +161,5 @@ These references must be rechecked during implementation. All product API assump
 - [TASKS.md](docs/TASKS.md): atomic issue-ready implementation tasks.
 - [DECISIONS.md](docs/DECISIONS.md): design choices and open approval questions.
 - [CHANGELOG.md](docs/CHANGELOG.md): documentation release history.
+
+**Onboarding groups (CIDR-01):** generic installation groups can be marked as valid temporary destinations. Administrators manage source-qualified reviewed subnets; device Operations shows advisory CIDR matches. Transfers remain manual. [Workflow and verification](docs/ONBOARDING_GROUPS.md).
