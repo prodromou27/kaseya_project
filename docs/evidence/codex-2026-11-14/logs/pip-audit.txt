@@ -1,7 +1,11 @@
-uvx : No known vulnerabilities found
-At line:2 char:1
-+ uvx --offline --python 3.12 pip-audit --strict --disable-pip -r backe ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (No known vulnerabilities found:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
+uvx : No known vulnerabilities found
+
+At line:2 char:1
+
++ uvx --offline --python 3.12 pip-audit --strict --disable-pip -r backe ...
+
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    + CategoryInfo          : NotSpecified: (No known vulnerabilities found:String) [], RemoteException
+
+    + FullyQualifiedErrorId : NativeCommandError

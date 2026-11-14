@@ -1,26 +1,51 @@
-{
-  "data_basis": "synthetic fixture; normalized storage only, not vendor synchronization or concurrency",
-  "rows": 100000,
-  "database": "postgresql",
-  "seed_seconds": null,
-  "list_page_50": {
-    "seconds": 0.2708,
-    "queries": 4,
-    "population": 100000
-  },
-  "hostname_search": {
-    "seconds": 0.2404,
-    "queries": 4,
-    "population": 1
-  },
-  "offline_filter": {
-    "seconds": 0.1965,
-    "queries": 4,
-    "population": 76200
-  },
-  "health_summary": {
-    "seconds": 16.3327,
-    "queries": 9,
-    "population": 100000
-  }
-}
+{
+
+  "data_basis": "synthetic fixture; normalized storage only, not vendor synchronization or concurrency",
+
+  "rows": 100000,
+
+  "database": "postgresql",
+
+  "seed_seconds": null,
+
+  "list_page_50": {
+
+    "seconds": 0.2708,
+
+    "queries": 4,
+
+    "population": 100000
+
+  },
+
+  "hostname_search": {
+
+    "seconds": 0.2404,
+
+    "queries": 4,
+
+    "population": 1
+
+  },
+
+  "offline_filter": {
+
+    "seconds": 0.1965,
+
+    "queries": 4,
+
+    "population": 76200
+
+  },
+
+  "health_summary": {
+
+    "seconds": 16.3327,
+
+    "queries": 9,
+
+    "population": 100000
+
+  }
+
+}

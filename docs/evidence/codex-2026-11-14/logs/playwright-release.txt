@@ -1,49 +1,97 @@
-
-Running 36 tests using 1 worker
-
-npx.cmd : (node:30404) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-At line:2 char:53
-+ ... nly-2026!'; npx.cmd playwright test > ../backend/var/codex-audit/play ...
-+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: ((node:30404) Wa... env being set.:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-(Use `node --trace-warnings ...` to show where the warning was created)
-  ok  1 [chromium] › e2e\foundation.spec.ts:19:1 › anonymous user is sent to login (451ms)
-  ok  2 [chromium] › e2e\foundation.spec.ts:26:1 › engineer sees only their customer and cannot reach another by URL or API (1.4s)
-  ok  3 [chromium] › e2e\foundation.spec.ts:41:1 › engineer cannot open Customer B using its real ID (IDOR) (3.5s)
-  ok  4 [chromium] › e2e\foundation.spec.ts:62:1 › super admin approves the demo source mapping and the audit trail records it (2.2s)
-  ok  5 [chromium] › e2e\foundation.spec.ts:76:1 › customer admin generates and downloads a scoped audit report (2.6s)
-  ok  6 [chromium] › e2e\p1.spec.ts:19:1 › engineer syncs the approved fixture source and browses inventory (22.9s)
-  ok  7 [chromium] › e2e\p1.spec.ts:44:1 › software versions show separate populations and the non-patch disclaimer (1.8s)
-  ok  8 [chromium] › e2e\p1.spec.ts:56:1 › engineer exports a scoped inventory CSV with provenance (2.1s)
-  ok  9 [chromium] › e2e\p1.spec.ts:72:1 › viewer of DEMO-B cannot reach DEMO-A inventory and cannot sync (3.0s)
-  ok 10 [chromium] › e2e\p1.spec.ts:87:1 › catalog import cannot be approved by its own submitter (2.0s)
-  ok 11 [chromium] › e2e\p2.spec.ts:17:1 › windows updates distinguishes reported, not collected and non-Windows devices (2.1s)
-  ok 12 [chromium] › e2e\p2.spec.ts:29:3 › exports XLSX from the Reports page (2.5s)
-  ok 13 [chromium] › e2e\p2.spec.ts:29:3 › exports PDF from the Reports page (3.5s)
-  ok 14 [chromium] › e2e\p2.spec.ts:47:1 › a report can be regenerated from its pinned snapshot (3.1s)
-  ok 15 [chromium] › e2e\p2.spec.ts:55:1 › definition + schedule with an unauthorised recipient is rejected, authorised accepted (2.4s)
-  ok 16 [chromium] › e2e\p2.spec.ts:73:1 › dashboard shows history with a table view (1.7s)
-  ok 17 [chromium] › e2e\vsa1.spec.ts:16:1 › engineer browses org > site > group and the group's reported network (2.3s)
-  ok 18 [chromium] › e2e\vsa1.spec.ts:32:1 › device page shows network, hardware and security tabs and the third-party status notice (2.9s)
-  ok 19 [chromium] › e2e\vsa1.spec.ts:47:1 › customer B viewer cannot reach customer A group network (1.6s)
-  ok 20 [chromium] › e2e\vsa2-network.spec.ts:18:1 › expected subnet needs a second administrator and then flags outside addresses (5.8s)
-  ok 21 [chromium] › e2e\vsa2-onboarding.spec.ts:30:1 › engineer reconciles an expected device list and downloads the workbook (4.3s)
-  ok 22 [chromium] › e2e\vsa2-onboarding.spec.ts:61:1 › macro-enabled workbook is refused before anything is stored (1.7s)
-  ok 23 [chromium] › e2e\vsa2-onboarding.spec.ts:68:1 › customer B cannot see customer A comparisons (2.8s)
-  ok 24 [chromium] › e2e\vsa3-policies.spec.ts:26:1 › engineer sees assignment states kept apart and policy configuration labelled (3.1s)
-  ok 25 [chromium] › e2e\vsa3-policies.spec.ts:42:1 › expectation needs a second administrator, then drives drift (5.8s)
-  ok 26 [chromium] › e2e\vsa4-changes.spec.ts:19:1 › a resync of unchanged data shows no fabricated changes (22.3s)
-  ok 27 [chromium] › e2e\vsa4-changes.spec.ts:43:1 › customer B viewer cannot read customer A changes (2.6s)
-  ok 28 [chromium] › e2e\vsa4-health.spec.ts:19:1 › every health dimension partitions the whole population (2.3s)
-  ok 29 [chromium] › e2e\vsa4-health.spec.ts:38:1 › minimum agent version takes effect only after a second administrator approves (5.3s)
-  ok 30 [chromium] › e2e\vsa4-notifications.spec.ts:19:1 › notifications are redacted and not-collected devices are explicit (2.9s)
-  ok 31 [chromium] › e2e\vsa4-notifications.spec.ts:35:1 › customer admin cannot approve a credential-like custom field (2.1s)
-  ok 32 [chromium] › e2e\z-codex-workflows.spec.ts:12:1 › dashboard attention metrics open the exact filtered investigation (4.1s)
-  ok 33 [chromium] › e2e\z-codex-workflows.spec.ts:26:1 › group network exports reported facts with source identity and provenance (3.5s)
-  ok 34 [chromium] › e2e\z-codex-workflows.spec.ts:42:1 › device investigation retains filters, columns and the active tab across reload (4.7s)
-  ok 35 [chromium] › e2e\z-codex-workflows.spec.ts:57:1 › narrow screens keep tables and tabs inside the viewport and Escape closes navigation (5.2s)
-  ok 36 [chromium] › e2e\z-codex-workflows.spec.ts:74:1 › group assignment proposal requires independent review and never executes a VSA change (6.5s)
-
-  36 passed (2.5m)
+
+
+Running 36 tests using 1 worker
+
+
+
+npx.cmd : (node:30404) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+At line:2 char:53
+
++ ... nly-2026!'; npx.cmd playwright test > ../backend/var/codex-audit/play ...
+
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    + CategoryInfo          : NotSpecified: ((node:30404) Wa... env being set.:String) [], RemoteException
+
+    + FullyQualifiedErrorId : NativeCommandError
+
+
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ok  1 [chromium] › e2e\foundation.spec.ts:19:1 › anonymous user is sent to login (451ms)
+
+  ok  2 [chromium] › e2e\foundation.spec.ts:26:1 › engineer sees only their customer and cannot reach another by URL or API (1.4s)
+
+  ok  3 [chromium] › e2e\foundation.spec.ts:41:1 › engineer cannot open Customer B using its real ID (IDOR) (3.5s)
+
+  ok  4 [chromium] › e2e\foundation.spec.ts:62:1 › super admin approves the demo source mapping and the audit trail records it (2.2s)
+
+  ok  5 [chromium] › e2e\foundation.spec.ts:76:1 › customer admin generates and downloads a scoped audit report (2.6s)
+
+  ok  6 [chromium] › e2e\p1.spec.ts:19:1 › engineer syncs the approved fixture source and browses inventory (22.9s)
+
+  ok  7 [chromium] › e2e\p1.spec.ts:44:1 › software versions show separate populations and the non-patch disclaimer (1.8s)
+
+  ok  8 [chromium] › e2e\p1.spec.ts:56:1 › engineer exports a scoped inventory CSV with provenance (2.1s)
+
+  ok  9 [chromium] › e2e\p1.spec.ts:72:1 › viewer of DEMO-B cannot reach DEMO-A inventory and cannot sync (3.0s)
+
+  ok 10 [chromium] › e2e\p1.spec.ts:87:1 › catalog import cannot be approved by its own submitter (2.0s)
+
+  ok 11 [chromium] › e2e\p2.spec.ts:17:1 › windows updates distinguishes reported, not collected and non-Windows devices (2.1s)
+
+  ok 12 [chromium] › e2e\p2.spec.ts:29:3 › exports XLSX from the Reports page (2.5s)
+
+  ok 13 [chromium] › e2e\p2.spec.ts:29:3 › exports PDF from the Reports page (3.5s)
+
+  ok 14 [chromium] › e2e\p2.spec.ts:47:1 › a report can be regenerated from its pinned snapshot (3.1s)
+
+  ok 15 [chromium] › e2e\p2.spec.ts:55:1 › definition + schedule with an unauthorised recipient is rejected, authorised accepted (2.4s)
+
+  ok 16 [chromium] › e2e\p2.spec.ts:73:1 › dashboard shows history with a table view (1.7s)
+
+  ok 17 [chromium] › e2e\vsa1.spec.ts:16:1 › engineer browses org > site > group and the group's reported network (2.3s)
+
+  ok 18 [chromium] › e2e\vsa1.spec.ts:32:1 › device page shows network, hardware and security tabs and the third-party status notice (2.9s)
+
+  ok 19 [chromium] › e2e\vsa1.spec.ts:47:1 › customer B viewer cannot reach customer A group network (1.6s)
+
+  ok 20 [chromium] › e2e\vsa2-network.spec.ts:18:1 › expected subnet needs a second administrator and then flags outside addresses (5.8s)
+
+  ok 21 [chromium] › e2e\vsa2-onboarding.spec.ts:30:1 › engineer reconciles an expected device list and downloads the workbook (4.3s)
+
+  ok 22 [chromium] › e2e\vsa2-onboarding.spec.ts:61:1 › macro-enabled workbook is refused before anything is stored (1.7s)
+
+  ok 23 [chromium] › e2e\vsa2-onboarding.spec.ts:68:1 › customer B cannot see customer A comparisons (2.8s)
+
+  ok 24 [chromium] › e2e\vsa3-policies.spec.ts:26:1 › engineer sees assignment states kept apart and policy configuration labelled (3.1s)
+
+  ok 25 [chromium] › e2e\vsa3-policies.spec.ts:42:1 › expectation needs a second administrator, then drives drift (5.8s)
+
+  ok 26 [chromium] › e2e\vsa4-changes.spec.ts:19:1 › a resync of unchanged data shows no fabricated changes (22.3s)
+
+  ok 27 [chromium] › e2e\vsa4-changes.spec.ts:43:1 › customer B viewer cannot read customer A changes (2.6s)
+
+  ok 28 [chromium] › e2e\vsa4-health.spec.ts:19:1 › every health dimension partitions the whole population (2.3s)
+
+  ok 29 [chromium] › e2e\vsa4-health.spec.ts:38:1 › minimum agent version takes effect only after a second administrator approves (5.3s)
+
+  ok 30 [chromium] › e2e\vsa4-notifications.spec.ts:19:1 › notifications are redacted and not-collected devices are explicit (2.9s)
+
+  ok 31 [chromium] › e2e\vsa4-notifications.spec.ts:35:1 › customer admin cannot approve a credential-like custom field (2.1s)
+
+  ok 32 [chromium] › e2e\z-codex-workflows.spec.ts:12:1 › dashboard attention metrics open the exact filtered investigation (4.1s)
+
+  ok 33 [chromium] › e2e\z-codex-workflows.spec.ts:26:1 › group network exports reported facts with source identity and provenance (3.5s)
+
+  ok 34 [chromium] › e2e\z-codex-workflows.spec.ts:42:1 › device investigation retains filters, columns and the active tab across reload (4.7s)
+
+  ok 35 [chromium] › e2e\z-codex-workflows.spec.ts:57:1 › narrow screens keep tables and tabs inside the viewport and Escape closes navigation (5.2s)
+
+  ok 36 [chromium] › e2e\z-codex-workflows.spec.ts:74:1 › group assignment proposal requires independent review and never executes a VSA change (6.5s)
+
+
+
+  36 passed (2.5m)

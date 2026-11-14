@@ -1,13 +1,23 @@
-
-> odyssey-kaseya-portal-frontend@0.1.0 test
-> vitest --run
-
-
- RUN  v4.1.12 C:/Users/cprodromou/Documents/kaseya_project/frontend
-
-
- Test Files  18 passed (18)
-      Tests  74 passed (74)
-   Start at  15:20:32
-   Duration  6.39s (transform 6.88s, setup 12.02s, import 14.02s, tests 30.07s, environment 32.98s)
-
+
+
+> odyssey-kaseya-portal-frontend@0.1.0 test
+
+> vitest --run
+
+
+
+
+
+ RUN  v4.1.12 C:/Users/cprodromou/Documents/kaseya_project/frontend
+
+
+
+
+
+ Test Files  18 passed (18)
+
+      Tests  74 passed (74)
+
+   Start at  15:20:32
+
+   Duration  6.39s (transform 6.88s, setup 12.02s, import 14.02s, tests 30.07s, environment 32.98s)
