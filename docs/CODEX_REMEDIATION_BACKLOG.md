@@ -23,15 +23,15 @@ Validation: Ruff + format, Django checks/migration drift, PostgreSQL pytest, fro
 
 CX-08 completes the bounded normalized-inventory benchmark (100k devices), not concurrent production load or vendor ingestion throughput. CX-09 completes internal proposals/reviews, not VSA execution. No existing production gate is closed by these results. The first unchecked historical task remains P0-02 / VSA0-02 (Docker environment).
 
-Remaining refinement work: dashboard sub-customer scope controls; saved column layouts; dark theme; a fully separated multi-screen reconciliation wizard; richer related-data/concurrent load; report branding review. Existing customer-first upload is retained so files always have an authorized owner before storage. These are not represented as completed by the narrower remediation acceptance conditions above.
+Remaining refinement work: dashboard sub-customer scope controls; saved layouts beyond device inventory; dark theme; a fully separated multi-screen reconciliation wizard; richer related-data/concurrent load; report branding review. Existing customer-first upload is retained so files always have an authorized owner before storage. These are not represented as completed by the narrower remediation acceptance conditions above.
 
 Next acceptance work: approved representative pilot, Docker/AlmaLinux health, independent security environment and live field/capability verification. No real credentials may be used without approval. Detailed query timing and workload limitations: CODEX_PERFORMANCE.md. Production deployment/rollback: CODEX_DEPLOYMENT_AND_ROLLBACK.md.
 
 ## User-prioritized usability continuation
 
 - **LIST-01** Devices and group navigation, saved device layouts and faster filtering: completed and fixture-verified (603 backend, 85 frontend, 40 browser scenarios); proof in LIST_USABILITY.md. Includes named private/shared layouts, filter chips, keyboard-safe debounce, paging, source-qualified group directory and stale-row protection.
-- **LIST-02** Next: software and Windows-update lists with clearer summary-to-investigation navigation and consistent filter controls.
-- **LIST-03** Guided Excel reconciliation progression and clearer review/result actions.
+- **LIST-02** Software and Windows-update workspaces, searched list/export parity, complete device coverage paging and protected coverage export: completed and fixture-verified (614 backend tests plus final 11-case feature rerun, 89 frontend tests, 43 full browser scenarios); proof in INTELLIGENCE_LISTS.md.
+- **LIST-03** Next: guided Excel reconciliation progression and clearer review/result actions.
 - **LIST-04** Extend saved presentation beyond device inventory, report layout/branding review and additional mobile list refinement.
 
 This sequence follows the user's explicit priority. The entire application and its production gates are not marked complete by LIST-01.

@@ -1,0 +1,96 @@
+
+Running 43 tests using 1 worker
+
+npx.cmd : (node:7868) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At line:2 char:163
++ ... nly-2026!'; npx.cmd playwright test --output=../backend/var/codex-aud ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:7868) War... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 [chromium] › e2e\foundation.spec.ts:19:1 › anonymous user is sent to login (738ms)
+  ok  2 [chromium] › e2e\foundation.spec.ts:26:1 › engineer sees only their customer and cannot reach another by URL or API (2.2s)
+  ok  3 [chromium] › e2e\foundation.spec.ts:41:1 › engineer cannot open Customer B using its real ID (IDOR) (5.2s)
+  ok  4 [chromium] › e2e\foundation.spec.ts:62:1 › super admin approves the demo source mapping and the audit trail records it (3.1s)
+  ok  5 [chromium] › e2e\foundation.spec.ts:76:1 › customer admin generates and downloads a scoped audit report (3.6s)
+  ok  6 [chromium] › e2e\p1.spec.ts:19:1 › engineer syncs the approved fixture source and browses inventory (27.9s)
+  ok  7 [chromium] › e2e\p1.spec.ts:44:1 › software versions show separate populations and the non-patch disclaimer (2.8s)
+  ok  8 [chromium] › e2e\p1.spec.ts:56:1 › engineer exports a scoped inventory CSV with provenance (3.0s)
+  ok  9 [chromium] › e2e\p1.spec.ts:72:1 › viewer of DEMO-B cannot reach DEMO-A inventory and cannot sync (5.0s)
+  ok 10 [chromium] › e2e\p1.spec.ts:87:1 › catalog import cannot be approved by its own submitter (3.4s)
+  x  11 [chromium] › e2e\p2.spec.ts:17:1 › windows updates distinguishes reported, not collected and non-Windows devices (8.9s)
+(node:42560) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 12 [chromium] › e2e\p2.spec.ts:29:3 › exports XLSX from the Reports page (5.0s)
+  ok 13 [chromium] › e2e\p2.spec.ts:29:3 › exports PDF from the Reports page (5.9s)
+  ok 14 [chromium] › e2e\p2.spec.ts:47:1 › a report can be regenerated from its pinned snapshot (5.4s)
+  ok 15 [chromium] › e2e\p2.spec.ts:55:1 › definition + schedule with an unauthorised recipient is rejected, authorised accepted (4.8s)
+  ok 16 [chromium] › e2e\p2.spec.ts:73:1 › dashboard shows history with a table view (2.8s)
+  ok 17 [chromium] › e2e\vsa1.spec.ts:16:1 › engineer browses org > site > group and the group's reported network (4.7s)
+  ok 18 [chromium] › e2e\vsa1.spec.ts:33:1 › device page shows network, hardware and security tabs and the third-party status notice (4.2s)
+  ok 19 [chromium] › e2e\vsa1.spec.ts:48:1 › customer B viewer cannot reach customer A group network (2.0s)
+  ok 20 [chromium] › e2e\vsa2-network.spec.ts:18:1 › expected subnet needs a second administrator and then flags outside addresses (6.8s)
+  ok 21 [chromium] › e2e\vsa2-onboarding.spec.ts:30:1 › engineer reconciles an expected device list and downloads the workbook (5.4s)
+  ok 22 [chromium] › e2e\vsa2-onboarding.spec.ts:61:1 › macro-enabled workbook is refused before anything is stored (3.4s)
+  ok 23 [chromium] › e2e\vsa2-onboarding.spec.ts:68:1 › customer B cannot see customer A comparisons (5.5s)
+  ok 24 [chromium] › e2e\vsa3-policies.spec.ts:26:1 › engineer sees assignment states kept apart and policy configuration labelled (6.2s)
+  ok 25 [chromium] › e2e\vsa3-policies.spec.ts:42:1 › expectation needs a second administrator, then drives drift (10.0s)
+  ok 26 [chromium] › e2e\vsa4-changes.spec.ts:19:1 › a resync of unchanged data shows no fabricated changes (27.7s)
+  ok 27 [chromium] › e2e\vsa4-changes.spec.ts:43:1 › customer B viewer cannot read customer A changes (5.2s)
+  ok 28 [chromium] › e2e\vsa4-health.spec.ts:19:1 › every health dimension partitions the whole population (4.6s)
+  ok 29 [chromium] › e2e\vsa4-health.spec.ts:38:1 › minimum agent version takes effect only after a second administrator approves (11.0s)
+  ok 30 [chromium] › e2e\vsa4-notifications.spec.ts:19:1 › notifications are redacted and not-collected devices are explicit (5.2s)
+  ok 31 [chromium] › e2e\vsa4-notifications.spec.ts:35:1 › customer admin cannot approve a credential-like custom field (4.1s)
+  ok 32 [chromium] › e2e\z-codex-workflows.spec.ts:12:1 › dashboard attention metrics open the exact filtered investigation (6.7s)
+  ok 33 [chromium] › e2e\z-codex-workflows.spec.ts:26:1 › group network exports reported facts with source identity and provenance (7.3s)
+  ok 34 [chromium] › e2e\z-codex-workflows.spec.ts:42:1 › device investigation retains filters, columns and the active tab across reload (7.3s)
+  ok 35 [chromium] › e2e\z-codex-workflows.spec.ts:57:1 › narrow screens keep tables and tabs inside the viewport and Escape closes navigation (8.0s)
+  ok 36 [chromium] › e2e\z-codex-workflows.spec.ts:74:1 › group assignment proposal requires independent review and never executes a VSA change (9.6s)
+  ok 37 [chromium] › e2e\z-intelligence-lists.spec.ts:12:1 › software investigation finds a device and returns to the same filters (9.3s)
+  ok 38 [chromium] › e2e\z-intelligence-lists.spec.ts:26:1 › Windows coverage pages all devices and exports collection evidence (7.4s)
+  ok 39 [chromium] › e2e\z-intelligence-lists.spec.ts:45:1 › update record search retains the investigation origin through device details (5.7s)
+  ok 40 [chromium] › e2e\z-list-usability.spec.ts:11:1 › engineer saves a layout and retains it across reload, paging, filtering and investigation (12.0s)
+  ok 41 [chromium] › e2e\z-list-usability.spec.ts:50:1 › group directory filters by site and links the exact source population (5.2s)
+  ok 42 [chromium] › e2e\z-list-usability.spec.ts:78:1 › phone list controls stay in the viewport and keyboard search recovers empty results (5.0s)
+  ok 43 [chromium] › e2e\z-onboarding-groups.spec.ts:12:1 › onboarding is temporary and reviewed CIDR rules suggest a manual destination (15.5s)
+
+
+  1) [chromium] › e2e\p2.spec.ts:17:1 › windows updates distinguishes reported, not collected and non-Windows devices
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('table', { name: /Devices: Not supported/ })
+    Expected substring: "mac"
+    Received string:    "Devices: Not supported (non-Windows)DeviceOSAvailable evidenceAvailable updatesInstalled evidenceLast seenDEMOA-WS029Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 04:00 UTCDEMOA-WS058Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 08:00 UTCDEMOA-WS087Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 08:00 UTCDEMOA-WS116Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 07:00 UTC"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('table', { name: /Devices: Not supported/ }) with timeout 5000ms
+      - waiting for getByRole('table', { name: /Devices: Not supported/ })
+        10 × locator resolved to <table class="min-w-full text-left text-sm">…</table>
+           - unexpected value "Devices: Not supported (non-Windows)DeviceOSAvailable evidenceAvailable updatesInstalled evidenceLast seenDEMOA-WS029Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 04:00 UTCDEMOA-WS058Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 08:00 UTCDEMOA-WS087Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 08:00 UTCDEMOA-WS116Windows 11 EnterpriseNot supported (non-Windows)UnknownNot supported (non-Windows)12 Nov 2026, 07:00 UTC"
+
+
+      23 |   await expect(page.getByText(/does not document a per-device update-scan timestamp/)).toBeVisible();
+      24 |   await page.getByRole("button", { name: /Not supported \(non-Windows\)/ }).click();
+    > 25 |   await expect(page.getByRole("table", { name: /Devices: Not supported/ })).toContainText("mac");
+         |                                                                             ^
+      26 | });
+      27 |
+      28 | for (const [format, magic] of [["xlsx", "PK"], ["pdf", "%PDF"]] as const) {
+        at C:\Users\cprodromou\Documents\kaseya_project\frontend\e2e\p2.spec.ts:25:77
+
+    Error Context: ..\backend\var\codex-audit\intelligence-full-traces\p2-windows-updates-disting-2a2bf-ted-and-non-Windows-devices-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\backend\var\codex-audit\intelligence-full-traces\p2-windows-updates-disting-2a2bf-ted-and-non-Windows-devices-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\backend\var\codex-audit\intelligence-full-traces\p2-windows-updates-disting-2a2bf-ted-and-non-Windows-devices-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e\p2.spec.ts:17:1 › windows updates distinguishes reported, not collected and non-Windows devices
+  42 passed (5.1m)

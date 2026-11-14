@@ -1,0 +1,40 @@
+
+> odyssey-kaseya-portal-frontend@0.1.0 build
+> tsc -b && vite build
+
+vite v7.3.8 building client environment for production...
+transforming...
+✓ 145 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.51 kB │ gzip:   0.32 kB
+dist/assets/index-BB0t0Dpd.css                    35.34 kB │ gzip:   7.12 kB
+dist/assets/useDebouncedValue-B4F-szKW.js          0.19 kB │ gzip:   0.17 kB
+dist/assets/InvestigationDeviceLink-Bf14_Cwn.js    0.29 kB │ gzip:   0.24 kB
+dist/assets/useUrlFilters-Oa_4zSqT.js              0.91 kB │ gzip:   0.52 kB
+dist/assets/Tabs-CdGXQ674.js                       1.14 kB │ gzip:   0.67 kB
+dist/assets/ExportButton-B3u8v-8-.js               1.67 kB │ gzip:   0.89 kB
+dist/assets/PolicyDefinitionView-D1aCvs1x.js       2.16 kB │ gzip:   0.82 kB
+dist/assets/CustomersPage-CVpBtkhX.js              2.88 kB │ gzip:   1.35 kB
+dist/assets/NotificationsPage-DiMaSuCm.js          3.46 kB │ gzip:   1.46 kB
+dist/assets/ChangesPage-D-jlXYfD.js                4.69 kB │ gzip:   1.98 kB
+dist/assets/MappingsPanel-CuChrItS.js              5.15 kB │ gzip:   1.88 kB
+dist/assets/ConnectVsaPage-BX2VgW4Y.js             6.14 kB │ gzip:   2.34 kB
+dist/assets/LifecyclePage-BQYugQ6H.js              6.16 kB │ gzip:   2.30 kB
+dist/assets/GroupMovesPage-aG9Upx-X.js             6.97 kB │ gzip:   2.52 kB
+dist/assets/OnboardingPage-CYh6PmSa.js             7.99 kB │ gzip:   3.18 kB
+dist/assets/GroupsPage-BIZh7T1u.js                 8.50 kB │ gzip:   2.86 kB
+dist/assets/OnboardingRunPage-4BKpRQW3.js          9.34 kB │ gzip:   3.35 kB
+dist/assets/PatchPoliciesPage-CDMAAPY-.js          9.87 kB │ gzip:   3.15 kB
+dist/assets/WindowsUpdatesPage-CbEgcAVH.js         9.90 kB │ gzip:   3.16 kB
+dist/assets/DeviceHealthPage-U-dsxqEW.js          10.20 kB │ gzip:   3.46 kB
+dist/assets/CustomerDetailPage-f1Bj5Ohw.js        11.46 kB │ gzip:   3.72 kB
+dist/assets/SoftwarePage-DfOatJZo.js              11.69 kB │ gzip:   3.99 kB
+dist/assets/ReportsPage-IJvd8ERv.js               11.69 kB │ gzip:   3.81 kB
+dist/assets/GroupNetworkPage-herhOiq8.js          14.12 kB │ gzip:   4.43 kB
+dist/assets/AssetsPage-C0OXtqlZ.js                14.21 kB │ gzip:   4.49 kB
+dist/assets/AssetDetailPage-DN2aSFvX.js           17.18 kB │ gzip:   5.27 kB
+dist/assets/AdminPage-7lwbXxs8.js                 41.72 kB │ gzip:  10.59 kB
+dist/assets/DataTable-bFCU0_Ho.js                 55.21 kB │ gzip:  15.04 kB
+dist/assets/index-DUSmxd6B.js                    343.67 kB │ gzip: 107.86 kB
+✓ built in 3.51s

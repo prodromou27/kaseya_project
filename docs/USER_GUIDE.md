@@ -152,3 +152,11 @@ Use Devices search for a hostname, serial, source ID, MAC or IP; typing stays im
 Open Saved views to name the current filters, visible columns, density and page size. Views are private by default; explicitly share when appropriate. Load a view, Update view to revise your own, or Delete view and confirm. Current presentation also survives a device investigation through its return URL. Exports use the report's defined columns.
 
 Groups & network starts with a searchable group list. Search names, site, organization, source or ID, refine by site/purpose, click a device total for the exact source population, or open a group name for network evidence. The Hierarchy tab retains organization/site/group browsing. Onboarding labels identify legitimate temporary destinations; transfers remain manual.
+
+## Software and Windows-update workspaces
+
+Software opens Overview. Find a product or click a classification/product count to investigate Installations; Exceptions has its own tab and retains administrator controls. Installation search includes name, publisher, version and device hostname. Use Classification and Product to narrow the population, Columns to adjust the table, and Export installations for all matching rows.
+
+Windows updates starts with Update records. Search title, KB or device and refine by state/severity. Common updates shows frequent available KBs; click one to open matching records. Collection coverage shows one row per device, including unknown/failed/unsupported evidence. Find device searches hostname/source ID; filter the available-update collection state and page through the complete population. Export device coverage exports these device rows, while Export update records exports device-by-update rows. Summary tiles always describe the full current customer snapshot.
+
+Clicking a device opens its relevant investigation tab. Back to software or Back to Windows updates restores the originating search/page; reload also retains URL filters. Reported zero requires collected evidence; Unknown never means zero. This portal does not deploy patches or establish third-party missing-patch applicability.

@@ -1,0 +1,70 @@
+{
+  "fixture": true,
+  "errors": [],
+  "observations": [
+    {
+      "name": "software",
+      "width": 1440,
+      "path": "/software",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "software-installations",
+      "width": 1440,
+      "path": "/software?view=installations",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "update-coverage",
+      "width": 1440,
+      "path": "/windows-updates?view=coverage",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 1440,
+      "path": "/windows-updates",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "software",
+      "width": 390,
+      "path": "/software",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "software-installations",
+      "width": 390,
+      "path": "/software?view=installations",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "update-coverage",
+      "width": 390,
+      "path": "/windows-updates?view=coverage",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 390,
+      "path": "/windows-updates",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    }
+  ]
+}

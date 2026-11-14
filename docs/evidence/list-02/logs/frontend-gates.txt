@@ -1,0 +1,7 @@
+
+> odyssey-kaseya-portal-frontend@0.1.0 typecheck
+> tsc -b --noEmit
+
+
+> odyssey-kaseya-portal-frontend@0.1.0 lint
+> eslint . --max-warnings=0

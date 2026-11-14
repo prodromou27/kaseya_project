@@ -1,0 +1,52 @@
+
+Running 3 tests using 1 worker
+
+npx.cmd : (node:45752) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At line:2 char:96
++ ... nly-2026!'; npx.cmd playwright test e2e/z-intelligence-lists.spec.ts  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:45752) Wa... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\z-intelligence-lists.spec.ts:12:1 › software investigation finds a device and returns to the same filters (10.3s)
+  ok 2 [chromium] › e2e\z-intelligence-lists.spec.ts:26:1 › Windows coverage pages all devices and exports collection evidence (6.8s)
+  x  3 [chromium] › e2e\z-intelligence-lists.spec.ts:45:1 › update record search retains the investigation origin through device details (8.3s)
+
+
+  1) [chromium] › e2e\z-intelligence-lists.spec.ts:45:1 › update record search retains the investigation origin through device details
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('table', { name: 'Device updates', exact: true })
+    Expected substring: "DEMOA-WS001"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByRole('table', { name: 'Device updates', exact: true }) with timeout 5000ms
+      - waiting for getByRole('table', { name: 'Device updates', exact: true })
+
+
+      48 |   await page.getByRole("searchbox", { name: "Search updates", exact: true }).fill("DEMOA-WS001");
+      49 |   const table = page.getByRole("table", { name: "Device updates", exact: true });
+    > 50 |   await expect(table).toContainText("DEMOA-WS001");
+         |                       ^
+      51 |   await table.getByRole("link", { name: "DEMOA-WS001", exact: true }).first().click();
+      52 |   await expect(page.getByRole("tab", { name: "OS updates", exact: true })).toHaveAttribute("aria-selected", "true");
+      53 |   await page.getByRole("link", { name: "Back to Windows updates", exact: true }).click();
+        at C:\Users\cprodromou\Documents\kaseya_project\frontend\e2e\z-intelligence-lists.spec.ts:50:23
+
+    Error Context: ..\backend\var\codex-audit\intelligence-target-traces\z-intelligence-lists-updat-f854d-igin-through-device-details-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\backend\var\codex-audit\intelligence-target-traces\z-intelligence-lists-updat-f854d-igin-through-device-details-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\backend\var\codex-audit\intelligence-target-traces\z-intelligence-lists-updat-f854d-igin-through-device-details-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e\z-intelligence-lists.spec.ts:45:1 › update record search retains the investigation origin through device details
+  2 passed (29.3s)

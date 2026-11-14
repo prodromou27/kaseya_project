@@ -1,5 +1,12 @@
 # Changelog
 
+## LIST-02 - 2026-11-14
+
+- Split software into Overview/Installations/Exceptions and Windows updates into Update records/Collection coverage/Common updates; retain source and evidence limitations.
+- Added debounced device/version/title/KB search with matching pinned exports, device investigation return links and consistent paging/recovery.
+- Fixed the 200-device coverage truncation; added protected CSV/XLSX/PDF coverage exports with explicit collection states, unknown counts and source provenance. Preserved raw device type alongside OS.
+- Verified 614 backend tests plus final 11-case feature rerun, 89 frontend tests, 43 full browser scenarios and clean lint/types/build/schema/migration checks. No schema change, vendor write or live validation. Evidence: INTELLIGENCE_LISTS.md.
+
 ## LIST-01 - 2026-11-14
 
 - Simplified Devices controls, added filter chips/quick filters, debounced keyboard-safe search and source-qualified named facets.

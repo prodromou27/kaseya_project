@@ -1,6 +1,8 @@
 # Odyssey Kaseya Analytics & Reporting Portal
 
-**Latest usability delivery (LIST-01):** simpler device/group workflows, persistent named device layouts and keyboard-safe filtering. Verified with **603 backend tests, 85 frontend tests and 40 browser scenarios**. [Changes and screenshots](docs/LIST_USABILITY.md). Vendor access remains read-only; validation uses labelled fixtures.
+**Latest usability delivery (LIST-02):** focused software/update workspaces, faster search, complete device-coverage paging and matching protected exports. Verified with **614 backend tests, 89 frontend tests and 43 browser scenarios**, plus the final 11-case backend feature rerun. [Changes and evidence](docs/INTELLIGENCE_LISTS.md). Fixture-only; production/live gates remain open.
+
+**Previous usability delivery (LIST-01):** simpler device/group workflows, persistent named device layouts and keyboard-safe filtering. Verified with **603 backend tests, 85 frontend tests and 40 browser scenarios**. [Changes and screenshots](docs/LIST_USABILITY.md). Vendor access remains read-only; validation uses labelled fixtures.
 
 **2026-11-14 application remediation:** the existing VSA portal now has workflow navigation, responsive investigation views, persistent filters, current dashboard drilldowns, matching list/export filters, source-qualified groups, network exports and internal independent move review. Verified locally with 585 PostgreSQL tests, 74 frontend tests and browser workflows. Start with [verification and screenshots](docs/CODEX_VERIFICATION.md), [remaining work](docs/CODEX_REMEDIATION_BACKLOG.md) and [deployment/rollback](docs/CODEX_DEPLOYMENT_AND_ROLLBACK.md). Fixture validation does not close production gates; vendor writes remain disabled.
 

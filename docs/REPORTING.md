@@ -1,5 +1,11 @@
 # Reporting specification, metric semantics and exports
 
+## LIST-02 - device collection coverage
+
+The additive `os_update_coverage` report exports CSV/XLSX/PDF with one row per device in the pinned authorized snapshot. Filters are `available_status` (a supported collection state) and `search` (hostname/source device ID, at most 100 characters). Columns are device_id, hostname, device_type, os, available_status, available_count, installed_status, installed_count, installed_collected_at_utc, source_instance_id, generation_id and source_as_of_utc. Unknown counts remain blank, with their explicit collection state; they are never zero-filled. Publication time is not a vendor scan time. Existing export capability checks, protection, audit and retention apply.
+
+Software installation search additionally matches version/hostname; OS update record search matches title/KB/hostname. Lists and pinned exports use shared predicates. Coverage and update-record exports represent different populations and are labelled separately. Summary/provenance denominators describe the whole pinned snapshot, not a filtered table. Existing report schemas are unchanged. See [implementation and proof](INTELLIGENCE_LISTS.md).
+
 **Guiding rule:** A report must be reproducible, customer-scoped and honest about what the source API proves. Version mismatch ≠ verified missing third-party patch ≠ vulnerability.
 
 ## 1. Reports in v1

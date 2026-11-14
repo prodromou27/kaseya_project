@@ -186,3 +186,7 @@ On each eventual destination group, use **Propose subnet** to add one or more st
 ## Saved device layouts (LIST-01)
 
 Apply reporting migration 0003_saved_view_layout before the new backend. Existing filter-only views remain valid. Any authorized customer reader can save a private personal view; sharing is explicit, and only its owner may update/delete it. Layout changes are validated and CRUD audited. Normal reports retain their defined columns and existing export capabilities. Prefer application rollback retaining the additive layout field; see LIST_USABILITY.md for the tested migration path and remaining deployment gates.
+
+## Investigation lists and coverage exports (LIST-02)
+
+No additional migration is required. The new os_update_coverage report uses existing read/export capabilities, protected artifacts, audit and retention; its rows distinguish collection evidence from update records. Pinned source identity/timestamps are included. Before application rollback to an older report registry, pause coverage schedules and archive/manage coverage definitions while retaining artifacts and audit. See INTELLIGENCE_LISTS.md for verified scope and evidence. Named saved layouts remain a Devices feature.

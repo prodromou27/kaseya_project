@@ -1,0 +1,197 @@
+FFFFFFFF..............................                                   [100%]
+================================== FAILURES ===================================
+E   assert 2 == 1
+     +  where 2 = len([{'# Filters: {"search": "A1"}': 'device_id', None: ['hostname', 'installed_name', 'publisher', 'installed_version', '...nel', ...]}, {'# Filters: {"search": "A1"}': 'a-001', None: ['A1', 'Google Chrome', 'Google LLC', '1.0', '', '', ...]}])
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:01.422935+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "ec365531-1dc3-4d8c-8d91-199d3088acda", "customer_id": "86fd7d56-84a1-4fb7-af02-56cb8e448882", "target_type": "sync_run", "target_id": "46f87930-cfbe-4ce9-bd26-9887a1ee3968"}
+{"ts": "2026-11-14T21:08:01.946604+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "a1935e98-e375-4fca-88a3-246e044d4af4", "customer_id": "86fd7d56-84a1-4fb7-af02-56cb8e448882", "target_type": "sync_run", "target_id": "46f87930-cfbe-4ce9-bd26-9887a1ee3968"}
+{"ts": "2026-11-14T21:08:02.075943+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "b2db5765-a2e6-4725-9502-2f7314f02324", "customer_id": "48d57b58-90c7-4eb7-bf7a-7d2f48cdd3cb", "target_type": "sync_run", "target_id": "d8276700-987c-4295-a288-62b9948bb970"}
+{"ts": "2026-11-14T21:08:02.324956+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "fd1647f6-68b6-4946-819e-d709403c72c3", "customer_id": "48d57b58-90c7-4eb7-bf7a-7d2f48cdd3cb", "target_type": "sync_run", "target_id": "d8276700-987c-4295-a288-62b9948bb970"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:03.502898+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "987d9780a561477ba80738c8285caa13", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "3460afb7-f5c4-4043-80df-17b377d26a33", "customer_id": "86fd7d56-84a1-4fb7-af02-56cb8e448882", "target_type": "report_run", "target_id": "12291804-b836-4e34-bb19-2421bcf5e4c7"}
+{"ts": "2026-11-14T21:08:04.112065+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "87f4f26d-5112-410f-966d-88fc4630af7d", "customer_id": "86fd7d56-84a1-4fb7-af02-56cb8e448882", "target_type": "report_run", "target_id": "12291804-b836-4e34-bb19-2421bcf5e4c7"}
+{"ts": "2026-11-14T21:08:04.137393+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[b1cbd0d8-2791-49f7-9532-eb8ad850b3e4] succeeded in 0.09399999999732245s: 'completed'", "request_id": null, "data": {"id": "b1cbd0d8-2791-49f7-9532-eb8ad850b3e4", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.09399999999732245, "args": "['12291804-b836-4e34-bb19-2421bcf5e4c7']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:04.185783+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "2dcdd7955150456f95be732d5aa3f466", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "61f1d2e5-312f-42fd-9423-3fca1bcd1cc2", "customer_id": "86fd7d56-84a1-4fb7-af02-56cb8e448882", "target_type": "report_run", "target_id": "12291804-b836-4e34-bb19-2421bcf5e4c7"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[b1cbd0d8-2791-49f7-9532-eb8ad850b3e4] succeeded in 0.09399999999732245s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:43: assert 2 == 1
+E   assert 5 == 4
+     +  where 5 = len([{'# Filters: {"search": "1.0"}': 'device_id', None: ['hostname', 'installed_name', 'publisher', 'installed_version', ... '', ...]}, {'# Filters: {"search": "1.0"}': 'a-003', None: ['A3', 'Google Chrome', 'Google LLC', '1.0', '', '', ...]}])
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:04.328218+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "fb5f3817-dd52-4cfd-b729-9f4b6efcd205", "customer_id": "e872b901-0e61-453c-a981-90546fcfaa54", "target_type": "sync_run", "target_id": "aee0580b-4d28-431d-8cf3-9fd95bc7c02b"}
+{"ts": "2026-11-14T21:08:04.561394+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "6c78c6bf-608d-4fde-95c7-74bfd7a2b1de", "customer_id": "e872b901-0e61-453c-a981-90546fcfaa54", "target_type": "sync_run", "target_id": "aee0580b-4d28-431d-8cf3-9fd95bc7c02b"}
+{"ts": "2026-11-14T21:08:04.588930+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "a1cfa864-5f86-40d2-9057-ad1ed7a72c0a", "customer_id": "4811368c-a2ea-434c-bdb8-524dbf0db700", "target_type": "sync_run", "target_id": "fcde6639-de1e-48d9-9716-5ef02bfa19e4"}
+{"ts": "2026-11-14T21:08:04.807292+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "81002981-c5d4-41e9-90dd-ace74972d165", "customer_id": "4811368c-a2ea-434c-bdb8-524dbf0db700", "target_type": "sync_run", "target_id": "fcde6639-de1e-48d9-9716-5ef02bfa19e4"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:04.954762+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "9705975c68a54c46bd84aee9e70a3d0a", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "85978480-e430-4f5f-8b46-9bb3bcfdea2f", "customer_id": "e872b901-0e61-453c-a981-90546fcfaa54", "target_type": "report_run", "target_id": "723db4c8-b9b9-4d78-a78f-daca524801c5"}
+{"ts": "2026-11-14T21:08:05.021243+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "7140094b-b068-40ea-ad6e-a3324e87e5b0", "customer_id": "e872b901-0e61-453c-a981-90546fcfaa54", "target_type": "report_run", "target_id": "723db4c8-b9b9-4d78-a78f-daca524801c5"}
+{"ts": "2026-11-14T21:08:05.021243+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[4a27694b-9c5e-49c1-b9b5-e0eb5fee50ee] succeeded in 0.06199999999080319s: 'completed'", "request_id": null, "data": {"id": "4a27694b-9c5e-49c1-b9b5-e0eb5fee50ee", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.06199999999080319, "args": "['723db4c8-b9b9-4d78-a78f-daca524801c5']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:05.069609+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "d9bd33c6d4e54821860548ea31001ca6", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "25392ae9-b2ff-4ef7-bb2f-9bc054a50a33", "customer_id": "e872b901-0e61-453c-a981-90546fcfaa54", "target_type": "report_run", "target_id": "723db4c8-b9b9-4d78-a78f-daca524801c5"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[4a27694b-9c5e-49c1-b9b5-e0eb5fee50ee] succeeded in 0.06199999999080319s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:43: assert 5 == 4
+E   assert 6 == 4
+     +  where 6 = len([{'# Filters: {"search": "Fixture update"}': '# Limitations: OS updates reported by VSA X only; not third-party applic...{"search": "Fixture update"}': 'a-003', None: ['A3', 'available', 'KB5099001', 'Fixture update', 'Critical', '', ...]}])
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:05.208353+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "3d1927dd-8916-4f87-8b4a-bbba5eaea1fd", "customer_id": "a521054f-f547-4ab8-9f59-f506e2ebf2cd", "target_type": "sync_run", "target_id": "1932783c-653e-4097-8eab-7fd22186381d"}
+{"ts": "2026-11-14T21:08:05.478619+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "d2f60621-505d-4e70-a210-01a60e2ea2f0", "customer_id": "a521054f-f547-4ab8-9f59-f506e2ebf2cd", "target_type": "sync_run", "target_id": "1932783c-653e-4097-8eab-7fd22186381d"}
+{"ts": "2026-11-14T21:08:05.508586+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "11aca617-be6b-4402-8952-d6aa1e9f19d8", "customer_id": "4ebca498-f320-425f-9f8a-a9e14957be83", "target_type": "sync_run", "target_id": "c9aa2a25-852d-497a-8eed-90df856b2d15"}
+{"ts": "2026-11-14T21:08:05.710856+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "53bc83a4-10fc-45bb-8c94-d0dbd6a78caa", "customer_id": "4ebca498-f320-425f-9f8a-a9e14957be83", "target_type": "sync_run", "target_id": "c9aa2a25-852d-497a-8eed-90df856b2d15"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:05.827167+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "b6ab0b3ba7504fd39957812f93593c85", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "e5ffec1b-a596-4f30-8a43-b614695ba5ac", "customer_id": "a521054f-f547-4ab8-9f59-f506e2ebf2cd", "target_type": "report_run", "target_id": "251c5fc6-6b57-4bf5-9d0e-a3d3fe5e4eea"}
+{"ts": "2026-11-14T21:08:05.884619+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "ce4bf2cc-d32a-4618-a41a-afaa7464593a", "customer_id": "a521054f-f547-4ab8-9f59-f506e2ebf2cd", "target_type": "report_run", "target_id": "251c5fc6-6b57-4bf5-9d0e-a3d3fe5e4eea"}
+{"ts": "2026-11-14T21:08:05.892797+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[c73e8234-ff90-463a-9638-d73949e537e0] succeeded in 0.046999999991385266s: 'completed'", "request_id": null, "data": {"id": "c73e8234-ff90-463a-9638-d73949e537e0", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.046999999991385266, "args": "['251c5fc6-6b57-4bf5-9d0e-a3d3fe5e4eea']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:05.933960+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "5102a69dd8be493185bb59d0c7a4eda5", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "56be3696-285c-4f74-b76d-3a01a8232c7d", "customer_id": "a521054f-f547-4ab8-9f59-f506e2ebf2cd", "target_type": "report_run", "target_id": "251c5fc6-6b57-4bf5-9d0e-a3d3fe5e4eea"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[c73e8234-ff90-463a-9638-d73949e537e0] succeeded in 0.046999999991385266s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:43: assert 6 == 4
+E   assert 3 == 1
+     +  where 3 = len([{'# Filters: {"search": "A1"}': '# Limitations: OS updates reported by VSA X only; not third-party application patche...'# Filters: {"search": "A1"}': 'a-001', None: ['A1', 'available', 'KB5099001', 'Fixture update', 'Critical', '', ...]}])
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:06.064729+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "70c6fba5-b31e-417e-95e4-3b8d43827758", "customer_id": "f4d7d13d-a171-401e-a946-434a4382b8e4", "target_type": "sync_run", "target_id": "b45aea6f-ed90-4cef-ac96-1a6f3ab5f409"}
+{"ts": "2026-11-14T21:08:06.311713+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "863522da-9bb7-4498-8889-035a44e2e307", "customer_id": "f4d7d13d-a171-401e-a946-434a4382b8e4", "target_type": "sync_run", "target_id": "b45aea6f-ed90-4cef-ac96-1a6f3ab5f409"}
+{"ts": "2026-11-14T21:08:06.343808+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "1e373366-8f15-4866-bfaa-c6edf5786e2f", "customer_id": "83cc55cb-6d60-42c9-89ee-628f39c6b9c5", "target_type": "sync_run", "target_id": "82b7d2e7-2960-4347-b645-d0c4506154b4"}
+{"ts": "2026-11-14T21:08:06.550082+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "5f971f88-ccd0-40a9-b680-e4179454df55", "customer_id": "83cc55cb-6d60-42c9-89ee-628f39c6b9c5", "target_type": "sync_run", "target_id": "82b7d2e7-2960-4347-b645-d0c4506154b4"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:06.678890+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "d9d721be782f44eba5be6dcd7e164a6c", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "890fe363-3043-4e00-8da1-9a8b9de334da", "customer_id": "f4d7d13d-a171-401e-a946-434a4382b8e4", "target_type": "report_run", "target_id": "262b1431-f69f-45a0-b35f-cc54333ad3cf"}
+{"ts": "2026-11-14T21:08:06.950559+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "2dea8eeb-2363-40f7-87d8-a876ce95fcd5", "customer_id": "f4d7d13d-a171-401e-a946-434a4382b8e4", "target_type": "report_run", "target_id": "262b1431-f69f-45a0-b35f-cc54333ad3cf"}
+{"ts": "2026-11-14T21:08:06.950559+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[7bfc231e-e9a8-411f-9dc8-19be1c3b31fb] succeeded in 0.25s: 'completed'", "request_id": null, "data": {"id": "7bfc231e-e9a8-411f-9dc8-19be1c3b31fb", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.25, "args": "['262b1431-f69f-45a0-b35f-cc54333ad3cf']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:06.994686+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "d978c4f198fa48609bf0d37182b399a0", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "22f000c9-bf33-426a-bb4f-bf418cdd1927", "customer_id": "f4d7d13d-a171-401e-a946-434a4382b8e4", "target_type": "report_run", "target_id": "262b1431-f69f-45a0-b35f-cc54333ad3cf"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[7bfc231e-e9a8-411f-9dc8-19be1c3b31fb] succeeded in 0.25s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:43: assert 3 == 1
+E   assert (2 == 1)
+     +  where 2 = len([{'# Filters: {"available_status": "collected", "search": "LARGE204"}': 'device_id', None: ['hostname', 'os', 'availab... "collected", "search": "LARGE204"}': 'large-204', None: ['LARGE204', '', 'collected', '1', 'not_requested', '', ...]}])
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:07.113860+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "57a36e5b-5fa0-4785-982f-074908c80566", "customer_id": "e2baadbb-b2d5-49aa-bfa4-942092da088e", "target_type": "sync_run", "target_id": "829463a4-2a21-45e5-83a4-6d4a98db13c4"}
+{"ts": "2026-11-14T21:08:07.352420+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "201f29f9-31df-40b1-863c-72417d804fbb", "customer_id": "e2baadbb-b2d5-49aa-bfa4-942092da088e", "target_type": "sync_run", "target_id": "829463a4-2a21-45e5-83a4-6d4a98db13c4"}
+{"ts": "2026-11-14T21:08:07.377819+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "d833a62d-5af3-4296-8587-57752347df66", "customer_id": "8a390523-e275-4a53-8c49-42cdd257e905", "target_type": "sync_run", "target_id": "2e05fc78-3c25-4f6a-9f89-45ac648ef891"}
+{"ts": "2026-11-14T21:08:07.580088+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "35cece64-35d5-4752-b984-fe12b0ff9f17", "customer_id": "8a390523-e275-4a53-8c49-42cdd257e905", "target_type": "sync_run", "target_id": "2e05fc78-3c25-4f6a-9f89-45ac648ef891"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:07.620958+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "2f6fe866-6213-4ba6-b18a-8cf78ffd1530", "customer_id": "e2baadbb-b2d5-49aa-bfa4-942092da088e", "target_type": "sync_run", "target_id": "588e94d9-16f2-4bd8-bc52-5969d7dd13ce"}
+{"ts": "2026-11-14T21:08:13.121259+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "3ad271cc-0143-498d-b05d-942f8e513f6c", "customer_id": "e2baadbb-b2d5-49aa-bfa4-942092da088e", "target_type": "sync_run", "target_id": "588e94d9-16f2-4bd8-bc52-5969d7dd13ce"}
+{"ts": "2026-11-14T21:08:13.492028+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "33dfd3de165841a988303a18abc5b1b5", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "08be676b-313e-4b01-9550-05af94bbe4ab", "customer_id": "e2baadbb-b2d5-49aa-bfa4-942092da088e", "target_type": "report_run", "target_id": "423c23b6-e34e-43f8-942a-0b8e3bf81fa9"}
+{"ts": "2026-11-14T21:08:13.557518+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "f24bc84d-b6e1-4439-abd7-5590b6cc5476", "customer_id": "e2baadbb-b2d5-49aa-bfa4-942092da088e", "target_type": "report_run", "target_id": "423c23b6-e34e-43f8-942a-0b8e3bf81fa9"}
+{"ts": "2026-11-14T21:08:13.557518+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[8db0da1f-25c2-4a7c-b8f4-cb24eef49e63] succeeded in 0.046999999991385266s: 'completed'", "request_id": null, "data": {"id": "8db0da1f-25c2-4a7c-b8f4-cb24eef49e63", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.046999999991385266, "args": "['423c23b6-e34e-43f8-942a-0b8e3bf81fa9']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:13.606617+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "81a2f3bb33a84d74a6807d6c964b2c95", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "3e9bb0ae-ada1-4b41-941a-8f1e40c8e864", "customer_id": "e2baadbb-b2d5-49aa-bfa4-942092da088e", "target_type": "report_run", "target_id": "423c23b6-e34e-43f8-942a-0b8e3bf81fa9"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[8db0da1f-25c2-4a7c-b8f4-cb24eef49e63] succeeded in 0.046999999991385266s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:74: assert (2 == 1)
+E   assert (None == 1)
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:13.876366+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "5f7678d9-b840-41e3-b091-ad91c5af8589", "customer_id": "07b97351-542f-4bec-a24d-00a377c0a2a2", "target_type": "sync_run", "target_id": "b766c66f-cc51-4457-8333-7d12163461c5"}
+{"ts": "2026-11-14T21:08:14.108062+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "61ff142b-9187-4a11-84f3-3838880da3de", "customer_id": "07b97351-542f-4bec-a24d-00a377c0a2a2", "target_type": "sync_run", "target_id": "b766c66f-cc51-4457-8333-7d12163461c5"}
+{"ts": "2026-11-14T21:08:14.135918+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "ba482072-386f-400e-8512-669f7059ea3c", "customer_id": "4a98e4f1-9d1d-452e-ab56-f94b58b3dc4f", "target_type": "sync_run", "target_id": "613d0fe8-38c5-4484-8197-29c95d21b947"}
+{"ts": "2026-11-14T21:08:14.340998+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "8637b9df-36be-4106-9cfd-b23edb4123d1", "customer_id": "4a98e4f1-9d1d-452e-ab56-f94b58b3dc4f", "target_type": "sync_run", "target_id": "613d0fe8-38c5-4484-8197-29c95d21b947"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:14.406444+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "594744ef75dc4d6395213eabebc07c78", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "01851c67-da9f-4908-b4c0-7f2a1f2d83c5", "customer_id": "07b97351-542f-4bec-a24d-00a377c0a2a2", "target_type": "report_run", "target_id": "5576b2d9-d039-4212-8e61-a33d72c4f4b2"}
+{"ts": "2026-11-14T21:08:14.464499+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "7234e3a0-d58d-48e0-94e6-b7ac2c251bde", "customer_id": "07b97351-542f-4bec-a24d-00a377c0a2a2", "target_type": "report_run", "target_id": "5576b2d9-d039-4212-8e61-a33d72c4f4b2"}
+{"ts": "2026-11-14T21:08:14.465235+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[587ae19f-a8fd-4840-8985-a277e1944152] succeeded in 0.031000000002677552s: 'completed'", "request_id": null, "data": {"id": "587ae19f-a8fd-4840-8985-a277e1944152", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.031000000002677552, "args": "['5576b2d9-d039-4212-8e61-a33d72c4f4b2']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:14.499252+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "b93746b1af2d459ba661fed3d00626b7", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "e4abdf00-9527-421d-bc71-e85bb933a7ce", "customer_id": "07b97351-542f-4bec-a24d-00a377c0a2a2", "target_type": "report_run", "target_id": "5576b2d9-d039-4212-8e61-a33d72c4f4b2"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[587ae19f-a8fd-4840-8985-a277e1944152] succeeded in 0.031000000002677552s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:94: assert (None == 1)
+E   assert (None == 1)
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:14.610950+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "e23c95f7-1525-42a2-972b-f9ee0259167a", "customer_id": "1d387733-7017-45f7-b8da-c2dee599b4e3", "target_type": "sync_run", "target_id": "67113576-b395-4e94-93fb-deba2b006be3"}
+{"ts": "2026-11-14T21:08:14.836336+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "fd65ae19-911d-472b-8da9-cd1dc3906cfa", "customer_id": "1d387733-7017-45f7-b8da-c2dee599b4e3", "target_type": "sync_run", "target_id": "67113576-b395-4e94-93fb-deba2b006be3"}
+{"ts": "2026-11-14T21:08:14.865714+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "50ae86cb-e247-4538-976d-c65db381ecf5", "customer_id": "874702e4-ff2c-4db5-8f51-aa9624e9267c", "target_type": "sync_run", "target_id": "deec6a41-cbfe-4132-8c63-ea8d88f8978c"}
+{"ts": "2026-11-14T21:08:15.053699+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "cf841065-a700-4d50-ba20-bf0a0bb00d8f", "customer_id": "874702e4-ff2c-4db5-8f51-aa9624e9267c", "target_type": "sync_run", "target_id": "deec6a41-cbfe-4132-8c63-ea8d88f8978c"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:15.110636+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "3474734db96a45f49a671fe38f76dbcb", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "754435be-dbf9-48a5-94d2-282005b8ea5d", "customer_id": "1d387733-7017-45f7-b8da-c2dee599b4e3", "target_type": "report_run", "target_id": "9435e0e1-39bb-4674-9013-e0562745cf19"}
+{"ts": "2026-11-14T21:08:15.258455+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "5e7b04bc-6e6a-4c1a-b49f-892a01763e5f", "customer_id": "1d387733-7017-45f7-b8da-c2dee599b4e3", "target_type": "report_run", "target_id": "9435e0e1-39bb-4674-9013-e0562745cf19"}
+{"ts": "2026-11-14T21:08:15.258455+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[5ca1202a-3483-4256-bab9-ff4633e97835] succeeded in 0.125s: 'completed'", "request_id": null, "data": {"id": "5ca1202a-3483-4256-bab9-ff4633e97835", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.125, "args": "['9435e0e1-39bb-4674-9013-e0562745cf19']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:15.302795+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "4c1b9974cade49ac917940260c10e317", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "73f7994f-dcdf-481b-ab02-0d22ee4c1c4d", "customer_id": "1d387733-7017-45f7-b8da-c2dee599b4e3", "target_type": "report_run", "target_id": "9435e0e1-39bb-4674-9013-e0562745cf19"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[5ca1202a-3483-4256-bab9-ff4633e97835] succeeded in 0.125s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:94: assert (None == 1)
+E   assert (None == 1)
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:08:15.414235+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "f59f7da9-1280-4174-b567-518a15690070", "customer_id": "59e08130-4884-4807-a4fc-33ecd72d7ab3", "target_type": "sync_run", "target_id": "8d86aa68-accf-4894-8c5b-c8faad2b15e9"}
+{"ts": "2026-11-14T21:08:15.654053+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "a5de5d45-7f09-4204-93bb-30ac934bcf37", "customer_id": "59e08130-4884-4807-a4fc-33ecd72d7ab3", "target_type": "sync_run", "target_id": "8d86aa68-accf-4894-8c5b-c8faad2b15e9"}
+{"ts": "2026-11-14T21:08:15.686946+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "975e4264-9401-4d62-9974-787c6c0811d9", "customer_id": "165d8cc4-6c2e-4e51-900b-b7e49b527990", "target_type": "sync_run", "target_id": "106c5d6e-b314-4247-9172-479e016acea4"}
+{"ts": "2026-11-14T21:08:15.873863+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "07ab7f0e-7229-47f7-a01a-8ebe53ae1d8f", "customer_id": "165d8cc4-6c2e-4e51-900b-b7e49b527990", "target_type": "sync_run", "target_id": "106c5d6e-b314-4247-9172-479e016acea4"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:08:15.947327+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "9db3a2540d854e32b26401ef3c2d7249", "audit_action": "report.requested", "audit_outcome": "success", "audit_id": "aabbb0d8-b684-4e0e-8696-cca44d9e647e", "customer_id": "59e08130-4884-4807-a4fc-33ecd72d7ab3", "target_type": "report_run", "target_id": "33cac0fb-e63f-4bae-a21a-b2e2145c9cf1"}
+{"ts": "2026-11-14T21:08:16.045230+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "report.generated", "audit_outcome": "success", "audit_id": "ee9e9244-8184-4e8e-bd91-fa05742984e0", "customer_id": "59e08130-4884-4807-a4fc-33ecd72d7ab3", "target_type": "report_run", "target_id": "33cac0fb-e63f-4bae-a21a-b2e2145c9cf1"}
+{"ts": "2026-11-14T21:08:16.045230+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task apps.reporting.tasks.generate_report[48a56cb9-bb61-4f22-a904-c88e79915f3a] succeeded in 0.07799999999406282s: 'completed'", "request_id": null, "data": {"id": "48a56cb9-bb61-4f22-a904-c88e79915f3a", "name": "apps.reporting.tasks.generate_report", "return_value": "'completed'", "runtime": 0.07799999999406282, "args": "['33cac0fb-e63f-4bae-a21a-b2e2145c9cf1']", "kwargs": "{}"}}
+{"ts": "2026-11-14T21:08:16.094303+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "04b64ac481d1479fbabd0b614fe3829e", "audit_action": "report.downloaded", "audit_outcome": "success", "audit_id": "deda196d-e2ff-4fc9-a3b4-5a38d97917fe", "customer_id": "59e08130-4884-4807-a4fc-33ecd72d7ab3", "target_type": "report_run", "target_id": "33cac0fb-e63f-4bae-a21a-b2e2145c9cf1"}
+------------------------------ Captured log call ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     celery.app.trace:trace.py:129 Task apps.reporting.tasks.generate_report[48a56cb9-bb61-4f22-a904-c88e79915f3a] succeeded in 0.07799999999406282s: 'completed'
+INFO     portal.audit:services.py:53 audit_event
+C:\Users\cprodromou\Documents\kaseya_project\backend\tests\test_list_intelligence.py:94: assert (None == 1)
+=========================== short test summary info ===========================
+FAILED tests/test_list_intelligence.py::test_search_matches_scoped_export[software_compliance-software-A1]
+FAILED tests/test_list_intelligence.py::test_search_matches_scoped_export[software_compliance-software-1.0]
+FAILED tests/test_list_intelligence.py::test_search_matches_scoped_export[os_updates-os-updates-Fixture update]
+FAILED tests/test_list_intelligence.py::test_search_matches_scoped_export[os_updates-os-updates-A1]
+FAILED tests/test_list_intelligence.py::test_coverage_paging_past_200_and_source_identity
+FAILED tests/test_list_intelligence.py::test_coverage_formats_preserve_unknown_and_historical_population[csv]
+FAILED tests/test_list_intelligence.py::test_coverage_formats_preserve_unknown_and_historical_population[xlsx]
+FAILED tests/test_list_intelligence.py::test_coverage_formats_preserve_unknown_and_historical_population[pdf]
+8 failed, 30 passed in 54.82s
