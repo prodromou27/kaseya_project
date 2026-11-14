@@ -93,7 +93,11 @@ export function DataSources({ customer }: { customer: Customer }) {
                 last run: <Badge tone={statusTone[d.last_run.state]}>{d.last_run.state}</Badge>
                 {d.last_run.error_code ? ` (${d.last_run.error_code})` : ""}
                 {d.last_run.error_code && SYNC_ERRORS[d.last_run.error_code] ? (
-                  <span className="block text-red-700">{SYNC_ERRORS[d.last_run.error_code]}</span>
+                  <span className={`block ${d.last_run.state === "partial" ? "text-amber-800" : "text-red-700"}`}>
+                    {d.last_run.state === "partial" ? "Paused: " : ""}
+                    {SYNC_ERRORS[d.last_run.error_code]}
+                    {d.last_run.state === "partial" ? " It resumes automatically from where it stopped; the previous data stays visible meanwhile." : ""}
+                  </span>
                 ) : null}
                 {d.last_run.quarantined ? ` · ${d.last_run.quarantined} quarantined` : ""}
               </span>

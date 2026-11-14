@@ -325,3 +325,36 @@ def test_demo_tenant_os_updates(world, vsa):
     assert s["installed_section"]["collected"] + s["installed_section"]["not_collected"] == 60
     assert r.installed_updates_requested == 60
     assert sum(s["available_section"].values()) == 130
+
+
+def test_one_unresponsive_device_does_not_stop_the_sync(world, vsa):
+    """First live host: a VSA X 5xx/timeout on a single device's detail call paused the whole run."""
+    inst, mapping = vsa
+    IntegrationInstance.objects.filter(pk=inst.pk).update(installed_updates_budget=5)
+    transport = FixtureVsaTransport([device(1, available=[], installed=[]), device(2, available=[], installed=[])])
+    original_get = transport.get
+    transport.get = lambda url, **kw: FakeResponse(503) if "/assets/d-001" in url else original_get(url, **kw)  # type: ignore[method-assign]
+    r = run(mapping, world.engineer_a, transport)
+    assert r.state == "completed", r.error_code
+    st = dict(PatchObservation.objects.values_list("asset__external_id", "installed_status"))
+    assert st == {"d-001": "failed", "d-002": "collected"}
+
+
+def test_vsa_failing_all_detail_calls_still_publishes_the_inventory(world, vsa):
+    from apps.audit.models import AuditEvent
+
+    inst, mapping = vsa
+    IntegrationInstance.objects.filter(pk=inst.pk).update(
+        installed_updates_budget=10, applied_policies_budget=10, notifications_budget=10
+    )
+    transport = FixtureVsaTransport([device(i, available=[], installed=[]) for i in range(1, 6)])
+    original_get = transport.get
+    detail = ("/assets/d-", "/appliedpolicies", "/notifications")
+    transport.get = lambda url, **kw: FakeResponse(503) if any(d in url for d in detail) else original_get(url, **kw)  # type: ignore[method-assign]
+    r = run(mapping, world.engineer_a, transport)
+    assert r.state == "completed", r.error_code
+    gen = DatasetGeneration.objects.get(is_current=True)
+    assert gen.row_count == 5
+    # It gave up after a few consecutive failures instead of hammering an unhealthy server.
+    assert r.installed_updates_requested == 3
+    assert AuditEvent.objects.filter(action="sync.details_incomplete", target_id=str(r.id)).exists()

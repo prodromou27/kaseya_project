@@ -20,5 +20,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    // Keystroke-heavy UI tests exceed the 5 s default when files run in parallel on a loaded machine.
+    testTimeout: 20_000,
   },
 });

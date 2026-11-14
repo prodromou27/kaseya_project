@@ -191,9 +191,12 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
         adapter = adapter_factory(run.integration_instance)
         for page in adapter.iter_asset_pages(run.mapping.external_org_id, start_skip=run.next_skip):
             _ingest_page(run, generation, page)
-        _collect_installed_updates(run, generation, adapter)
-        _collect_applied_policies(run, generation, adapter)
-        _collect_device_details(run, generation, adapter)
+        try:
+            _collect_installed_updates(run, generation, adapter)
+            _collect_applied_policies(run, generation, adapter)
+            _collect_device_details(run, generation, adapter)
+        except DetailsAbandoned:
+            _details_incomplete(run)
         collect_hierarchy(run, generation, adapter)
         _finalize(run, generation)
     except VendorAuthError:
@@ -394,6 +397,29 @@ def _ingest_page(run: SyncRun, generation: DatasetGeneration, page: AssetPage) -
     run.refresh_from_db()
 
 
+class DetailsAbandoned(Exception):
+    """VSA X stopped answering per-device detail calls; publish the inventory without the remaining details."""
+
+
+class _DetailGuard:
+    """One slow or failing device must not stop the sync: a timeout/5xx marks only that item failed. Several in a
+    row mean VSA X itself is struggling, so detail collection stops (the inventory is still published and the
+    remaining details are collected on the next sync). Rate limiting still pauses the whole run."""
+
+    LIMIT = 3
+
+    def __init__(self) -> None:
+        self.consecutive = 0
+
+    def ok(self) -> None:
+        self.consecutive = 0
+
+    def unavailable(self) -> None:
+        self.consecutive += 1
+        if self.consecutive >= self.LIMIT:
+            raise DetailsAbandoned()
+
+
 def _collect_installed_updates(run: SyncRun, generation: DatasetGeneration, adapter: VsaXAdapter) -> None:
     """Budgeted per-device ``GET /api/v3/assets/:id?include=InstalledUpdates`` (only documented source).
 
@@ -404,6 +430,7 @@ def _collect_installed_updates(run: SyncRun, generation: DatasetGeneration, adap
 
     budget = run.integration_instance.installed_updates_budget
     remaining = max(0, budget - run.installed_updates_requested)
+    guard = _DetailGuard()
     for po in pending_installed(generation, remaining):
         SyncRun.objects.filter(pk=run.pk).update(
             installed_updates_requested=F("installed_updates_requested") + 1, api_requests=F("api_requests") + 1
@@ -411,8 +438,12 @@ def _collect_installed_updates(run: SyncRun, generation: DatasetGeneration, adap
         try:
             body = adapter.get_installed_updates(po.asset.external_id)
             record_installed(po, normalize_installed_updates(body, po.asset.external_id))
+            guard.ok()
         except (VendorClientError, RecordInvalid, ValueError):
             record_installed_failure(po)
+        except VendorUnavailable:
+            record_installed_failure(po)
+            guard.unavailable()
     carry_forward(generation)
     run.refresh_from_db()
 
@@ -428,14 +459,19 @@ def _collect_applied_policies(run: SyncRun, generation: DatasetGeneration, adapt
 
     policies.ensure_observations(generation)
     remaining = max(0, run.integration_instance.applied_policies_budget - run.applied_policies_requested)
+    guard = _DetailGuard()
     for po in policies.pending(generation, remaining):
         SyncRun.objects.filter(pk=run.pk).update(
             applied_policies_requested=F("applied_policies_requested") + 1, api_requests=F("api_requests") + 1
         )
         try:
             policies.record(po, normalize_applied_policies(adapter.get_applied_policies(po.asset.external_id)))
+            guard.ok()
         except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
             policies.record_failure(po)
+        except VendorUnavailable:
+            policies.record_failure(po)
+            guard.unavailable()
     policies.carry_forward(generation)
     for policy_id in policies.referenced_policy_ids(generation):
         SyncRun.objects.filter(pk=run.pk).update(api_requests=F("api_requests") + 1)
@@ -443,8 +479,12 @@ def _collect_applied_policies(run: SyncRun, generation: DatasetGeneration, adapt
             policies.record_definition(
                 generation, normalize_patch_policy(adapter.get_patch_policy(policy_id), policy_id)
             )
+            guard.ok()
         except (VendorClientError, RecordInvalid, ValueError):
             policies.record_definition_failure(generation, policy_id)
+        except VendorUnavailable:
+            policies.record_definition_failure(generation, policy_id)
+            guard.unavailable()
     run.refresh_from_db()
 
 
@@ -463,6 +503,7 @@ def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter
     inst = run.integration_instance
     details.ensure_fetches(generation, "notifications")
     remaining = max(0, inst.notifications_budget - run.notifications_requested)
+    guard = _DetailGuard()
     for fetch in details.pending(generation, "notifications", remaining):
         SyncRun.objects.filter(pk=run.pk).update(
             notifications_requested=F("notifications_requested") + 1, api_requests=F("api_requests") + 1
@@ -470,8 +511,12 @@ def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter
         try:
             rows = adapter.get_notifications(fetch.asset.external_id, dj_settings.NOTIFICATIONS_PER_DEVICE)
             details.record_notifications(fetch, normalize_notifications(rows))
+            guard.ok()
         except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
             details.record_failure(fetch)
+        except VendorUnavailable:
+            details.record_failure(fetch)
+            guard.unavailable()
 
     details.ensure_fetches(generation, "custom_fields")
     approved = details.approved_field_keys(run.customer_id)
@@ -484,8 +529,12 @@ def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter
             try:
                 rows = adapter.get_custom_fields(fetch.asset.external_id)
                 details.record_custom_fields(fetch, normalize_custom_fields(rows), approved)
+                guard.ok()
             except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
                 details.record_failure(fetch)
+            except VendorUnavailable:
+                details.record_failure(fetch)
+                guard.unavailable()
     run.refresh_from_db()
 
 
@@ -563,6 +612,31 @@ def _finalize(run: SyncRun, generation: DatasetGeneration) -> None:
         evaluate_generation(generation)
     except Exception:  # published data stays valid; classification can be re-run
         logger.exception("compliance_evaluation_failed", extra={"generation_id": str(generation.id)})
+
+
+def _details_incomplete(run: SyncRun) -> None:
+    """Carry forward what is not collected and record why; the run continues and publishes the inventory."""
+    from apps.inventory import details
+    from apps.patching import policies
+
+    generation = run.generation
+    if generation is not None:
+        carry_forward(generation)
+        policies.ensure_observations(generation)
+        policies.carry_forward(generation)
+        for kind in ("notifications", "custom_fields"):
+            details.ensure_fetches(generation, kind)
+    logger.warning("sync_details_incomplete", extra={"sync_run_id": str(run.id)})
+    record_event(
+        action="sync.details_incomplete",
+        outcome="failure",
+        actor_label="system:sync",
+        customer=run.customer,
+        target_type="sync_run",
+        target_id=str(run.id),
+        metadata={"reason": "vendor_unavailable", "detail": "per-device detail calls stopped; inventory published"},
+    )
+    run.refresh_from_db()
 
 
 def _pause(run: SyncRun, code: str) -> SyncRun:
