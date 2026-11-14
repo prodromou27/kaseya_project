@@ -273,7 +273,9 @@ def _results(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> An
         qs = qs.filter(asset_id=filters["asset"])
     if filters.get("search"):
         term = filters["search"]
-        qs = qs.filter(Q(installation__raw_name__icontains=term) | Q(installation__raw_publisher__icontains=term))
+        from apps.software.queries import search_results
+
+        qs = search_results(qs, term)
     return qs
 
 
@@ -332,9 +334,10 @@ SOFTWARE_LIMITATIONS = (
 
 
 class OsUpdateFilters(ScopedAssetFilterMixin, serializers.Serializer):
+    search = serializers.CharField(required=False, allow_blank=True, max_length=100)
     state = serializers.ChoiceField(choices=["available", "installed"], required=False)
     severity = serializers.CharField(required=False, allow_blank=True, max_length=32)
-    kb = serializers.RegexField(r"^(?:KB)?[0-9]{4,10}$", required=False, max_length=12)
+    kb = serializers.RegexField(r"^(?:[Kk][Bb])?[0-9]{4,10}$", required=False, max_length=12)
     asset = serializers.UUIDField(required=False)
 
 
@@ -352,6 +355,9 @@ def _os_update_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]
         qs = qs.filter(os_update__kb_article=filters["kb"].upper().removeprefix("KB"))
     if filters.get("asset"):
         qs = qs.filter(asset_id=filters["asset"])
+    from apps.patching.queries import search_update_rows
+
+    qs = search_update_rows(qs, filters.get("search", ""))
     for d in qs.order_by("patch_observation__observation__hostname", "state", "os_update__kb_article", "id").iterator(
         chunk_size=2000
     ):
@@ -370,6 +376,40 @@ def _os_update_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]
             po.installed_status if d.state == "installed" else po.available_status,
             po.installed_collected_at.isoformat() if (d.state == "installed" and po.installed_collected_at) else "",
             d.generation.published_at.isoformat(),
+        ]
+
+
+class CoverageFilters(serializers.Serializer):
+    available_status = serializers.ChoiceField(
+        choices=["collected", "not_collected", "not_supported", "failed", "not_requested", "carried_forward"],
+        required=False,
+    )
+    search = serializers.CharField(required=False, allow_blank=True, max_length=100)
+
+
+def _coverage_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    from apps.patching.models import PatchObservation
+    from apps.patching.queries import filter_device_coverage
+
+    qs = PatchObservation.objects.filter(customer=customer, generation_id__in=pins["generation_ids"]).select_related(
+        "asset", "observation", "generation"
+    )
+    for row in (
+        filter_device_coverage(qs, filters).order_by("observation__hostname", "asset_id").iterator(chunk_size=2000)
+    ):
+        yield [
+            row.asset.external_id,
+            row.observation.hostname,
+            row.observation.device_type,
+            row.observation.os_name,
+            row.available_status,
+            row.available_count if row.available_count is not None else "",
+            row.installed_status,
+            row.installed_count if row.installed_count is not None else "",
+            row.installed_collected_at.isoformat() if row.installed_collected_at else "",
+            str(row.generation.integration_instance_id),
+            str(row.generation_id),
+            row.generation.published_at.isoformat(),
         ]
 
 
@@ -779,6 +819,34 @@ REPORT_TYPES: dict[str, ReportType] = {
         rows=_software_rows,
         pin=_pin_software,
         limitations=SOFTWARE_LIMITATIONS,
+    ),
+    "os_update_coverage": ReportType(
+        key="os_update_coverage",
+        title="OS update collection coverage",
+        description="One device per row with explicit collection evidence, not update records.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=CoverageFilters,
+        columns=(
+            "device_id",
+            "hostname",
+            "device_type",
+            "os",
+            "available_status",
+            "available_count",
+            "installed_status",
+            "installed_count",
+            "installed_collected_at_utc",
+            "source_instance_id",
+            "generation_id",
+            "source_as_of_utc",
+        ),
+        rows=_coverage_rows,
+        pin=_pin_os_updates,
+        limitations=(
+            "Collection evidence only. Unknown/failed/unsupported sections are not zero updates. "
+            "No vendor scan timestamp is established."
+        ),
     ),
     "os_updates": ReportType(
         key="os_updates",

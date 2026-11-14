@@ -7692,6 +7692,7 @@ components:
       - group_network
       - inventory_changes
       - lifecycle
+      - os_update_coverage
       - os_updates
       - patch_policy_coverage
       - security_observations
@@ -7708,6 +7709,7 @@ components:
         * `group_network` - group_network
         * `inventory_changes` - inventory_changes
         * `lifecycle` - lifecycle
+        * `os_update_coverage` - os_update_coverage
         * `os_updates` - os_updates
         * `patch_policy_coverage` - patch_policy_coverage
         * `security_observations` - security_observations

@@ -112,13 +112,30 @@ def filtered_device_updates(customer_id: Any, params: Any) -> QuerySet[DeviceOsU
         if value:
             parsed = _uuid(value)
             qs = qs.filter(**{field: parsed}) if parsed else qs.none()
-    return qs
+    return search_update_rows(qs, params.get("search") or "")
 
 
 def filtered_devices(customer_id: Any, params: Any) -> QuerySet[PatchObservation]:
     qs = current_patch_observations(customer_id).select_related("observation", "asset")
+    return filter_device_coverage(qs, params)
+
+
+def filter_device_coverage(qs: QuerySet[PatchObservation], params: Any) -> QuerySet[PatchObservation]:
     for param, field in (("available_status", "available_status"), ("installed_status", "installed_status")):
         value = params.get(param)
         if value in UpdateStatus.values:
             qs = qs.filter(**{field: value})
+    if search := (params.get("search") or "").strip()[:100]:
+        qs = qs.filter(Q(observation__hostname__icontains=search) | Q(asset__external_id__icontains=search))
     return qs
+
+
+def search_update_rows(qs: QuerySet[DeviceOsUpdate], search: str) -> QuerySet[DeviceOsUpdate]:
+    term = search.strip()[:100]
+    if not term:
+        return qs
+    return qs.filter(
+        Q(os_update__title__icontains=term)
+        | Q(patch_observation__observation__hostname__icontains=term)
+        | Q(os_update__kb_article__icontains=term.upper().removeprefix("KB"))
+    )

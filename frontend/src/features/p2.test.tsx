@@ -58,6 +58,7 @@ describe("windows updates", () => {
   it("filters update records by KB from the top-updates table", async () => {
     const { calls } = routes();
     renderApp("/windows-updates");
+    await userEvent.click(await screen.findByRole("tab", { name: "Common updates" }));
     await userEvent.click(await screen.findByRole("button", { name: "KB5099001" }));
     expect(calls.some((c) => c.url.includes("/os-updates/?") && c.url.includes("kb=5099001"))).toBe(true);
   });

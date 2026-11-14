@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Link } from "react-router";
+import { useLocation } from "react-router";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { Fragment, useState, type FormEvent } from "react";
 
+import { Tabs } from "../../components/Tabs";
+import { InvestigationDeviceLink } from "../../components/InvestigationDeviceLink";
+import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
 import { Badge, Field, PageHeader, statusTone } from "../../components/ui";
@@ -28,7 +31,6 @@ import { ExportButton } from "../reports/ExportButton";
 import { SelectCustomer } from "../../components/SelectCustomer";
 
 const STATES: ComplianceState[] = ["outdated", "current", "newer", "unknown", "excluded", "unsupported"];
-const PAGE_SIZE = 50;
 
 function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
@@ -41,12 +43,12 @@ function Metric({ label, value, hint }: { label: string; value: string; hint: st
 }
 
 function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: ComplianceState | "", product: string) => void }) {
+  const [productSearch, setProductSearch] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const visibleProducts = s.products.filter((product) => `${product.label} ${product.channel}`.toLowerCase().includes(productSearch.toLowerCase()));
   const pct = (v: number | null) => (v === null ? "n/a" : `${v}%`);
   return (
     <>
-      <p className="text-sm text-slate-600">{s.disclaimer}</p>
-      <div className="mt-2"><ThirdPartyPatchNotice status={s.third_party_patch_status} /></div>
       <div className="my-3 grid grid-cols-2 gap-2 md:grid-cols-4">
         <Metric label="Version compliance" value={pct(s.version_compliance_pct)}
                 hint={`current / (current + outdated) = ${s.totals.current} / ${s.totals.current + s.totals.outdated}`} />
@@ -67,11 +69,12 @@ function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: Complian
         As of {s.as_of.map(formatUtc).join(", ") || "—"} · catalog revisions applied: {s.catalog_revision_ids.length} ·
         comparator v{s.algorithm_version} · data basis {s.data_basis.join(", ") || "none"}
       </p>
+      <label className="list-label mb-3">Find a product<input className="input max-w-md" type="search" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Product or channel" /></label>
       {s.products.length === 0 ? (
         <EmptyState title="No catalogued products found in this inventory.">
           Installed software that is not in the reviewed catalog is reported as “Not catalogued”.
         </EmptyState>
-      ) : (
+      ) : visibleProducts.length === 0 ? <EmptyState title="No products match your search."><button type="button" className="underline text-sky-800" onClick={() => setProductSearch("")}>Clear product search</button></EmptyState> : (
         <div className="overflow-x-auto rounded border border-slate-200 bg-white">
           <table className="min-w-full text-sm">
             <caption className="sr-only">Catalogued products</caption>
@@ -84,7 +87,7 @@ function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: Complian
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {s.products.map((p: ProductSummary) => (
+              {visibleProducts.map((p: ProductSummary) => (
                 <Fragment key={p.product_id}>
                   <tr>
                     <th scope="row" className="px-3 py-1.5 text-left font-medium">
@@ -131,48 +134,40 @@ function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: Complian
   );
 }
 
-function Drilldown({ customer, state, product, onReset }: { customer: Customer; state: string; product: string; onReset: () => void }) {
-  const { filters, update, page, setPage } = useUrlFilters({ search: "" });
-  const search = filters.search;
+function Drilldown({ customer, products }: { customer: Customer; products: ProductSummary[] }) {
+  const { filters, update, page, setPage } = useUrlFilters({ search: "", state: "outdated", product: "", page_size: "50" });
+  const { state, product } = filters;
+  const search = useDebouncedValue(filters.search);
+  const pageSize = [25, 50, 100, 200].includes(Number(filters.page_size)) ? Number(filters.page_size) : 50;
   const query = useQuery({
-    queryKey: ["software", customer.id, "rows", state, product, search, page],
-    queryFn: ({ signal }) => api.get<Paginated<SoftwareRow>>(`/customers/${customer.id}/software/`,
-      { state, product, search, page, page_size: PAGE_SIZE }, signal),
+    queryKey: ["software", customer.id, "rows", state, product, search, page, pageSize],
+    queryFn: ({ signal }) => api.get<Paginated<SoftwareRow>>(`/customers/${customer.id}/software/`, { state, product, search, page, page_size: pageSize }, signal),
     placeholderData: (prev) => prev,
   });
   const columns: ColumnDef<SoftwareRow, unknown>[] = [
-    { header: "Device", cell: ({ row }) => <Link className="font-medium text-sky-800 hover:underline" to={`/assets/${row.original.asset_id}`}>{row.original.hostname ?? row.original.asset_id.slice(0, 8)}</Link> },
-    ...softwareColumns,
+    { header: "Device", cell: ({ row }) => <InvestigationDeviceLink assetId={row.original.asset_id} name={row.original.hostname ?? row.original.asset_id.slice(0, 8)} tab="software" /> }, ...softwareColumns,
   ];
-  return (
-    <section aria-labelledby="drill-heading" className="mt-6">
-      <div className="mb-2 flex flex-wrap items-end gap-3">
-        <h2 id="drill-heading" className="text-sm font-semibold">
-          Installations {state ? `· ${STATE_LABEL[state as ComplianceState]}` : ""} {product ? "· selected product" : ""}
-        </h2>
-        <label className="flex items-center gap-1 text-xs">
-          Search
-          <input className="input w-48" type="search" maxLength={100} value={search} onChange={(e) => update({ search: e.target.value }, true)} />
-        </label>
-        {state || product ? <button type="button" className="btn-secondary" onClick={onReset}>Clear filters</button> : null}
-        {customer.my_capabilities.includes(CAP.export) ? (
-          <ExportButton customer={customer} reportType="software_compliance" label="Export CSV" filters={{ state, product, search }} />
-        ) : null}
-      </div>
-      <QueryBoundary query={query}>
-        {(data) => <DataTable caption="Software installations" columns={columns} rows={data.results} total={data.count}
-                              page={page} pageSize={PAGE_SIZE} onPageChange={setPage} getRowId={(r) => r.id}
-                              emptyTitle="No installations match." />}
-      </QueryBoundary>
-    </section>
-  );
+  return <section aria-label="Installation investigation" className="space-y-3">
+    <div className="list-workspace flex flex-wrap items-end gap-3">
+      <Field label="Search">{(id) => <input id={id} className="input w-72" type="search" maxLength={100} value={filters.search} placeholder="Software, publisher, version or device" onChange={(event) => update({ search: event.target.value }, true)} />}</Field>
+      <Field label="Classification">{(id) => <select id={id} className="input" value={state} onChange={(event) => update({ state: event.target.value })}><option value="">All classifications</option>{STATES.map((item) => <option key={item} value={item}>{STATE_LABEL[item]}</option>)}</select>}</Field>
+      <Field label="Product">{(id) => <select id={id} className="input max-w-64" value={product} onChange={(event) => update({ product: event.target.value })}><option value="">All products</option>{products.map((item) => <option key={item.product_id} value={item.product_id}>{item.label} ({item.channel})</option>)}</select>}</Field>
+      <button type="button" className="btn-secondary" onClick={() => update({ state: "", product: "", search: "" })}>Clear filters</button>
+      {customer.my_capabilities.includes(CAP.export) ? <ExportButton customer={customer} reportType="software_compliance" label="Export installations" filters={{ state, product, search: filters.search }} /> : null}
+    </div>
+    <p className="text-xs text-slate-500">Installation records, not unique devices. {state ? `Classification: ${STATE_LABEL[state as ComplianceState] ?? state}.` : "All classifications."}</p>
+    {query.isError && page > 1 ? <button type="button" className="btn-secondary" onClick={() => setPage(1)}>Return to first page</button> : null}
+    <QueryBoundary query={query}>{(data) => <DataTable columnChooser caption="Software installations" columns={columns} rows={data.results} total={data.count} loading={query.isFetching || filters.search !== search}
+      page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => update({ page_size: String(size) })} getRowId={(row) => row.id} emptyTitle="No installations match." />}</QueryBoundary>
+  </section>;
 }
 
 function Exceptions({ customer, products }: { customer: Customer; products: ProductSummary[] }) {
   const queryClient = useQueryClient();
   const canManage = customer.my_capabilities.includes(CAP.manageExceptions);
   const url = `/customers/${customer.id}/software-exceptions/`;
-  const list = useQuery({ queryKey: ["exceptions", customer.id], queryFn: () => api.get<Paginated<SoftwareExceptionRow>>(url) });
+  const { page, setPage } = useUrlFilters({});
+  const list = useQuery({ queryKey: ["exceptions", customer.id, page], queryFn: () => api.get<Paginated<SoftwareExceptionRow>>(url, { page }) });
   const [product, setProduct] = useState("");
   const [reason, setReason] = useState("");
   const [expires, setExpires] = useState("");
@@ -202,8 +197,9 @@ function Exceptions({ customer, products }: { customer: Customer; products: Prod
           {create.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(create.error)}</p> : null}
         </form>
       ) : null}
+      {list.isError && page > 1 ? <button type="button" className="btn-secondary" onClick={() => setPage(1)}>Return to first page</button> : null}
       <QueryBoundary query={list}>
-        {(data) => <DataTable caption="Software exceptions" rows={data.results} getRowId={(r) => r.id} emptyTitle="No exceptions."
+        {(data) => <DataTable caption="Software exceptions" rows={data.results} total={data.count} page={page} onPageChange={setPage} getRowId={(r) => r.id} emptyTitle="No exceptions."
           columns={[
             { header: "Product", accessorKey: "product_label" },
             { header: "Scope", cell: ({ row }) => (row.original.asset ? "single device" : "all devices") },
@@ -220,26 +216,20 @@ function Exceptions({ customer, products }: { customer: Customer; products: Prod
 }
 
 function SoftwareView({ customer }: { customer: Customer }) {
-  const { filters: drill, update: setDrill } = useUrlFilters({ state: "outdated", product: "" });
-  const summary = useQuery({
-    queryKey: ["software", customer.id, "summary"],
-    queryFn: ({ signal }) => api.get<SoftwareSummary>(`/customers/${customer.id}/software/summary/`, undefined, signal),
-  });
-  return (
-    <>
-      <DataSources customer={customer} />
-      <QueryBoundary query={summary} isEmpty={(s) => s.eligible_installations === 0}
-        empty={<EmptyState title="No installed-software inventory in the current dataset.">Run a sync once a source mapping is approved.</EmptyState>}>
-        {(s) => (
-          <>
-            <Summary s={s} onDrill={(state, product) => setDrill({ state, product })} />
-            <Drilldown key={`${customer.id}-${drill.state}-${drill.product}`} customer={customer} state={drill.state} product={drill.product} onReset={() => setDrill({ state: "", product: "" })} />
-            <Exceptions customer={customer} products={s.products} />
-          </>
-        )}
-      </QueryBoundary>
-    </>
-  );
+  const { filters, update } = useUrlFilters({ view: "", state: "outdated", product: "", search: "" });
+  const location = useLocation();
+  const active = filters.view || (filters.product || filters.search || new URLSearchParams(location.search).has("state") ? "installations" : "overview");
+  const summary = useQuery({ queryKey: ["software", customer.id, "summary"], queryFn: ({ signal }) => api.get<SoftwareSummary>(`/customers/${customer.id}/software/summary/`, undefined, signal) });
+  return <>
+    <DataSources customer={customer} compact />
+    <p className="mb-2 text-xs text-slate-500">Version comparison against a reviewed catalog. Not evidence of missing third-party patches or vulnerabilities.</p>
+    <ThirdPartyPatchNotice status={summary.data?.third_party_patch_status} />
+    <div className="mt-4"><Tabs label="Software workspace" active={active} onChange={(view) => update({ view })} tabs={[
+      { id: "overview", label: "Overview", content: <QueryBoundary query={summary} isEmpty={(s) => s.eligible_installations === 0} empty={<EmptyState title="No installed-software inventory in the current dataset.">Run a sync once a source mapping is approved.</EmptyState>}>{(s) => <Summary s={s} onDrill={(state, product) => update({ state, product, view: "installations" })} />}</QueryBoundary> },
+      { id: "installations", label: "Installations", content: <Drilldown customer={customer} products={summary.data?.products ?? []} /> },
+      { id: "exceptions", label: "Exceptions", content: <Exceptions customer={customer} products={summary.data?.products ?? []} /> },
+    ]} /></div>
+  </>;
 }
 
 export function SoftwarePage() {

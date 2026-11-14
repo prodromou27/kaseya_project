@@ -24,7 +24,8 @@ const hierarchy = await (await page.request.get(`/api/v1/customers/${customer.id
 if (!assets.results.length) throw new Error("Seed, approve and synchronize the DEMO-A fixture before visual review.");
 const paths = [
   ["dashboard", "/"], ["devices", "/assets"], ["device-detail", `/assets/${assets.results[0].id}`],
-  ["software", "/software"], ["windows-updates", "/windows-updates"], ["onboarding", "/onboarding"],
+  ["software", "/software"], ["software-installations", "/software?view=installations"],
+  ["update-coverage", "/windows-updates?view=coverage"], ["windows-updates", "/windows-updates"], ["onboarding", "/onboarding"],
   ["groups", "/groups"], ["reports", "/reports"], ["settings", "/admin"],
   ["health", "/device-health"], ["changes", "/changes"], ["notifications", "/notifications"],
   ["policies", "/patch-policies"], ["group-moves", "/group-moves"], ["lifecycle", "/lifecycle"], ["customers", "/customers"],

@@ -256,8 +256,9 @@ function OsUpdates({ detail }: { detail: AssetDetail }) {
 
 export function AssetDetailPage() {
   const { assetId = "" } = useParams();
-  const { filters: { tab, inventory }, update } = useUrlFilters({ tab: "overview", inventory: "" });
+  const { filters: { tab, inventory, return_to }, update } = useUrlFilters({ tab: "overview", inventory: "", return_to: "" });
   const { select, selected } = useCustomers();
+  const origin = return_to.length <= 4096 && /^\/(software|windows-updates)(\?|$)/.test(return_to) ? return_to : "";
   const inventorySearch = inventory.startsWith("?") && inventory.length <= 4096 ? inventory : "";
   const query = useQuery({
     queryKey: ["asset", assetId],
@@ -271,7 +272,7 @@ export function AssetDetailPage() {
     <QueryBoundary query={query}>
       {(detail) => (
         <>
-          <p className="mb-2 text-xs"><Link to={`/assets${inventorySearch}`} className="font-medium text-sky-800 hover:underline">Back to devices</Link></p>
+          <p className="mb-2 text-xs"><Link to={origin || `/assets${inventorySearch}`} className="font-medium text-sky-800 hover:underline">{origin ? origin.startsWith("/software") ? "Back to software" : "Back to Windows updates" : "Back to devices"}</Link></p>
           <PageHeader title={detail.asset?.hostname || detail.external_id}
                       subtitle={detail.active ? "Active in current inventory" : "Inactive (absent from latest complete inventory)"} />
           {detail.asset ? <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">

@@ -158,7 +158,7 @@ def filtered_results(customer_id: Any, params: Any) -> QuerySet[ComplianceResult
         qs = qs.filter(product_id=pid) if pid else qs.none()
     search = (params.get("search") or "").strip()[:100]
     if search:
-        qs = qs.filter(Q(installation__raw_name__icontains=search) | Q(installation__raw_publisher__icontains=search))
+        qs = search_results(qs, search)
     asset = (params.get("asset") or "").strip()
     if asset:
         aid = _uuid_or_none(asset)
@@ -171,3 +171,14 @@ def _uuid_or_none(value: str) -> uuid.UUID | None:
         return uuid.UUID(value)
     except ValueError:
         return None
+
+
+def search_results(qs: QuerySet[ComplianceResult], search: str) -> QuerySet[ComplianceResult]:
+    """Shared by current lists and historical exports; hostnames come from the pinned installation."""
+    term = search.strip()[:100]
+    return qs.filter(
+        Q(installation__raw_name__icontains=term)
+        | Q(installation__raw_publisher__icontains=term)
+        | Q(installation__raw_version__icontains=term)
+        | Q(installation__observation__hostname__icontains=term)
+    )

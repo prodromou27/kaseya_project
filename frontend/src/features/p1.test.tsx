@@ -108,6 +108,15 @@ describe("assets", () => {
 });
 
 describe("software versions", () => {
+  it("clears an empty product search without mixing in the installation or exception lists", async () => {
+    routes();
+    renderApp("/software");
+    await userEvent.type(await screen.findByLabelText("Find a product"), "No such product");
+    expect(screen.getByText("No products match your search.")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Software installations" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Clear product search" }));
+    expect(screen.getByRole("table", { name: "Catalogued products" })).toBeInTheDocument();
+  });
   it("shows denominators, separate populations and the non-patch disclaimer", async () => {
     routes();
     renderApp("/software");

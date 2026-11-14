@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useUrlFilters } from "../../lib/useUrlFilters";
-import { Link } from "react-router";
 
+import { Tabs } from "../../components/Tabs";
+import { InvestigationDeviceLink } from "../../components/InvestigationDeviceLink";
+import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
 import { Badge, Field, Notice, PageHeader, statusTone } from "../../components/ui";
@@ -22,7 +24,6 @@ import { DataSources } from "../inventory/DataSources";
 import { ExportButton } from "../reports/ExportButton";
 import { SelectCustomer } from "../../components/SelectCustomer";
 
-const PAGE_SIZE = 50;
 const STATUSES: UpdateStatus[] = ["collected", "not_collected", "not_supported", "failed", "not_requested", "carried_forward"];
 
 function Tile({ label, value, hint }: { label: string; value: number | string; hint: string }) {
@@ -35,7 +36,7 @@ function Tile({ label, value, hint }: { label: string; value: number | string; h
   );
 }
 
-function Summary({ s, onKb, onStatus }: { s: OsUpdateSummary; onKb: (kb: string) => void; onStatus: (st: UpdateStatus) => void }) {
+function Summary({ s, onStatus }: { s: OsUpdateSummary; onStatus: (st: UpdateStatus) => void }) {
   const notReporting = s.devices_total - s.devices_reporting_updates;
   return (
     <>
@@ -62,6 +63,13 @@ function Summary({ s, onKb, onStatus }: { s: OsUpdateSummary; onKb: (kb: string)
         {STATUSES.filter((st) => s.installed_section[st]).map((st) => `${UPDATE_STATUS_LABEL[st]} ${s.installed_section[st]}`).join(" · ") || "none"}.
         As of {s.as_of.map(formatUtc).join(", ") || "—"} · data basis {s.data_basis.join(", ") || "none"}
       </p>
+
+    </>
+  );
+}
+
+function CommonUpdates({ s, onKb }: { s: OsUpdateSummary; onKb: (kb: string) => void }) {
+  return (
       <DataTable caption="Most common available updates" rows={s.top_available_updates} getRowId={(r) => r.os_update_id}
         emptyTitle="No available updates were reported by devices that returned update data."
         columns={[
@@ -72,99 +80,83 @@ function Summary({ s, onKb, onStatus }: { s: OsUpdateSummary; onKb: (kb: string)
           { header: "Severity", accessorKey: "severity", cell: ({ getValue }) => String(getValue() || "not reported") },
           { header: "Devices", accessorKey: "devices" },
         ]} />
-    </>
   );
 }
 
-function UpdateRows({ customer, kb, state, severity }: { customer: Customer; kb: string; state: string; severity: string }) {
-  const { page, setPage } = useUrlFilters({});
-  const query = useQuery({
-    queryKey: ["os-updates", customer.id, "rows", kb, state, severity, page],
-    queryFn: ({ signal }) => api.get<Paginated<DeviceOsUpdateRow>>(`/customers/${customer.id}/os-updates/`, { kb, state, severity, page, page_size: PAGE_SIZE }, signal),
-    placeholderData: (prev) => prev,
-  });
-  return (
-    <QueryBoundary query={query}>
-      {(data) => <DataTable caption="Device updates" rows={data.results} total={data.count} page={page} pageSize={PAGE_SIZE}
-        onPageChange={setPage} getRowId={(r) => r.id} emptyTitle="No matching update records."
-        columns={[
-          { header: "Device", cell: ({ row }) => <Link className="text-sky-800 hover:underline" to={`/assets/${row.original.asset_id}`}>{row.original.hostname}</Link> },
-          { header: "State", cell: ({ row }) => <Badge tone={row.original.state === "available" ? "warn" : "good"}>{row.original.state}</Badge> },
-          { header: "KB", cell: ({ row }) => (row.original.kb_article ? `KB${row.original.kb_article}` : "—") },
-          { header: "Title", accessorKey: "title" },
-          { header: "Severity", accessorKey: "severity" },
-          { header: "Released", accessorKey: "release_date" },
-          { header: "Installed at (as reported, timezone unspecified)", cell: ({ row }) => row.original.installed_at_raw || "—" },
-        ]} />}
-    </QueryBoundary>
-  );
+function UpdateRows({ customer, kb, state, severity, searchText }: { customer: Customer; kb: string; state: string; severity: string; searchText: string }) {
+  const { filters, update, page, setPage } = useUrlFilters({ page_size: "50" });
+  const pageSize = [25, 50, 100, 200].includes(Number(filters.page_size)) ? Number(filters.page_size) : 50;
+  const search = useDebouncedValue(searchText);
+  const query = useQuery({ queryKey: ["os-updates", customer.id, "rows", kb, state, severity, search, page, pageSize],
+    queryFn: ({ signal }) => api.get<Paginated<DeviceOsUpdateRow>>(`/customers/${customer.id}/os-updates/`, { kb, state, severity, search, page, page_size: pageSize }, signal), placeholderData: (prev) => prev });
+  return <>
+    {query.isError && page > 1 ? <button type="button" className="btn-secondary" onClick={() => setPage(1)}>Return to first page</button> : null}
+    <QueryBoundary query={query}>{(data) => <DataTable columnChooser caption="Device updates" rows={data.results} total={data.count} page={page} pageSize={pageSize} loading={query.isFetching || search !== searchText} onPageChange={setPage} onPageSizeChange={(size) => update({ page_size: String(size) })} getRowId={(row) => row.id} emptyTitle="No matching update records."
+      columns={[
+        { header: "Device", cell: ({ row }) => <InvestigationDeviceLink assetId={row.original.asset_id} name={row.original.hostname} tab="os-updates" /> },
+        { header: "State", cell: ({ row }) => <Badge tone={row.original.state === "available" ? "warn" : "good"}>{row.original.state}</Badge> },
+        { header: "KB", cell: ({ row }) => row.original.kb_article ? `KB${row.original.kb_article}` : "Not reported" },
+        { header: "Title", accessorKey: "title" }, { header: "Severity", accessorKey: "severity" }, { header: "Released", accessorKey: "release_date" },
+        { header: "Installed at (source timezone unspecified)", cell: ({ row }) => row.original.installed_at_raw || "Not reported" },
+      ]} />}</QueryBoundary>
+  </>;
 }
 
-function DeviceStatusList({ customer, status }: { customer: Customer; status: UpdateStatus }) {
-  const query = useQuery({
-    queryKey: ["os-updates", customer.id, "devices", status],
-    queryFn: () => api.get<Paginated<DevicePatchStatus>>(`/customers/${customer.id}/os-updates/devices/`, { available_status: status, page_size: 200 }),
-  });
-  return (
-    <QueryBoundary query={query}>
-      {(data) => <DataTable caption={`Devices: ${UPDATE_STATUS_LABEL[status]}`} rows={data.results} total={data.count} getRowId={(r) => r.asset_id}
-        columns={[
-          { header: "Device", cell: ({ row }) => <Link className="text-sky-800 hover:underline" to={`/assets/${row.original.asset_id}`}>{row.original.hostname}</Link> },
-          { header: "Type", accessorKey: "device_type" },
-          { header: "OS", accessorKey: "os_name" },
-          { header: "Last seen", cell: ({ row }) => formatUtc(row.original.last_seen_online) },
-          { header: "Available", cell: ({ row }) => row.original.available_count ?? <span className="text-slate-400">no data</span> },
-        ]} />}
-    </QueryBoundary>
-  );
+function DeviceStatusList({ customer }: { customer: Customer }) {
+  const { filters, update, page, setPage } = useUrlFilters({ coverage_search: "", page_size: "50", status: "" });
+  const pageSize = [25, 50, 100, 200].includes(Number(filters.page_size)) ? Number(filters.page_size) : 50;
+  const status = STATUSES.includes(filters.status as UpdateStatus) ? filters.status : "";
+  const search = useDebouncedValue(filters.coverage_search);
+  const query = useQuery({ queryKey: ["os-updates", customer.id, "devices", status, search, page, pageSize],
+    queryFn: ({ signal }) => api.get<Paginated<DevicePatchStatus>>(`/customers/${customer.id}/os-updates/devices/`, { available_status: status, search, page, page_size: pageSize }, signal), placeholderData: (previous) => previous });
+  return <section className="space-y-3">
+    <div className="list-workspace flex flex-wrap items-end gap-3">
+      <Field label="Find device">{(id) => <input id={id} type="search" className="input" value={filters.coverage_search} maxLength={100} placeholder="Hostname or source device ID" onChange={(event) => update({ coverage_search: event.target.value }, true)} />}</Field>
+      <Field label="Available-update collection">{(id) => <select id={id} className="input" value={status} onChange={(event) => update({ status: event.target.value })}><option value="">All collection states</option>{STATUSES.map((item) => <option key={item} value={item}>{UPDATE_STATUS_LABEL[item]}</option>)}</select>}</Field>
+      <button type="button" className="btn-secondary" onClick={() => update({ status: "", coverage_search: "" })}>Clear coverage filters</button>
+      {customer.my_capabilities.includes(CAP.export) ? <ExportButton customer={customer} reportType="os_update_coverage" label="Export device coverage" filters={{ available_status: status, search: filters.coverage_search }} /> : null}
+    </div>
+    <p className="text-xs text-slate-500">One row per device. Collection failures and missing evidence remain separate from a reported zero.</p>
+    {query.isError && page > 1 ? <button type="button" className="btn-secondary" onClick={() => setPage(1)}>Return to first page</button> : null}
+    <QueryBoundary query={query}>{(data) => <DataTable key={`${status}:${search}:${page}:${pageSize}`} caption={status ? `Devices: ${UPDATE_STATUS_LABEL[status as UpdateStatus]}` : "Device collection coverage"} rows={data.results} total={data.count} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => update({ page_size: String(size) })} loading={query.isFetching || search !== filters.coverage_search} getRowId={(row) => row.asset_id}
+      emptyTitle="No devices match the coverage filters." columns={[
+        { header: "Device", cell: ({ row }) => <InvestigationDeviceLink assetId={row.original.asset_id} name={row.original.hostname} tab="os-updates" /> },
+        { header: "Type", accessorKey: "device_type" },
+        { header: "OS", accessorKey: "os_name" },
+        { header: "Available evidence", cell: ({ row }) => <Badge tone={statusTone[row.original.available_status]}>{UPDATE_STATUS_LABEL[row.original.available_status]}</Badge> },
+        { header: "Available updates", cell: ({ row }) => row.original.available_count ?? "Unknown" },
+        { header: "Installed evidence", cell: ({ row }) => <Badge tone={statusTone[row.original.installed_status]}>{UPDATE_STATUS_LABEL[row.original.installed_status]}</Badge> },
+        { header: "Last seen", cell: ({ row }) => formatUtc(row.original.last_seen_online) },
+      ]} />}</QueryBoundary>
+  </section>;
 }
 
 function View({ customer }: { customer: Customer }) {
-  const { filters, update, reset } = useUrlFilters({ kb: "", state: "available", severity: "", status: "" });
-  const { kb, state, severity } = filters;
-  const status = STATUSES.includes(filters.status as UpdateStatus) ? filters.status as UpdateStatus : null;
-  const setStatus = (value: UpdateStatus | null) => update({ status: value ?? "" });
-  const summary = useQuery({
-    queryKey: ["os-updates", customer.id, "summary"],
-    queryFn: ({ signal }) => api.get<OsUpdateSummary>(`/customers/${customer.id}/os-updates/summary/`, undefined, signal),
-  });
-  return (
-    <>
-      <DataSources customer={customer} />
-      <QueryBoundary query={summary} isEmpty={(s) => s.devices_total === 0}
-        empty={<EmptyState title="No devices in the current dataset.">Run a sync once a source mapping is approved.</EmptyState>}>
-        {(s) => <Summary s={s} onKb={(k) => update({ kb: k, status: "" })} onStatus={setStatus} />}
-      </QueryBoundary>
-      <section aria-labelledby="rows-h" className="mt-6">
-        <div className="mb-2 flex flex-wrap items-end gap-3">
-          <h2 id="rows-h" className="text-sm font-semibold">{status ? `Devices · ${UPDATE_STATUS_LABEL[status]}` : "Update records"}</h2>
-          {status ? <button type="button" className="btn-secondary" onClick={() => setStatus(null)}>Back to update records</button> : (
-            <>
-              <label className="flex items-center gap-1 text-xs">KB
-                <input className="input w-28" value={kb} maxLength={12} placeholder="5099001" onChange={(e) => update({ kb: e.target.value }, true)} />
-              </label>
-              <label className="flex items-center gap-1 text-xs">State
-                <select className="input" value={state} onChange={(e) => update({ state: e.target.value })}>
-                  <option value="available">Available</option>
-                  <option value="installed">Installed</option>
-                  <option value="">All</option>
-                </select>
-              </label>
-            </>
-          )}
-          {!status ? <Field label="Severity">{(id) => <select id={id} className="input" value={severity} onChange={(e) => update({ severity: e.target.value })}>
-              <option value="">All severities</option>
-              {["Critical", "Important", "Moderate", "Low", "Unspecified"].map((value) => <option key={value} value={value}>{value}</option>)}
-            </select>}</Field> : null}
-          <button type="button" className="btn-secondary" onClick={reset}>Clear filters</button>
-          {!status && customer.my_capabilities.includes(CAP.export) ? (
-            <ExportButton customer={customer} reportType="os_updates" label="Export (RPT-04)" filters={{ kb, state, severity }} />
-          ) : null}
+  const { filters, update } = useUrlFilters({ kb: "", state: "available", severity: "", status: "", search: "", view: "" });
+  const { kb, state, severity, search } = filters;
+  const status = STATUSES.includes(filters.status as UpdateStatus) ? filters.status : "";
+  const active = filters.view || (status ? "coverage" : "records");
+  const summary = useQuery({ queryKey: ["os-updates", customer.id, "summary"], queryFn: ({ signal }) => api.get<OsUpdateSummary>(`/customers/${customer.id}/os-updates/summary/`, undefined, signal) });
+  return <>
+    <DataSources customer={customer} compact />
+    <QueryBoundary query={summary} isEmpty={(s) => s.devices_total === 0} empty={<EmptyState title="No devices in the current dataset." />}>{(s) => <Summary s={s} onStatus={(status) => update({ status, view: "coverage" })} />}</QueryBoundary>
+    <Tabs label="Windows update workspace" active={active} onChange={(view) => update({ view })} tabs={[
+      { id: "records", label: "Update records", content: <section className="space-y-3">
+        <div className="list-workspace flex flex-wrap items-end gap-3">
+          <Field label="Search updates">{(id) => <input id={id} className="input w-64" type="search" value={search} maxLength={100} placeholder="Title, KB or device" onChange={(event) => update({ search: event.target.value }, true)} />}</Field>
+          <Field label="KB">{(id) => <input id={id} className="input w-32" value={kb} maxLength={12} placeholder="KB5099001" onChange={(event) => update({ kb: event.target.value }, true)} />}</Field>
+          <Field label="State">{(id) => <select id={id} className="input" value={state} onChange={(event) => update({ state: event.target.value })}><option value="available">Available</option><option value="installed">Installed</option><option value="">All</option></select>}</Field>
+          <Field label="Severity">{(id) => <select id={id} className="input" value={severity} onChange={(event) => update({ severity: event.target.value })}><option value="">All severities</option>{["Critical", "Important", "Moderate", "Low", "Unspecified"].map((item) => <option key={item}>{item}</option>)}</select>}</Field>
+          <button type="button" className="btn-secondary" onClick={() => update({ kb: "", state: "", severity: "", search: "" })}>Clear filters</button>
+          {customer.my_capabilities.includes(CAP.export) ? <ExportButton customer={customer} reportType="os_updates" label="Export update records" filters={{ kb, state, severity, search }} /> : null}
         </div>
-        {status ? <DeviceStatusList customer={customer} status={status} /> : <UpdateRows customer={customer} kb={kb} state={state} severity={severity} />}
-      </section>
-    </>
-  );
+        <p className="text-xs text-slate-500">Device-by-update records. One device may appear for several updates.</p>
+        <UpdateRows customer={customer} kb={kb} state={state} severity={severity} searchText={search} />
+      </section> },
+      { id: "coverage", label: "Collection coverage", content: <DeviceStatusList customer={customer} /> },
+      { id: "common", label: "Common updates", content: <QueryBoundary query={summary}>{(s) => <CommonUpdates s={s} onKb={(kb) => update({ kb, state: "available", severity: "", search: "", view: "records" })} />}</QueryBoundary> },
+    ]} />
+  </>;
 }
 
 export function WindowsUpdatesPage() {
