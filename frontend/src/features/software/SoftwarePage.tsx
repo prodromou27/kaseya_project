@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Link } from "react-router";
+import { useUrlFilters } from "../../lib/useUrlFilters";
 import { Fragment, useState, type FormEvent } from "react";
 
 import { DataTable } from "../../components/DataTable";
@@ -130,8 +132,8 @@ function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: Complian
 }
 
 function Drilldown({ customer, state, product, onReset }: { customer: Customer; state: string; product: string; onReset: () => void }) {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const { filters, update, page, setPage } = useUrlFilters({ search: "" });
+  const search = filters.search;
   const query = useQuery({
     queryKey: ["software", customer.id, "rows", state, product, search, page],
     queryFn: ({ signal }) => api.get<Paginated<SoftwareRow>>(`/customers/${customer.id}/software/`,
@@ -139,7 +141,7 @@ function Drilldown({ customer, state, product, onReset }: { customer: Customer; 
     placeholderData: (prev) => prev,
   });
   const columns: ColumnDef<SoftwareRow, unknown>[] = [
-    { header: "Device", cell: ({ row }) => row.original.hostname ?? row.original.asset_id.slice(0, 8) },
+    { header: "Device", cell: ({ row }) => <Link className="font-medium text-sky-800 hover:underline" to={`/assets/${row.original.asset_id}`}>{row.original.hostname ?? row.original.asset_id.slice(0, 8)}</Link> },
     ...softwareColumns,
   ];
   return (
@@ -150,7 +152,7 @@ function Drilldown({ customer, state, product, onReset }: { customer: Customer; 
         </h2>
         <label className="flex items-center gap-1 text-xs">
           Search
-          <input className="input w-48" type="search" maxLength={100} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+          <input className="input w-48" type="search" maxLength={100} value={search} onChange={(e) => update({ search: e.target.value }, true)} />
         </label>
         {state || product ? <button type="button" className="btn-secondary" onClick={onReset}>Clear filters</button> : null}
         {customer.my_capabilities.includes(CAP.export) ? (
@@ -218,7 +220,7 @@ function Exceptions({ customer, products }: { customer: Customer; products: Prod
 }
 
 function SoftwareView({ customer }: { customer: Customer }) {
-  const [drill, setDrill] = useState<{ state: string; product: string }>({ state: "outdated", product: "" });
+  const { filters: drill, update: setDrill } = useUrlFilters({ state: "outdated", product: "" });
   const summary = useQuery({
     queryKey: ["software", customer.id, "summary"],
     queryFn: ({ signal }) => api.get<SoftwareSummary>(`/customers/${customer.id}/software/summary/`, undefined, signal),
@@ -231,7 +233,7 @@ function SoftwareView({ customer }: { customer: Customer }) {
         {(s) => (
           <>
             <Summary s={s} onDrill={(state, product) => setDrill({ state, product })} />
-            <Drilldown customer={customer} state={drill.state} product={drill.product} onReset={() => setDrill({ state: "", product: "" })} />
+            <Drilldown key={`${customer.id}-${drill.state}-${drill.product}`} customer={customer} state={drill.state} product={drill.product} onReset={() => setDrill({ state: "", product: "" })} />
             <Exceptions customer={customer} products={s.products} />
           </>
         )}
@@ -245,7 +247,7 @@ export function SoftwarePage() {
   return (
     <>
       <PageHeader title="Software versions" subtitle={selected ? `${selected.code} — ${selected.name}` : undefined} />
-      {!selected ? <SelectCustomer /> : <SoftwareView customer={selected} />}
+      {!selected ? <SelectCustomer /> : <SoftwareView key={selected.id} customer={selected} />}
     </>
   );
 }

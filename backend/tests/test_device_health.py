@@ -172,6 +172,28 @@ def test_device_filters_and_hardware(world, synced):
     assert [r["hostname"] for r in rows] == ["PC5"]
     assert rows[0]["hardware"]["memory_total_raw"] == "1234" and rows[0]["worst_disk_free_pct"] == 3.0
     assert c.get(url(world.customer_a, "device-health/devices/?connectivity=never_seen")).json()["count"] == 1
+    attention = c.get(url(world.customer_a, "device-health/devices/?connectivity=offline,stale,never_seen"))
+    assert attention.status_code == 200 and attention.json()["count"] == 3
+    assert {r["connectivity"] for r in attention.json()["results"]} == {"offline", "stale", "never_seen"}
+    assert c.get(url(world.customer_a, "device-health/devices/?connectivity=offline,invalid")).status_code == 400
+    assert (
+        world.client(world.engineer_b).get(url(world.customer_a, "device-health/devices/?disk=critical")).status_code
+        == 404
+    )
+
+
+def test_summary_matches_detailed_classification_for_every_dimension(world, synced):
+    from collections import Counter
+
+    from apps.inventory import health
+
+    rows = health.device_rows(world.customer_a.id)
+    summary = health.summary(world.customer_a.id)
+    assert summary["devices"] == len(rows)
+    for dimension, states in health.DIMENSIONS.items():
+        counts = Counter(row[dimension] for row in rows)
+        assert summary["dimensions"][dimension] == {state: counts[state] for state in states}
+    assert sum(group["devices"] for group in summary["by_group"]) == len(rows)
 
 
 def test_thresholds_two_person_approval_and_supersede(world, synced):

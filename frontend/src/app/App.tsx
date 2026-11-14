@@ -1,33 +1,36 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { lazy, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router";
 
 import { LoadingState } from "../components/States";
-import { AdminPage } from "../features/admin/AdminPage";
-import { AssetDetailPage } from "../features/inventory/AssetDetailPage";
-import { AssetsPage } from "../features/inventory/AssetsPage";
-import { GroupNetworkPage } from "../features/groups/GroupNetworkPage";
-import { GroupsPage } from "../features/groups/GroupsPage";
-import { OnboardingPage } from "../features/onboarding/OnboardingPage";
-import { OnboardingRunPage } from "../features/onboarding/OnboardingRunPage";
-import { PatchPoliciesPage } from "../features/policies/PatchPoliciesPage";
-import { DeviceHealthPage } from "../features/health/DeviceHealthPage";
-import { ChangesPage } from "../features/changes/ChangesPage";
-import { NotificationsPage } from "../features/notifications/NotificationsPage";
-import { WindowsUpdatesPage } from "../features/patching/WindowsUpdatesPage";
-import { SoftwarePage } from "../features/software/SoftwarePage";
+import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { LoginPage } from "../features/auth/LoginPage";
-import { CustomerDetailPage } from "../features/customers/CustomerDetailPage";
-import { CustomersPage } from "../features/customers/CustomersPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
-import { LifecyclePage } from "../features/lifecycle/LifecyclePage";
-import { ConnectVsaPage } from "../features/setup/ConnectVsaPage";
 import { NotFoundPage, NotYetAvailablePage } from "../features/placeholder/NotYetAvailable";
-import { ReportsPage } from "../features/reports/ReportsPage";
 import { ApiError } from "../lib/api";
 import { RequireAuth } from "../lib/auth";
 import { CustomerProvider } from "../lib/customerContext";
 import { AppShell } from "./AppShell";
+
+const AdminPage = lazy(() => import("../features/admin/AdminPage").then((module) => ({ default: module.AdminPage })));
+const AssetDetailPage = lazy(() => import("../features/inventory/AssetDetailPage").then((module) => ({ default: module.AssetDetailPage })));
+const AssetsPage = lazy(() => import("../features/inventory/AssetsPage").then((module) => ({ default: module.AssetsPage })));
+const GroupNetworkPage = lazy(() => import("../features/groups/GroupNetworkPage").then((module) => ({ default: module.GroupNetworkPage })));
+const GroupMovesPage = lazy(() => import("../features/groups/GroupMovesPage").then((module) => ({ default: module.GroupMovesPage })));
+const GroupsPage = lazy(() => import("../features/groups/GroupsPage").then((module) => ({ default: module.GroupsPage })));
+const OnboardingPage = lazy(() => import("../features/onboarding/OnboardingPage").then((module) => ({ default: module.OnboardingPage })));
+const OnboardingRunPage = lazy(() => import("../features/onboarding/OnboardingRunPage").then((module) => ({ default: module.OnboardingRunPage })));
+const PatchPoliciesPage = lazy(() => import("../features/policies/PatchPoliciesPage").then((module) => ({ default: module.PatchPoliciesPage })));
+const DeviceHealthPage = lazy(() => import("../features/health/DeviceHealthPage").then((module) => ({ default: module.DeviceHealthPage })));
+const ChangesPage = lazy(() => import("../features/changes/ChangesPage").then((module) => ({ default: module.ChangesPage })));
+const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage").then((module) => ({ default: module.NotificationsPage })));
+const WindowsUpdatesPage = lazy(() => import("../features/patching/WindowsUpdatesPage").then((module) => ({ default: module.WindowsUpdatesPage })));
+const SoftwarePage = lazy(() => import("../features/software/SoftwarePage").then((module) => ({ default: module.SoftwarePage })));
+const CustomerDetailPage = lazy(() => import("../features/customers/CustomerDetailPage").then((module) => ({ default: module.CustomerDetailPage })));
+const CustomersPage = lazy(() => import("../features/customers/CustomersPage").then((module) => ({ default: module.CustomersPage })));
+const LifecyclePage = lazy(() => import("../features/lifecycle/LifecyclePage").then((module) => ({ default: module.LifecyclePage })));
+const ConnectVsaPage = lazy(() => import("../features/setup/ConnectVsaPage").then((module) => ({ default: module.ConnectVsaPage })));
+const ReportsPage = lazy(() => import("../features/reports/ReportsPage").then((module) => ({ default: module.ReportsPage })));
 
 export function makeQueryClient() {
   return new QueryClient({
@@ -62,6 +65,7 @@ export function AppRoutes() {
         <Route path="assets/:assetId" element={<AssetDetailPage />} />
         <Route path="software" element={<SoftwarePage />} />
         <Route path="groups" element={<GroupsPage />} />
+        <Route path="group-moves" element={<GroupMovesPage />} />
         <Route path="groups/:groupId" element={<GroupNetworkPage />} />
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="onboarding/:runId" element={<OnboardingRunPage />} />
@@ -84,9 +88,9 @@ export function App() {
   const [queryClient] = useState(makeQueryClient);
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <AppErrorBoundary><BrowserRouter>
         <AppRoutes />
-      </BrowserRouter>
+      </BrowserRouter></AppErrorBoundary>
     </QueryClientProvider>
   );
 }

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "../../components/DataTable";
@@ -30,7 +31,7 @@ const columns: ColumnDef<ReportRun, unknown>[] = [
       row.original.download_available ? (
         // Plain link: the server re-authorises on every download and streams the private artifact.
         <a className="text-sky-800 underline" href={`/api/v1/reports/${row.original.id}/download/`}>
-          Download CSV
+          Download {row.original.format.toUpperCase()}
         </a>
       ) : (
         <span className="text-xs text-slate-400">{row.original.state === "completed" ? "Expired" : "Not available"}</span>
@@ -39,12 +40,13 @@ const columns: ColumnDef<ReportRun, unknown>[] = [
 ];
 
 export function CustomerReports({ customer }: { customer: Customer }) {
+  const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
   const path = `/customers/${customer.id}/reports/`;
   const key = ["reports", customer.id];
   const query = useQuery({
-    queryKey: key,
-    queryFn: ({ signal }) => api.get<Paginated<ReportRun>>(path, undefined, signal),
+    queryKey: [...key, page],
+    queryFn: ({ signal }) => api.get<Paginated<ReportRun>>(path, { page }, signal),
     refetchInterval: (q) => (q.state.data?.results.some((r) => r.state === "queued" || r.state === "running") ? 2000 : false),
   });
   const canAuditReport = customer.my_capabilities.includes(CAP.auditRead);
@@ -57,11 +59,11 @@ export function CustomerReports({ customer }: { customer: Customer }) {
     <div className="space-y-3">
       <Notice tone="info">
         Reports are generated asynchronously for exactly one customer from pinned dataset snapshots, include a provenance
-        header, and are re-authorised on every download. OS-update and PDF/XLSX reports arrive with P2.
+        header, and are re-authorised on every download. CSV, XLSX and PDF formats are available.
       </Notice>
       <div className="flex flex-wrap gap-3">
-        <ExportButton customer={customer} reportType="asset_inventory" label="Asset inventory CSV (RPT-01)" filters={{}} />
-        <ExportButton customer={customer} reportType="software_compliance" label="Software compliance CSV (RPT-03)" filters={{}} />
+        <ExportButton customer={customer} reportType="asset_inventory" label="Asset inventory (RPT-01)" filters={{}} />
+        <ExportButton customer={customer} reportType="software_compliance" label="Software compliance (RPT-03)" filters={{}} />
       </div>
       {canAuditReport ? (
         <div className="flex items-center gap-3">
@@ -77,7 +79,7 @@ export function CustomerReports({ customer }: { customer: Customer }) {
       ) : null}
       <QueryBoundary query={query}>
         {(data) => (
-          <DataTable caption={`${customer.code} reports`} columns={columns} rows={data.results} total={data.count} getRowId={(r) => r.id} emptyTitle="No reports generated yet." />
+          <DataTable caption={`${customer.code} reports`} columns={columns} rows={data.results} total={data.count} page={page} onPageChange={setPage} getRowId={(r) => r.id} emptyTitle="No reports generated yet." />
         )}
       </QueryBoundary>
     </div>

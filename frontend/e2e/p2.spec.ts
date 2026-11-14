@@ -55,18 +55,19 @@ test("a report can be regenerated from its pinned snapshot", async ({ page }) =>
 test("definition + schedule with an unauthorised recipient is rejected, authorised accepted", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
   await openNav(page, "Reports");
-  page.once("dialog", (d) => void d.accept("Weekly inventory"));
+  const definitionName = `Weekly inventory ${Date.now()}`;
+  page.once("dialog", (d) => void d.accept(definitionName));
   await page.getByRole("button", { name: "Save as definition" }).click();
   await expect(page.getByText("Definition saved.")).toBeVisible();
   await page.getByRole("tab", { name: "Definitions & schedules" }).click();
-  const form = page.getByRole("form", { name: /Schedule Weekly inventory/ });
+  const form = page.getByRole("form", { name: `Schedule ${definitionName}`, exact: true });
   await form.getByLabel("Timezone (IANA)").fill("Asia/Nicosia");
   await form.getByLabel("Recipients (emails, in-portal)").fill("demo.viewer.b@demo.invalid");
   await form.getByRole("button", { name: "Add schedule" }).click();
   await expect(form.getByRole("alert")).toContainText("cannot receive");
   await form.getByLabel("Recipients (emails, in-portal)").fill("demo.admin.a@demo.invalid");
   await form.getByRole("button", { name: "Add schedule" }).click();
-  await expect(page.getByText(/weekly at 07:00 Asia\/Nicosia/)).toBeVisible();
+  await expect(page.getByText(/weekly at 07:00 Asia\/Nicosia/).last()).toBeVisible();
 });
 
 test("dashboard shows history with a table view", async ({ page }) => {

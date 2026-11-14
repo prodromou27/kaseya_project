@@ -30,11 +30,11 @@ test("engineer syncs the approved fixture source and browses inventory", async (
   await expect(page.getByText("130 records · page 1 of 3")).toBeVisible();
   await expect(table.getByRole("link").first()).toHaveText(/^DEMOA-/);
 
-  await page.getByLabel("Search").fill("DEMOA-WS041");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("DEMOA-WS041");
   await expect(page.getByText("1 record · page 1 of 1")).toBeVisible();
   await expect(table.getByText("not collected")).toBeVisible();
 
-  await page.getByLabel("Search").fill("");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("");
   await table.getByRole("link").first().click();
   await expect(page.getByRole("tab", { name: /Installed software/ })).toBeVisible();
   await page.getByRole("tab", { name: /Installed software/ }).click();
@@ -56,7 +56,7 @@ test("software versions show separate populations and the non-patch disclaimer",
 test("engineer exports a scoped inventory CSV with provenance", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
   await openNav(page, "Devices");
-  await page.getByRole("button", { name: "Export inventory CSV" }).click();
+  await page.getByRole("button", { name: "Export inventory", exact: true }).click();
   const link = page.getByRole("link", { name: /Download CSV \(130 rows\)/ });
   await expect(link).toBeVisible({ timeout: 15_000 });
   const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);

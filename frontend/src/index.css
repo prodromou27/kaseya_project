@@ -1,17 +1,47 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
+  --color-canvas: #f6f8fb;
+  --color-surface: #ffffff;
+  --color-ink: #172b4d;
+  --color-action: #0369a1;
+}
+
+@layer base {
+  body { margin: 0; background: var(--color-canvas); font-family: var(--font-sans); color: #1e293b; }
+  button, select, summary { cursor: pointer; }
+  button:disabled, select:disabled { cursor: not-allowed; }
+  input, select, textarea { min-width: 0; max-width: 100%; }
+  main label { min-width: 0; max-width: 100%; }
+  input[type="checkbox"] { accent-color: var(--color-action); }
+  main > * { min-width: 0; }
+}
+
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center gap-1 rounded bg-sky-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md bg-sky-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-secondary {
-    @apply inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-danger {
     @apply inline-flex items-center gap-1 rounded border border-red-300 bg-white px-2.5 py-1 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .input {
-    @apply rounded border border-slate-300 bg-white px-2 py-1.5 text-sm shadow-sm;
+    @apply min-h-9 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-800 shadow-sm placeholder:text-slate-400;
+  }
+  .filter-bar {
+    @apply rounded-lg border border-slate-200 bg-white p-3;
+  }
+  .data-table tbody tr:nth-child(even) {
+    @apply bg-slate-50/50;
+  }
+  .investigation-grid {
+    @apply grid gap-3 lg:grid-cols-2;
+  }
+  .investigation-card {
+    @apply min-w-0 rounded-lg border border-slate-200 bg-white p-4;
   }
 }
 
@@ -24,3 +54,14 @@
 .legend-swatch-0, .legend-dot-0 { background-color: #2a78d6; }
 .legend-swatch-1, .legend-dot-1 { background-color: #eb6834; }
 .legend-swatch-2, .legend-dot-2 { background-color: #1baf7a; }
+
+@media (max-width: 639px) {
+  main dl[class*="grid-cols-"] { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+  main dl dd { margin-bottom: 0.6rem; overflow-wrap: anywhere; }
+  main form { min-width: 0; }
+  main [role="tabpanel"] { min-width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; }
+}

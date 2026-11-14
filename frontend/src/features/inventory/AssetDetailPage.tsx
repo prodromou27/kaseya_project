@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link, useParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
@@ -8,8 +8,11 @@ import { QueryBoundary } from "../../components/States";
 import { Tabs } from "../../components/Tabs";
 import { Badge, Notice, PageHeader, statusTone } from "../../components/ui";
 import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
+import { useUrlFilters } from "../../lib/useUrlFilters";
+import { useCustomers } from "../../lib/customerContext";
 import { api } from "../../lib/api";
 import { AdapterList } from "../groups/GroupNetworkPage";
+import { ProposeGroupMove } from "../groups/GroupMovesPage";
 import { formatUtc } from "../../lib/format";
 import { PATCH_STATE_LABEL, STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
 import { PolicyDefinitionView } from "../policies/PolicyDefinitionView";
@@ -32,31 +35,37 @@ export const softwareColumns: ColumnDef<SoftwareRow, unknown>[] = [
 function Overview({ detail }: { detail: AssetDetail }) {
   const a = detail.asset;
   if (!a) return <Notice tone="warn">This device is not in the current published dataset (it may have been removed at the source or its mapping revoked).</Notice>;
-  const fields: [string, string][] = [
-    ["Device ID (source)", detail.external_id], ["Hostname", a.hostname], ["Description", a.description],
-    ["Group", `${a.group_name}${a.group_external_id ? ` (ID ${a.group_external_id})` : " (group ID not reported)"}`],
-    ["Site", `${a.site_name || "?"} (ID ${a.site_external_id || "?"})`], ["Organization ID", a.organization_external_id],
-    ["Agent installed", detail.details?.is_agent_installed === null || detail.details === null ? "not reported"
-      : detail.details.is_agent_installed ? "yes" : "no"],
-    ["OS", [a.os_name, a.os_version].filter(Boolean).join(" ") || "not reported"],
-    ["Manufacturer / model", [a.manufacturer, a.model].filter(Boolean).join(" ") || "not reported"],
-    ["Serial number", a.serial_number || "not reported"], ["Domain", a.domain || "not reported"],
-    ["Agent version", a.client_version], ["Last seen online", formatUtc(a.last_seen_online)],
-    ["Source", `${a.source} (${a.data_basis})`], ["Dataset as of", formatUtc(a.as_of)],
+  const groups: { title: string; fields: [string, string][] }[] = [
+    { title: "Identity & location", fields: [
+      ["Device ID (source)", detail.external_id], ["Serial number", a.serial_number || "not reported"],
+      ["Organization ID", a.organization_external_id || "not reported"],
+      ["Site", a.site_name || a.site_external_id || "not reported"],
+      ["Group", a.group_name || a.group_external_id || "not reported"],
+      ["Domain", a.domain || "not reported"],
+    ] },
+    { title: "Operating system & agent", fields: [
+      ["OS", [a.os_name, a.os_version].filter(Boolean).join(" ") || "not reported"],
+      ["Manufacturer / model", [a.manufacturer, a.model].filter(Boolean).join(" ") || "not reported"],
+      ["Agent installed", detail.details?.is_agent_installed == null ? "not reported" : detail.details.is_agent_installed ? "yes" : "no"],
+      ["Agent version", a.client_version || "not reported"], ["Last seen online", formatUtc(a.last_seen_online)],
+      ["Description", a.description || "not reported"],
+    ] },
   ];
   const h = detail.health;
   return (
     <div className="space-y-4">
-      <dl className="grid max-w-3xl grid-cols-[12rem_1fr] gap-y-1 text-sm">
-        {fields.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="text-slate-500">{k}</dt>
-            <dd className="break-all">{v || "—"}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="investigation-grid">
+        {groups.map((group) => <section key={group.title} className="investigation-card" aria-label={group.title}>
+          <h2 className="mb-3 text-sm font-semibold text-slate-800">{group.title}</h2>
+          <dl className="grid grid-cols-[9rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+            {group.fields.map(([key, value]) => <div key={key} className="contents">
+              <dt className="text-xs text-slate-500">{key}</dt><dd className="break-words">{value || "not reported"}</dd>
+            </div>)}
+          </dl>
+        </section>)}
+      </div>
       {h ? (
-        <section aria-label="Device health" className="max-w-3xl rounded border border-slate-200 bg-white p-3 text-sm">
+        <section aria-label="Device health" className="investigation-card text-sm">
           <h3 className="mb-1 font-semibold">Health (snapshot {formatUtc(h.snapshot_at)}, {h.thresholds.source} thresholds)</h3>
           <p className="mb-2 text-xs text-slate-500">Derived from the inventory snapshot, not live monitoring. Unknown states are not healthy or unhealthy.</p>
           <dl className="grid grid-cols-[12rem_1fr] gap-y-1">
@@ -247,19 +256,31 @@ function OsUpdates({ detail }: { detail: AssetDetail }) {
 
 export function AssetDetailPage() {
   const { assetId = "" } = useParams();
-  const [tab, setTab] = useState("overview");
+  const { filters: { tab, inventory }, update } = useUrlFilters({ tab: "overview", inventory: "" });
+  const { select, selected } = useCustomers();
+  const inventorySearch = inventory.startsWith("?") && inventory.length <= 4096 ? inventory : "";
   const query = useQuery({
     queryKey: ["asset", assetId],
     queryFn: ({ signal }) => api.get<AssetDetail>(`/assets/${assetId}/`, undefined, signal),
   });
+  const detailCustomerId = query.data?.customer?.id;
+  useEffect(() => {
+    if (detailCustomerId && detailCustomerId !== selected?.id) select(detailCustomerId);
+  }, [detailCustomerId, selected?.id, select]);
   return (
     <QueryBoundary query={query}>
       {(detail) => (
         <>
-          <p className="mb-1 text-sm"><Link to="/assets" className="text-sky-800 hover:underline">← Assets</Link></p>
+          <p className="mb-2 text-xs"><Link to={`/assets${inventorySearch}`} className="font-medium text-sky-800 hover:underline">Back to devices</Link></p>
           <PageHeader title={detail.asset?.hostname || detail.external_id}
                       subtitle={detail.active ? "Active in current inventory" : "Inactive (absent from latest complete inventory)"} />
-          <Tabs label="Device sections" active={tab} onChange={setTab} tabs={[
+          {detail.asset ? <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
+            {detail.customer ? <span><span className="text-slate-400">Customer</span> {detail.customer.code}</span> : null}
+            <span><span className="text-slate-400">Site / group</span> {detail.asset.site_name || detail.asset.site_external_id || "not reported"} / {detail.asset.group_name || "not reported"}</span>
+            <span><span className="text-slate-400">Source</span> {detail.asset.source} / <Badge tone="info">{detail.asset.data_basis}</Badge></span>
+            <span><span className="text-slate-400">Published</span> {formatUtc(detail.asset.as_of)}</span>
+          </div> : null}
+          <Tabs label="Device sections" active={tab} onChange={(value) => update({ tab: value })} tabs={[
             { id: "overview", label: "Overview", content: <Overview detail={detail} /> },
             { id: "software", label: `Installed software (${detail.software.length})`, content: (
               detail.asset?.software_status === "not_collected"
@@ -270,6 +291,7 @@ export function AssetDetailPage() {
             { id: "os-updates", label: "OS updates", content: <OsUpdates detail={detail} /> },
             { id: "policies", label: "Policies", content: <Policies detail={detail} /> },
             { id: "network", label: "Network", content: <Network detail={detail} /> },
+            { id: "operations", label: "Operations", content: selected && detail.in_current_dataset ? <ProposeGroupMove key={detail.id} customer={selected} assetId={detail.id} /> : <Notice tone="warn">Select the device's customer and a current published device before proposing a change.</Notice> },
             { id: "onboarding", label: "Onboarding", content: <Reconciliation detail={detail} /> },
             { id: "notifications", label: "Notifications", content: <DeviceNotifications detail={detail} /> },
             { id: "hardware", label: "Hardware & security", content: <HardwareSecurity detail={detail} /> },

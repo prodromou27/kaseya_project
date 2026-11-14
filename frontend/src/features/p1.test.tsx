@@ -62,6 +62,18 @@ function routes(extra: Record<string, unknown> = {}) {
 }
 
 describe("assets", () => {
+  it("restores URL scope and passes the complete filters to an export", async () => {
+    const { calls } = routes({ [`POST ${base}/reports/`]: { status: 202, body: { id: "export-1", state: "queued" } } });
+    renderApp("/assets?search=ext-1&offline=true&group_id=20011&site=2001&page=2");
+    await screen.findByRole("table", { name: "ACME assets" });
+    expect(screen.getByRole("searchbox", { name: "Search" })).toHaveValue("ext-1");
+    expect(calls.some((call) => call.url.includes("group_id=20011") && call.url.includes("page=2"))).toBe(true);
+    await userEvent.click(screen.getByRole("button", { name: "Export inventory" }));
+    const submitted = calls.find((call) => call.method === "POST" && call.url.endsWith("/reports/"));
+    expect(JSON.parse(String(submitted?.init?.body)).filters).toMatchObject({ search: "ext-1", offline: "true", group_id: "20011", site: "2001" });
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByRole("searchbox", { name: "Search" })).toHaveValue("");
+  });
   it("lists scoped inventory with provenance, fixture labelling and not-collected state", async () => {
     routes();
     renderApp("/assets");

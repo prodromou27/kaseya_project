@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
-from . import changes_views, details_views, health_views, network_views, views
+from . import changes_views, details_views, health_views, move_views, network_views, views
 
 router = SimpleRouter()
 router.register("assets", views.AssetDetailViewSet, basename="asset")
@@ -20,6 +20,7 @@ nested.register(
 )
 nested.register("changes", changes_views.CustomerChangesViewSet, basename="customer-changes")
 nested.register("expected-subnets", network_views.ExpectedSubnetViewSet, basename="customer-expected-subnet")
+nested.register("group-moves", move_views.GroupMoveViewSet, basename="customer-group-move")
 
 urlpatterns = [
     path("", include(router.urls)),

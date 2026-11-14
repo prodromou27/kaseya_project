@@ -5,6 +5,53 @@ import uuid
 from django.db import models
 
 
+class GroupMoveRequest(models.Model):
+    """Internal approval record only. No vendor operation is implemented or enabled."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Awaiting independent review"
+        APPROVED = "approved", "Approved proposal (execution disabled)"
+        REJECTED = "rejected", "Rejected"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="group_move_requests")
+    asset = models.ForeignKey("inventory.Asset", on_delete=models.PROTECT, related_name="group_move_requests")
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.PROTECT, related_name="+")
+    target_group = models.ForeignKey("inventory.GroupNode", on_delete=models.PROTECT, related_name="+")
+    source_group_id = models.CharField(max_length=64)
+    source_group_name = models.CharField(max_length=255, blank=True)
+    device_name = models.CharField(max_length=255, blank=True)
+    reason = models.CharField(max_length=1000)
+    policy_impact = models.TextField()
+    requested_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="group_moves_requested")
+    reviewed_by = models.ForeignKey(
+        "accounts.User", on_delete=models.PROTECT, null=True, blank=True, related_name="group_moves_reviewed"
+    )
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    review_reason = models.CharField(max_length=1000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "id"]
+        indexes = [models.Index(fields=["customer", "state", "created_at"], name="inventory_move_review_idx")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(reviewed_by__isnull=True) | ~models.Q(reviewed_by=models.F("requested_by")),
+                name="inventory_move_separate_review",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(state="pending", reviewed_by__isnull=True, reviewed_at__isnull=True)
+                | models.Q(state__in=["approved", "rejected"], reviewed_by__isnull=False, reviewed_at__isnull=False),
+                name="inventory_move_review_state",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Group move proposal {self.id} ({self.state})"
+
+
 class Asset(models.Model):
     """Stable identity of a source device. Descriptive data lives in per-generation ``AssetObservation`` rows.
 

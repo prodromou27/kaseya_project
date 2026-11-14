@@ -1,103 +1,70 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 
+import { ErrorState, LoadingState } from "../../components/States";
 import { api } from "../../lib/api";
-import { formatUtc } from "../../lib/format";
-import type { Customer, HealthSummary, LifecycleSummary, TrendResponse } from "../../lib/types";
+import type { Customer, HealthSummary, OsUpdateSummary, SoftwareSummary } from "../../lib/types";
 
 type Tile = { label: string; value: number | null; sub: string; to: string; attention?: boolean };
 
 function TileCard({ tile }: { tile: Tile }) {
   return (
-    <Link
-      to={tile.to}
-      className="block rounded border border-slate-200 bg-white p-3 hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
-    >
-      <span className="flex items-start justify-between gap-2">
-        <span className="text-xs font-medium text-slate-600">{tile.label}</span>
-        {tile.attention ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500" title="Needs attention" aria-label="needs attention" /> : null}
+    <Link to={tile.to} className="group flex min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm hover:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500">
+      <span className="flex items-start justify-between gap-2 text-xs font-medium text-slate-600">
+        {tile.label}<span aria-hidden="true" className="text-slate-400 group-hover:text-sky-700">↗</span>
       </span>
-      <span className="mt-1 block text-2xl font-semibold tabular-nums text-slate-900">{tile.value ?? "—"}</span>
-      <span className="mt-0.5 block text-xs text-slate-500">{tile.sub}</span>
+      <span className={`mt-2 text-3xl font-semibold tabular-nums tracking-tight ${tile.attention ? "text-amber-700" : "text-slate-900"}`}>{tile.value ?? "—"}</span>
+      <span className="mt-1 text-[11px] leading-relaxed text-slate-500">{tile.sub}</span>
     </Link>
   );
 }
 
-const sum = (rec: Record<string, number> | undefined, keys: string[]) => keys.reduce((n, k) => n + (rec?.[k] ?? 0), 0);
+const sum = (record: Record<string, number> | undefined, keys: string[]) => record ? keys.reduce((n, key) => n + (record[key] ?? 0), 0) : null;
 
-/** Headline numbers for the selected customer, from the latest published snapshot. Every tile links to its page. */
+/** Use current customer-wide summaries. A historical trend point belongs to one source, not the whole customer. */
 export function KpiTiles({ customer }: { customer: Customer }) {
   const health = useQuery({
     queryKey: ["device-health", customer.id, "summary"],
     queryFn: ({ signal }) => api.get<HealthSummary>(`/customers/${customer.id}/device-health/summary/`, undefined, signal),
   });
-  const trends = useQuery({
-    queryKey: ["trends", customer.id, 7],
-    queryFn: ({ signal }) => api.get<TrendResponse>(`/customers/${customer.id}/trends/`, { days: 7 }, signal),
+  const software = useQuery({
+    queryKey: ["software", customer.id, "summary"],
+    queryFn: ({ signal }) => api.get<SoftwareSummary>(`/customers/${customer.id}/software/summary/`, undefined, signal),
   });
-  const lifecycle = useQuery({
-    queryKey: ["lifecycle", customer.id],
-    queryFn: ({ signal }) => api.get<LifecycleSummary>(`/customers/${customer.id}/lifecycle/`, undefined, signal),
+  const patch = useQuery({
+    queryKey: ["os-updates", customer.id, "summary"],
+    queryFn: ({ signal }) => api.get<OsUpdateSummary>(`/customers/${customer.id}/os-updates/summary/`, undefined, signal),
   });
-  if (health.isPending || trends.isPending) return <p className="mb-4 text-sm text-slate-500">Loading summary…</p>;
-  if (health.isError) return null;
+  if (health.isPending) return <LoadingState label="Loading operational summary…" />;
   const h = health.data;
-  if (h.devices === 0) {
-    return (
-      <p className="mb-4 rounded border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
-        No devices yet for this customer. Data appears after the first successful sync of an approved mapping.
-      </p>
-    );
-  }
-  const latest = trends.data?.points.at(-1);
-  const d = h.dimensions;
-  const offline = sum(d.connectivity, ["offline", "stale", "never_seen"]);
-  const diskCritical = d.disk?.critical ?? 0;
-  const diskWarning = d.disk?.warning ?? 0;
-  const av = sum(d.antivirus, ["disabled", "enabled_outdated"]);
-  const fw = d.firewall?.disabled ?? 0;
-  const os = latest?.os_updates;
-  const sw = latest?.software;
+  const offline = sum(h?.dimensions.connectivity, ["offline", "stale", "never_seen"]);
+  const disk = h?.dimensions.disk?.critical ?? null;
+  const antivirus = sum(h?.dimensions.antivirus, ["disabled", "enabled_outdated"]);
+  const os = patch.data;
+  const sw = software.data;
   const tiles: Tile[] = [
-    { label: "Devices", value: h.devices, sub: `latest snapshot${h.data_basis.includes("fixture") ? " · demo data" : ""}`, to: "/assets" },
-    { label: "Offline / stale", value: offline, sub: `of ${h.devices} devices`, to: "/device-health", attention: offline > 0 },
-    { label: "Disk critical", value: diskCritical, sub: `${diskWarning} more at warning level`, to: "/device-health", attention: diskCritical > 0 },
-    { label: "Antivirus issues", value: av, sub: `off or outdated · firewall off on ${fw}`, to: "/device-health", attention: av + fw > 0 },
-    {
-      label: "Missing critical updates",
-      value: os ? os.devices_with_critical : null,
-      sub: os ? `of ${os.devices_reporting} devices reporting updates` : "no update data yet",
-      to: "/windows-updates",
-      attention: (os?.devices_with_critical ?? 0) > 0,
-    },
-    {
-      label: "Outdated software",
-      value: sw?.devices_with_outdated ?? null,
-      sub: sw ? `${sw.outdated} outdated of ${sw.comparable} comparable installs` : "no reviewed catalog yet",
-      to: "/software",
-      attention: (sw?.devices_with_outdated ?? 0) > 0,
-    },
-    {
-      label: "OS end of support",
-      value: lifecycle.data ? lifecycle.data.os.totals.end_of_support : null,
-      sub: lifecycle.data
-        ? `${lifecycle.data.os.totals.ending_soon} ending soon · ${lifecycle.data.os.totals.unknown} unknown`
-        : "lifecycle not available",
-      to: "/lifecycle",
-      attention: (lifecycle.data?.os.totals.end_of_support ?? 0) > 0,
-    },
+    { label: "Devices", value: h?.devices ?? null, sub: "Current published inventory · all approved sources", to: "/assets" },
+    { label: "Offline / stale", value: offline, sub: "Includes devices with no last-seen evidence", to: "/device-health?connectivity=offline,stale,never_seen", attention: (offline ?? 0) > 0 },
+    { label: "Disk critical", value: disk, sub: `${h?.dimensions.disk?.warning ?? "—"} more at warning level`, to: "/device-health?disk=critical", attention: (disk ?? 0) > 0 },
+    { label: "Antivirus issues", value: antivirus, sub: "Reported disabled or enabled but outdated", to: "/device-health?antivirus=disabled,enabled_outdated", attention: (antivirus ?? 0) > 0 },
+    { label: "Missing critical updates", value: os && os.devices_reporting_updates > 0 ? os.devices_by_severity.Critical ?? 0 : null,
+      sub: os ? `of ${os.devices_reporting_updates} devices reporting updates · ${os.devices_total - os.devices_reporting_updates} without data` : patch.isPending ? "Loading update evidence…" : "Update summary unavailable",
+      to: "/windows-updates?state=available&severity=Critical", attention: (os?.devices_by_severity.Critical ?? 0) > 0 },
+    { label: "Outdated software", value: sw && sw.eligible_installations > 0 ? sw.unique_assets_with_outdated : null,
+      sub: sw ? `${sw.totals.outdated} outdated of ${sw.comparable_installations} comparable installs` : software.isPending ? "Loading software evidence…" : "Software summary unavailable",
+      to: "/software?state=outdated", attention: (sw?.unique_assets_with_outdated ?? 0) > 0 },
   ];
-  const asOf = h.as_of.filter(Boolean).sort().at(-1);
   return (
-    <section aria-label="Summary" className="mb-4">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
-        {tiles.map((t) => (
-          <TileCard key={t.label} tile={t} />
-        ))}
+    <section aria-label="Summary" className="mb-5 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-slate-800">Operational overview</h2>
+        <span className="text-xs text-slate-500">Snapshot observations · select a metric to investigate</span>
       </div>
-      <p className="mt-1 text-xs text-slate-500">
-        {asOf ? `Latest snapshot ${formatUtc(asOf)}` : ""}
-      </p>
+      {health.isError ? <ErrorState error={health.error} onRetry={() => void health.refetch()} /> : null}
+      {software.isError ? <ErrorState error={software.error} onRetry={() => void software.refetch()} /> : null}
+      {patch.isError ? <ErrorState error={patch.error} onRetry={() => void patch.refetch()} /> : null}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">{tiles.map((tile) => <TileCard key={tile.label} tile={tile} />)}</div>
+      {h?.devices === 0 ? <p className="text-sm text-slate-600">No devices yet for this customer. Inventory appears after a successful sync of an approved source mapping.</p> : null}
     </section>
   );
 }

@@ -17,6 +17,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.accounts.roles import Cap
+from apps.inventory.filters import AssetFilters, filter_inventory
 
 ALL_FORMATS = ("csv", "xlsx", "pdf")
 
@@ -94,6 +95,9 @@ def _pin_generations(customer: Any, pinned: dict[str, Any] | None) -> dict[str, 
         gens = list(current_generations(customer.id).select_related("integration_instance"))
     datasets = "; ".join(f"VSA assets generation {g.id} ({g.integration_instance.name})" for g in gens)
     return {
+        "extra_pins": {
+            "inventory_filter_at": (pinned or {}).get("inventory_filter_at") or timezone.now().isoformat(),
+        },
         "generation_ids": [str(g.id) for g in gens],
         "evaluation_ids": [],
         "data_basis": ",".join(sorted({g.data_basis for g in gens})) or "none",
@@ -149,12 +153,6 @@ def _pin_os_updates(customer: Any, pinned: dict[str, Any] | None) -> dict[str, A
 # ---------------------------------------------------------------------------------------------- RPT-01
 
 
-class AssetFilters(serializers.Serializer):
-    group = serializers.CharField(required=False, allow_blank=True, max_length=255)
-    os = serializers.CharField(required=False, allow_blank=True, max_length=255)
-    search = serializers.CharField(required=False, allow_blank=True, max_length=100)
-
-
 def _observations(customer: Any, pins: dict[str, Any]) -> Any:
     from apps.inventory.models import AssetObservation
 
@@ -164,14 +162,13 @@ def _observations(customer: Any, pins: dict[str, Any]) -> Any:
 
 
 def _asset_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
-    qs = _observations(customer, pins)
-    if filters.get("group"):
-        qs = qs.filter(group_name=filters["group"])
-    if filters.get("os"):
-        qs = qs.filter(os_name=filters["os"])
-    if filters.get("search"):
-        qs = qs.filter(Q(hostname__icontains=filters["search"]) | Q(serial_number__icontains=filters["search"]))
-    for o in qs.order_by("hostname", "asset_id").iterator(chunk_size=2000):
+    from django.utils.dateparse import parse_datetime
+
+    filter_at = pins.get("extra_pins", {}).get("inventory_filter_at")
+    qs = filter_inventory(
+        _observations(customer, pins), filters, as_of=parse_datetime(filter_at) if filter_at else None
+    )
+    for o in qs.iterator(chunk_size=2000):
         yield [
             o.asset.external_id,
             o.hostname,
@@ -190,6 +187,69 @@ def _asset_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) ->
 
 
 # ---------------------------------------------------------------------------------------------- RPT-03 / RPT-05
+
+
+class NetworkFilters(AssetFilters):
+    def validate_for_customer(self, customer: Any, data: dict[str, Any]) -> None:
+        super().validate_for_customer(customer, data)
+        if data.get("group_id") and not data.get("instance"):
+            from apps.inventory.models import GroupNode
+            from apps.inventory.queries import current_generations
+
+            sources = (
+                GroupNode.objects.filter(
+                    customer=customer, generation__in=current_generations(customer.id), external_id=data["group_id"]
+                )
+                .values("generation__integration_instance_id")
+                .distinct()
+            )
+            if sources.count() > 1:
+                raise serializers.ValidationError({"instance": "Select a VSA instance for this ambiguous group ID."})
+
+
+def _network_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    from django.utils.dateparse import parse_datetime
+
+    filter_at = pins.get("extra_pins", {}).get("inventory_filter_at")
+    qs = filter_inventory(
+        _observations(customer, pins), filters, as_of=parse_datetime(filter_at) if filter_at else None
+    )
+    qs = qs.select_related("generation__integration_instance").prefetch_related("adapters__ips")
+    for observation in qs.iterator(chunk_size=1000):
+        prefix = [
+            observation.asset.external_id,
+            observation.hostname,
+            str(observation.generation.integration_instance_id),
+            observation.generation.integration_instance.name,
+            observation.site_name or observation.site_external_id,
+            f"{observation.group_name} ({observation.group_external_id})",
+            observation.network_status,
+        ]
+        suffix = [
+            observation.public_ip or "not reported",
+            observation.generation.published_at.isoformat(),
+            str(observation.generation_id),
+        ]
+        adapters = sorted(observation.adapters.all(), key=lambda adapter: (adapter.name, str(adapter.id)))
+        if not adapters:
+            yield [*prefix, "not reported", "", "", "", "", "", "not reported", "", "", *suffix]
+        for adapter in adapters:
+            for address in sorted(
+                adapter.ips.all(), key=lambda address: (address.address, address.raw, str(address.id))
+            ) or [None]:
+                yield [
+                    *prefix,
+                    adapter.name,
+                    adapter.mac,
+                    address.address or address.raw if address else "not reported",
+                    address.kind if address else "not reported",
+                    adapter.subnet_mask,
+                    address.network_cidr if address else "",
+                    address.cidr_status if address else "not reported",
+                    ", ".join(adapter.gateways),
+                    ", ".join(adapter.dns_servers),
+                    *suffix,
+                ]
 
 
 class SoftwareFilters(ScopedAssetFilterMixin, serializers.Serializer):
@@ -626,6 +686,39 @@ SNAPSHOT_NOTE = (
 SNAPSHOT_CAPS = frozenset({Cap.CUSTOMER_EXPORT, Cap.CUSTOMER_READ})
 
 REPORT_TYPES: dict[str, ReportType] = {
+    "group_network": ReportType(
+        key="group_network",
+        title="Group network observations (R10)",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=NetworkFilters,
+        columns=(
+            "device_id",
+            "hostname",
+            "source_instance_id",
+            "source",
+            "site",
+            "group",
+            "network_state",
+            "adapter",
+            "mac",
+            "ip",
+            "address_kind",
+            "reported_mask",
+            "derived_cidr",
+            "cidr_state",
+            "gateways",
+            "dns_servers",
+            "public_ip",
+            "dataset_as_of_utc",
+            "generation_id",
+        ),
+        rows=_network_rows,
+        pin=_pin_generations,
+        description="Reported interfaces and addresses with source and collection state. One row per address.",
+        limitations="Endpoint inventory observations, not physical topology or authoritative subnet discovery. "
+        "Uncollected and empty network sections retain a device row; missing addresses are not zero.",
+    ),
     "customer_audit_log": ReportType(
         key="customer_audit_log",
         title="Customer audit log",

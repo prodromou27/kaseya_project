@@ -53,10 +53,10 @@ function Tree({ customer }: { customer: Customer }) {
             </p>
             <ul className="space-y-3" aria-label="Organisations">
               {h.organizations.map((o) => (
-                <li key={o.external_id} className="rounded border border-slate-200 bg-white p-3">
+                <li key={`${o.instance_id ?? ""}-${o.external_id}`} className="rounded border border-slate-200 bg-white p-3">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{o.name || "(unnamed organisation)"}</span>
-                    <code className="text-[11px] text-slate-500">org {o.external_id}</code>
+                    <code className="text-[11px] text-slate-500">org {o.external_id}{o.source ? ` / ${o.source}` : ""}</code>
                     <Counts c={o.counts} />
                   </div>
                   <ul className="ml-4 space-y-2" aria-label={`Sites of ${o.name}`}>
@@ -70,7 +70,7 @@ function Tree({ customer }: { customer: Customer }) {
                         <ul className="ml-4 mt-1 space-y-1" aria-label={`Groups of ${s.name}`}>
                           {s.groups.map((g) => (
                             <li key={g.external_id} className="flex flex-wrap items-center gap-2">
-                              <Link className="text-sky-800 hover:underline" to={`/groups/${g.external_id}`}>{g.name || "(unnamed group)"}</Link>
+                              <Link className="text-sky-800 hover:underline" to={`/groups/${g.external_id}${g.instance_id ? `?instance=${g.instance_id}` : ""}`}>{g.name || "(unnamed group)"}</Link>
                               <code className="text-[11px] text-slate-500">group {g.external_id}</code>
                               {g.is_active === false ? <Badge tone="neutral">inactive</Badge> : null}
                               <Counts c={g.counts} />
@@ -104,7 +104,7 @@ export function GroupsPage() {
       {!selected ? <SelectCustomer /> : (
         <>
           <DataSources customer={selected} />
-          <Tree customer={selected} />
+          <Tree key={selected.id} customer={selected} />
         </>
       )}
     </>

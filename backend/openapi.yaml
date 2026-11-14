@@ -1368,6 +1368,161 @@ paths:
               schema:
                 $ref: '#/components/schemas/ExpectedSubnet'
           description: ''
+  /api/v1/customers/{customer_pk}/group-moves/:
+    get:
+      operationId: customers_group_moves_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMoveList'
+          description: ''
+    post:
+      operationId: customers_group_moves_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProposalInput'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Move'
+          description: ''
+  /api/v1/customers/{customer_pk}/group-moves/{id}/:
+    get:
+      operationId: customers_group_moves_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this group move request.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Move'
+          description: ''
+  /api/v1/customers/{customer_pk}/group-moves/{id}/review/:
+    post:
+      operationId: customers_group_moves_review_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this group move request.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Move'
+          description: ''
+  /api/v1/customers/{customer_pk}/group-moves/options/:
+    get:
+      operationId: customers_group_moves_options_retrieve
+      description: Handler method for HTTP 'OPTIONS' request.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/groups/{id}/network/:
     get:
       operationId: customers_groups_network_retrieve
@@ -4807,16 +4962,6 @@ components:
         * `active` - Active
         * `suspended` - Suspended
         * `archived` - Archived
-    DecisionEnum:
-      enum:
-      - match
-      - no_match
-      - confirm
-      type: string
-      description: |-
-        * `match` - match
-        * `no_match` - no_match
-        * `confirm` - confirm
     DeviceOsUpdate:
       type: object
       properties:
@@ -5635,6 +5780,109 @@ components:
       - role
       - updated_at
       - user
+    Move:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        asset:
+          type: string
+          format: uuid
+          readOnly: true
+        generation:
+          type: string
+          format: uuid
+          readOnly: true
+        device_name:
+          type: string
+          readOnly: true
+        source_group_id:
+          type: string
+          readOnly: true
+        source_group_name:
+          type: string
+          readOnly: true
+        target_group:
+          type: string
+          format: uuid
+          readOnly: true
+        target_group_name:
+          type: string
+        target_group_external_id:
+          type: string
+        reason:
+          type: string
+          readOnly: true
+        policy_impact:
+          type: string
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/MoveStateEnum'
+          readOnly: true
+        requested_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        review_reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        expired:
+          type: boolean
+          readOnly: true
+        execution_enabled:
+          type: boolean
+          readOnly: true
+      required:
+      - asset
+      - created_at
+      - device_name
+      - execution_enabled
+      - expired
+      - expires_at
+      - generation
+      - id
+      - policy_impact
+      - reason
+      - requested_by
+      - review_reason
+      - reviewed_at
+      - reviewed_by
+      - source_group_id
+      - source_group_name
+      - state
+      - target_group
+      - target_group_external_id
+      - target_group_name
+    MoveStateEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Awaiting independent review
+        * `approved` - Approved proposal (execution disabled)
+        * `rejected` - Rejected
     Notification:
       type: object
       properties:
@@ -6016,6 +6264,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Membership'
+    PaginatedMoveList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Move'
     PaginatedNotificationList:
       type: object
       required:
@@ -6824,6 +7095,23 @@ components:
       - id
       - product
       - vendor
+    ProposalInput:
+      type: object
+      properties:
+        asset:
+          type: string
+          format: uuid
+        target_group:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 10
+      required:
+      - asset
+      - reason
+      - target_group
     ProviderEnum:
       enum:
       - vsa_x
@@ -6960,7 +7248,7 @@ components:
       type: object
       properties:
         decision:
-          $ref: '#/components/schemas/DecisionEnum'
+          $ref: '#/components/schemas/ReconciliationReviewDecisionEnum'
         asset:
           type: string
           format: uuid
@@ -6971,6 +7259,16 @@ components:
           maxLength: 500
       required:
       - decision
+    ReconciliationReviewDecisionEnum:
+      enum:
+      - match
+      - no_match
+      - confirm
+      type: string
+      description: |-
+        * `match` - match
+        * `no_match` - no_match
+        * `confirm` - confirm
     ReconciliationRun:
       type: object
       properties:
@@ -7319,6 +7617,7 @@ components:
       - customer_audit_log
       - device_notifications
       - disk_hardware
+      - group_network
       - inventory_changes
       - lifecycle
       - os_updates
@@ -7334,6 +7633,7 @@ components:
         * `customer_audit_log` - customer_audit_log
         * `device_notifications` - device_notifications
         * `disk_hardware` - disk_hardware
+        * `group_network` - group_network
         * `inventory_changes` - inventory_changes
         * `lifecycle` - lifecycle
         * `os_updates` - os_updates
@@ -7348,6 +7648,26 @@ components:
         note:
           type: string
           maxLength: 2000
+    ReviewInput:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/ReviewInputDecisionEnum'
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 10
+      required:
+      - decision
+      - reason
+    ReviewInputDecisionEnum:
+      enum:
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `approved` - approved
+        * `rejected` - rejected
     ReviewStateEnum:
       enum:
       - not_required

@@ -79,7 +79,7 @@ export function TrendChart({
             </thead>
             <tbody>
               {xLabels.map((label, i) => (
-                <tr key={label} className="border-t border-slate-100">
+                <tr key={`${label}-${i}`} className="border-t border-slate-100">
                   <th scope="row" className="px-2 py-1 text-left font-normal">{label}</th>
                   {series.map((s) => <td key={s.key} className="px-2 py-1 text-right">{s.values[i] ?? "n/a"}</td>)}
                 </tr>
@@ -89,7 +89,7 @@ export function TrendChart({
         </div>
       ) : (
         <div className="relative">
-          <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`${title}. Use “Show table” for the values.`}>
+          <svg viewBox={`0 0 ${W} ${H}`} className="h-auto max-h-72 w-full" role="img" aria-label={`${title}. Use “Show table” for the values.`}>
             {ticks.map((t) => (
               <g key={t}>
                 <line x1={M.left} x2={W - M.right} y1={y(t)} y2={y(t)} stroke="#e2e8f0" strokeWidth={1} />

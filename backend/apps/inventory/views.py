@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import contextlib
-import ipaddress
-import re
 from datetime import timedelta
 from typing import Any
 
@@ -24,20 +21,10 @@ from apps.integrations.models import SyncRun
 from apps.integrations.sync import SyncRefused, request_sync
 from apps.software.capability import THIRD_PARTY_PATCH_STATUS
 
+from .filters import AssetFilters, filter_inventory
 from .hierarchy import group_network, hierarchy
 from .models import Asset, AssetObservation
 from .queries import current_generations, current_observations, stale_cutoff
-
-ORDERING = {
-    "hostname",
-    "-hostname",
-    "last_seen_online",
-    "-last_seen_online",
-    "group_name",
-    "-group_name",
-    "os_name",
-    "-os_name",
-}
 
 
 class AssetRowSerializer(serializers.ModelSerializer):
@@ -98,37 +85,10 @@ class CustomerAssetViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewsets.
     def get_queryset(self) -> QuerySet[AssetObservation]:
         if getattr(self, "swagger_fake_view", False):
             return AssetObservation.objects.none()
-        p = self.request.query_params
-        qs = current_observations(self.get_customer().id)
-        search = p.get("search", "").strip()[:100]
-        if search:
-            cond = Q(hostname__icontains=search) | Q(serial_number__icontains=search) | Q(asset__external_id=search)
-            mac = re.sub(r"[^0-9A-Fa-f]", "", search).upper()
-            if len(mac) == 12:  # MAC in any common notation
-                cond |= Q(adapters__mac=mac)
-            with contextlib.suppress(ValueError):  # exact IP address (zone suffix ignored)
-                cond |= Q(adapters__ips__address=ipaddress.ip_address(search.partition("%")[0]).compressed)
-            qs = qs.filter(cond).distinct()
-        for param, field in (
-            ("group", "group_name"),
-            ("os", "os_name"),
-            ("device_type", "device_type"),
-            ("site", "site_external_id"),
-            ("group_id", "group_external_id"),
-            ("software_status", "software_status"),
-        ):
-            value = p.get(param, "").strip()[:255]
-            if value:
-                qs = qs.filter(**{field: value})
-        offline = p.get("offline")
-        if offline in ("true", "false"):
-            cutoff = timezone.now() - timedelta(days=self._offline_days())
-            cond = Q(last_seen_online__lt=cutoff) | Q(last_seen_online__isnull=True)
-            qs = qs.filter(cond) if offline == "true" else qs.exclude(cond)
-        ordering = p.get("ordering", "hostname")
-        if ordering not in ORDERING:
-            raise ValidationError({"ordering": f"Allowed: {', '.join(sorted(ORDERING))}"})
-        return qs.order_by(ordering, "asset_id")
+        customer = self.get_customer()
+        filters = AssetFilters(data={k: v for k, v in self.request.query_params.items() if v != ""})
+        filters.is_valid(raise_exception=True)
+        return filter_inventory(current_observations(customer.id), filters.validated_data)
 
     def _offline_days(self) -> int:
         try:
@@ -165,7 +125,7 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        asset = Asset.objects.filter(pk=_uuid(kwargs["pk"])).first()
+        asset = Asset.objects.select_related("customer").filter(pk=_uuid(kwargs["pk"])).first()
         scope.get_customer_or_404(request.user, asset.customer_id if asset else None, Cap.CUSTOMER_READ, request)
         if asset is None:  # unreachable: get_customer_or_404 already raised; explicit for python -O
             raise NotFound()
@@ -337,6 +297,7 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
                 "os_updates": os_updates,
                 "asset": AssetRowSerializer(current, context={"offline_days": 7}).data if current else None,
                 "id": str(asset.id),
+                "customer": {"id": str(asset.customer_id), "code": asset.customer.code, "name": asset.customer.name},
                 "external_id": asset.external_id,
                 "active": asset.active,
                 "in_current_dataset": current is not None,
@@ -506,7 +467,11 @@ class CustomerGroupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=True, methods=["get"])
     def network(self, request: Request, pk: str | None = None, *args: Any, **kwargs: Any) -> Response:
-        data = group_network(self.get_customer().id, str(pk))
+        customer = self.get_customer()
+        instance = request.query_params.get("instance")
+        if instance:
+            instance = str(_uuid(instance))
+        data = group_network(customer.id, str(pk), instance)
         if data is None:
             raise NotFound()
         return Response(data)

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
-import { QueryBoundary } from "../../components/States";
+import { EmptyState, ErrorState, LoadingState, QueryBoundary } from "../../components/States";
 import { Badge, Field, Notice, PageHeader } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
@@ -42,6 +42,7 @@ function View({ customer }: { customer: Customer }) {
     queryFn: ({ signal }) => api.get<ComparableSnapshot[]>(`/customers/${customer.id}/changes/snapshots/`, undefined, signal),
   });
   const summary = useQuery({
+    enabled: snaps.isSuccess && snaps.data.length >= 2,
     queryKey: ["changes", customer.id, from, to],
     queryFn: ({ signal }) => api.get<ChangeSummary>(`/customers/${customer.id}/changes/`, pair, signal),
     retry: false,
@@ -55,6 +56,8 @@ function View({ customer }: { customer: Customer }) {
   const options = snaps.data ?? [];
   const label = (s: ComparableSnapshot) => `${formatUtc(s.published_at)} · ${s.instance} · ${s.row_count} devices${s.is_current ? " (current)" : ""}`;
 
+  if (snaps.isPending) return <LoadingState label="Loading complete snapshots..." />;
+  if (snaps.isError) return <ErrorState error={snaps.error} onRetry={() => void snaps.refetch()} />;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
@@ -69,7 +72,9 @@ function View({ customer }: { customer: Customer }) {
             {options.map((s) => <option key={s.id} value={s.id}>{label(s)}</option>)}
           </select>)}</Field>
       </div>
-      <QueryBoundary query={summary}>
+      {options.length < 2 ? <EmptyState title="A second complete snapshot is needed.">
+        Inventory changes compare two successful snapshots of the same VSA source. Run another sync before comparing.
+      </EmptyState> : <QueryBoundary query={summary}>
         {(s) => (
           <>
             <Notice tone="info">{s.note}</Notice>
@@ -109,7 +114,7 @@ function View({ customer }: { customer: Customer }) {
             </QueryBoundary>
           </>
         )}
-      </QueryBoundary>
+      </QueryBoundary>}
     </div>
   );
 }
@@ -119,7 +124,7 @@ export function ChangesPage() {
   return (
     <>
       <PageHeader title="Inventory changes" subtitle="What differs between two complete VSA X snapshots: devices, placement, OS, agent, IP addresses and software." />
-      {!selected ? <SelectCustomer /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View key={selected.id} customer={selected} />}
     </>
   );
 }

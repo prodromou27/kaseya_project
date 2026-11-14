@@ -257,6 +257,10 @@ VIEW_FILTERS: dict[str, dict[str, str]] = {
         "device_type": "str",
         "site": "str",
         "software_status": "str",
+        "group_id": "str",
+        "organization": "str",
+        "instance": "uuid",
+        "offline_days": "str",
     },
     "software": {"state": "str", "product": "uuid", "search": "str", "asset": "uuid"},
     "os_updates": {"state": "str", "severity": "str", "kb": "str", "asset": "uuid"},
@@ -282,6 +286,16 @@ class SavedViewSerializer(serializers.ModelSerializer):
         unknown = set(filters) - set(allowed)
         if unknown:
             raise ValidationError({"filters": f"Unknown filter keys: {', '.join(sorted(unknown))}"})
+        if view_type == "assets":
+            from apps.inventory.filters import AssetFilters
+
+            serializer = AssetFilters(data={key: value for key, value in filters.items() if value not in (None, "")})
+            serializer.is_valid(raise_exception=True)
+            attrs["filters"] = {
+                key: str(value).lower() if isinstance(value, bool) else str(value)
+                for key, value in serializer.validated_data.items()
+            }
+            return attrs
         clean: dict[str, str] = {}
         for key, value in filters.items():
             if value in (None, ""):

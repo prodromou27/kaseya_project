@@ -10,6 +10,7 @@ Rules:
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -278,19 +279,91 @@ def device_rows(
     ]
 
 
+def _summary_rows(customer_id: Any, t: Thresholds, generations: list[Any]) -> Iterator[dict[str, Any]]:
+    """Classify scalar facts without constructing 100k devices, related models and detailed hardware dictionaries."""
+    from apps.patching.models import AppliedPolicyObservation
+
+    from .models import DiskObservation, SecurityObservation
+
+    generation_ids = [generation.id for generation in generations]
+    generation_by_id = {generation.id: generation for generation in generations}
+    groups = {
+        (generation_id, external_id): name
+        for generation_id, external_id, name in GroupNode.objects.filter(
+            customer_id=customer_id, generation_id__in=generation_ids
+        ).values_list("generation_id", "external_id", "name")
+    }
+    disks = defaultdict(list)
+    for observation_id, system, free in (
+        DiskObservation.objects.filter(customer_id=customer_id, generation_id__in=generation_ids)
+        .values_list("observation_id", "is_system", "free_percentage")
+        .iterator()
+    ):
+        disks[observation_id].append((system, free))
+    security = defaultdict(list)
+    for observation_id, kind, enabled, up_to_date in (
+        SecurityObservation.objects.filter(customer_id=customer_id, generation_id__in=generation_ids)
+        .values_list("observation_id", "type", "enabled", "up_to_date")
+        .iterator()
+    ):
+        security[observation_id].append((kind.casefold(), enabled, up_to_date))
+    policy = dict(
+        AppliedPolicyObservation.objects.filter(customer_id=customer_id, generation_id__in=generation_ids).values_list(
+            "observation_id", "patch_state"
+        )
+    )
+    observations = AssetObservation.objects.filter(customer_id=customer_id, generation_id__in=generation_ids).order_by()
+    fields = (
+        "id",
+        "generation_id",
+        "group_external_id",
+        "site_external_id",
+        "site_name",
+        "last_seen_online",
+        "client_version",
+        "is_agent_installed",
+        "disks_status",
+        "security_status",
+        "collected_at",
+    )
+    for row in observations.values(*fields).iterator(chunk_size=2000):
+        generation = generation_by_id[row["generation_id"]]
+        snapshot_at = generation.published_at or row["collected_at"]
+        disk_state, _ = disk(row["disks_status"], disks.get(row["id"], []), t)
+        items = security.get(row["id"], [])
+        yield {
+            "group_external_id": row["group_external_id"],
+            "group_name": groups.get((row["generation_id"], row["group_external_id"]), ""),
+            "site_external_id": row["site_external_id"],
+            "site_name": row["site_name"],
+            "instance_id": str(generation.integration_instance_id),
+            "connectivity": connectivity(row["last_seen_online"], snapshot_at, t),
+            "agent_installed": agent_installed(row["is_agent_installed"]),
+            "agent_version": agent_version(row["client_version"], t),
+            "disk": disk_state,
+            "antivirus": antivirus(
+                row["security_status"], [(enabled, updated) for kind, enabled, updated in items if kind == "antivirus"]
+            ),
+            "firewall": firewall(row["security_status"], [enabled for kind, enabled, _ in items if kind == "firewall"]),
+            "patch_policy": policy.get(row["id"], "unknown"),
+        }
+
+
 def summary(customer_id: Any) -> dict[str, Any]:
     t = effective_thresholds(customer_id)
-    rows = device_rows(customer_id, t)
-    dims = {}
-    for dim, values in DIMENSIONS.items():
-        c = Counter(r[dim] for r in rows)
-        dims[dim] = {v: c.get(v, 0) for v in values}
-    by_group: dict[tuple[str, str, str], Counter[str]] = defaultdict(Counter)
-    for r in rows:
+    gens = list(current_generations(customer_id))
+    dimensions = {dimension: Counter() for dimension in DIMENSIONS}
+    total = 0
+    by_group: dict[tuple[str, str, str, str], Counter[str]] = defaultdict(Counter)
+    for r in _summary_rows(customer_id, t, gens):
+        total += 1
+        for dimension in DIMENSIONS:
+            dimensions[dimension][r[dimension]] += 1
         key = (
             r["group_external_id"],
             r["group_name"] or ("(no group)" if not r["group_external_id"] else ""),
             r["site_name"] or r["site_external_id"],
+            r["instance_id"],
         )
         g = by_group[key]
         g["devices"] += 1
@@ -307,17 +380,19 @@ def summary(customer_id: Any) -> dict[str, Any]:
             g["agent_not_installed"] += 1
         if r["patch_policy"] in ("explicit_none",):
             g["no_patch_policy"] += 1
-    gens = list(current_generations(customer_id))
     return {
         "as_of": [g.published_at.isoformat() if g.published_at else None for g in gens],
         "data_basis": sorted({g.data_basis for g in gens}),
-        "devices": len(rows),
+        "devices": total,
         "thresholds": t.as_dict(),
-        "dimensions": dims,
+        "dimensions": {
+            dimension: {value: dimensions[dimension][value] for value in values}
+            for dimension, values in DIMENSIONS.items()
+        },
         "labels": LABELS,
         "by_group": [
-            {"group_external_id": gid, "group_name": name, "site": site, **dict(c)}
-            for (gid, name, site), c in sorted(
+            {"group_external_id": gid, "group_name": name, "site": site, "instance_id": instance, **dict(c)}
+            for (gid, name, site, instance), c in sorted(
                 by_group.items(), key=lambda kv: (kv[0][2].casefold(), kv[0][1].casefold())
             )
         ],
@@ -326,9 +401,14 @@ def summary(customer_id: Any) -> dict[str, Any]:
 
 
 def filter_rows(rows: list[dict[str, Any]], params: Any) -> list[dict[str, Any]]:
+    from rest_framework.exceptions import ValidationError
+
     for dim, values in DIMENSIONS.items():
-        if (v := params.get(dim)) and v in values:
-            rows = [r for r in rows if r[dim] == v]
+        if selected := params.get(dim):
+            requested = set(selected.split(","))
+            if not requested.issubset(values):
+                raise ValidationError({dim: "Choose documented health states."})
+            rows = [r for r in rows if r[dim] in requested]
     if gid := params.get("group_id"):
         rows = [r for r in rows if r["group_external_id"] == gid[:20]]
     if q := params.get("q", "").strip().casefold()[:100]:

@@ -20,9 +20,9 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+    <div className="page-header mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="break-words text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
         {subtitle ? <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex gap-2">{actions}</div> : null}
@@ -42,7 +42,7 @@ export function Field({
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 max-w-full flex-col gap-1">
       <label htmlFor={id} className="text-xs font-medium text-slate-700">
         {label}
       </label>

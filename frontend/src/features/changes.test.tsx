@@ -18,18 +18,24 @@ const device: ChangeDevice = {
   changes: [{ kind: "hostname", from: "PC1", to: "PC1-RENAMED" }, { kind: "software", added: ["7-Zip 24.08"], removed: ["7-Zip 23.01"] }],
 };
 
-function routes() {
+function routes(singleSnapshot = false) {
   window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
   return mockFetch({
     "GET /api/v1/auth/me/": { body: makeMe() },
     "GET /api/v1/customers/": { body: page([customerA]) },
-    [`GET ${base}/changes/snapshots/`]: { body: [] },
+    [`GET ${base}/changes/snapshots/`]: { body: [summary.to, ...(singleSnapshot ? [] : [summary.from])].map((snapshot) => ({ ...snapshot, instance: "Fixture VSA", row_count: snapshot.devices, is_current: snapshot.id === "g2" })) },
     [`GET ${base}/changes/`]: { body: summary },
     [`GET ${base}/changes/devices/`]: { body: page([device]) },
   } as never);
 }
 
 describe("inventory changes", () => {
+  it("explains the missing comparison baseline without calling the comparison API", async () => {
+    const { calls } = routes(true);
+    renderApp("/changes");
+    expect(await screen.findByText("A second complete snapshot is needed.")).toBeInTheDocument();
+    expect(calls.some((call) => call.url.endsWith("/changes/"))).toBe(false);
+  });
   it("shows the snapshot window, uncompared sections and observed differences", async () => {
     const { calls } = routes();
     renderApp("/changes");

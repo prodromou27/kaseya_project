@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useUrlFilters } from "../../lib/useUrlFilters";
 import { Link } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
-import { Badge, Notice, PageHeader, statusTone } from "../../components/ui";
+import { Badge, Field, Notice, PageHeader, statusTone } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
@@ -76,11 +76,11 @@ function Summary({ s, onKb, onStatus }: { s: OsUpdateSummary; onKb: (kb: string)
   );
 }
 
-function UpdateRows({ customer, kb, state }: { customer: Customer; kb: string; state: string }) {
-  const [page, setPage] = useState(1);
+function UpdateRows({ customer, kb, state, severity }: { customer: Customer; kb: string; state: string; severity: string }) {
+  const { page, setPage } = useUrlFilters({});
   const query = useQuery({
-    queryKey: ["os-updates", customer.id, "rows", kb, state, page],
-    queryFn: ({ signal }) => api.get<Paginated<DeviceOsUpdateRow>>(`/customers/${customer.id}/os-updates/`, { kb, state, page, page_size: PAGE_SIZE }, signal),
+    queryKey: ["os-updates", customer.id, "rows", kb, state, severity, page],
+    queryFn: ({ signal }) => api.get<Paginated<DeviceOsUpdateRow>>(`/customers/${customer.id}/os-updates/`, { kb, state, severity, page, page_size: PAGE_SIZE }, signal),
     placeholderData: (prev) => prev,
   });
   return (
@@ -120,9 +120,10 @@ function DeviceStatusList({ customer, status }: { customer: Customer; status: Up
 }
 
 function View({ customer }: { customer: Customer }) {
-  const [kb, setKb] = useState("");
-  const [state, setState] = useState("available");
-  const [status, setStatus] = useState<UpdateStatus | null>(null);
+  const { filters, update, reset } = useUrlFilters({ kb: "", state: "available", severity: "", status: "" });
+  const { kb, state, severity } = filters;
+  const status = STATUSES.includes(filters.status as UpdateStatus) ? filters.status as UpdateStatus : null;
+  const setStatus = (value: UpdateStatus | null) => update({ status: value ?? "" });
   const summary = useQuery({
     queryKey: ["os-updates", customer.id, "summary"],
     queryFn: ({ signal }) => api.get<OsUpdateSummary>(`/customers/${customer.id}/os-updates/summary/`, undefined, signal),
@@ -132,7 +133,7 @@ function View({ customer }: { customer: Customer }) {
       <DataSources customer={customer} />
       <QueryBoundary query={summary} isEmpty={(s) => s.devices_total === 0}
         empty={<EmptyState title="No devices in the current dataset.">Run a sync once a source mapping is approved.</EmptyState>}>
-        {(s) => <Summary s={s} onKb={(k) => { setKb(k); setStatus(null); }} onStatus={setStatus} />}
+        {(s) => <Summary s={s} onKb={(k) => update({ kb: k, status: "" })} onStatus={setStatus} />}
       </QueryBoundary>
       <section aria-labelledby="rows-h" className="mt-6">
         <div className="mb-2 flex flex-wrap items-end gap-3">
@@ -140,10 +141,10 @@ function View({ customer }: { customer: Customer }) {
           {status ? <button type="button" className="btn-secondary" onClick={() => setStatus(null)}>Back to update records</button> : (
             <>
               <label className="flex items-center gap-1 text-xs">KB
-                <input className="input w-28" value={kb} maxLength={12} placeholder="5099001" onChange={(e) => setKb(e.target.value)} />
+                <input className="input w-28" value={kb} maxLength={12} placeholder="5099001" onChange={(e) => update({ kb: e.target.value }, true)} />
               </label>
               <label className="flex items-center gap-1 text-xs">State
-                <select className="input" value={state} onChange={(e) => setState(e.target.value)}>
+                <select className="input" value={state} onChange={(e) => update({ state: e.target.value })}>
                   <option value="available">Available</option>
                   <option value="installed">Installed</option>
                   <option value="">All</option>
@@ -151,11 +152,16 @@ function View({ customer }: { customer: Customer }) {
               </label>
             </>
           )}
-          {customer.my_capabilities.includes(CAP.export) ? (
-            <ExportButton customer={customer} reportType="os_updates" label="Export (RPT-04)" filters={{ kb, state }} />
+          {!status ? <Field label="Severity">{(id) => <select id={id} className="input" value={severity} onChange={(e) => update({ severity: e.target.value })}>
+              <option value="">All severities</option>
+              {["Critical", "Important", "Moderate", "Low", "Unspecified"].map((value) => <option key={value} value={value}>{value}</option>)}
+            </select>}</Field> : null}
+          <button type="button" className="btn-secondary" onClick={reset}>Clear filters</button>
+          {!status && customer.my_capabilities.includes(CAP.export) ? (
+            <ExportButton customer={customer} reportType="os_updates" label="Export (RPT-04)" filters={{ kb, state, severity }} />
           ) : null}
         </div>
-        {status ? <DeviceStatusList customer={customer} status={status} /> : <UpdateRows customer={customer} kb={kb} state={state} />}
+        {status ? <DeviceStatusList customer={customer} status={status} /> : <UpdateRows customer={customer} kb={kb} state={state} severity={severity} />}
       </section>
     </>
   );
@@ -166,7 +172,7 @@ export function WindowsUpdatesPage() {
   return (
     <>
       <PageHeader title="Windows updates" subtitle={selected ? `${selected.code} — ${selected.name}` : undefined} />
-      {!selected ? <SelectCustomer /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View key={selected.id} customer={selected} />}
     </>
   );
 }

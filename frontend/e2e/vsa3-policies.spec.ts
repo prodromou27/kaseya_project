@@ -33,7 +33,7 @@ test("engineer sees assignment states kept apart and policy configuration labell
   await expect(page.getByText("configuration, not deployment status").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Propose expectation" })).toHaveCount(0);
   await openNav(page, "Devices");
-  await page.getByLabel("Search").fill("DEMOA-WS011");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("DEMOA-WS011");
   await page.getByRole("table", { name: "DEMO-A assets" }).getByRole("link").first().click();
   await page.getByRole("tab", { name: "Policies" }).click();
   await expect(page.getByText("No Policy (explicitly configured)").first()).toBeVisible();

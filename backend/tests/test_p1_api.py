@@ -423,6 +423,92 @@ def test_report_filters_cannot_reach_other_customer(world, synced, django_captur
     assert resp.status_code == 404
 
 
+@pytest.mark.parametrize(
+    "filters",
+    [
+        {"search": "a-003"},
+        {"search": "A-PC3"},
+        {"site": "1", "device_type": "windows", "ordering": "-hostname"},
+        {"group": "a - HQ - WS", "os": "Windows 11 Enterprise"},
+        {"group_id": "does-not-exist"},
+        {"organization": "22"},
+        {"offline": True, "offline_days": 1},
+        {"offline": False, "offline_days": 365},
+    ],
+)
+def test_inventory_export_matches_filtered_api(world, synced, django_capture_on_commit_callbacks, filters):
+    """CX-01: report and API use identical customer-scoped rows and ordering, including source-ID search."""
+    response = world.client(world.engineer_a).get(
+        f"/api/v1/customers/{world.customer_a.id}/assets/",
+        {k: str(v).lower() if isinstance(v, bool) else v for k, v in filters.items()},
+    )
+    assert response.status_code == 200
+    rows, _ = _csv(
+        world, world.engineer_a, world.customer_a, "asset_inventory", django_capture_on_commit_callbacks, filters
+    )
+    header = rows.index(next(r for r in rows if r and r[0] == "device_id"))
+    assert [r[0] for r in rows[header + 1 :]] == [r["external_id"] for r in response.json()["results"]]
+    assert all(not r[0].startswith("b-") for r in rows[header + 1 :])
+
+
+@pytest.mark.parametrize("filters", [{"offline_days": 0}, {"offline": "maybe"}, {"instance": "invalid"}])
+def test_inventory_filters_invalid_in_api_and_report(world, synced, filters):
+    client = world.client(world.engineer_a)
+    base = f"/api/v1/customers/{world.customer_a.id}"
+    assert client.get(f"{base}/assets/", filters).status_code == 400
+    assert client.post(f"{base}/reports/", {"report_type": "asset_inventory", "filters": filters}).status_code == 400
+
+
+def test_inventory_offline_report_pins_cutoff(world, synced, monkeypatch, django_capture_on_commit_callbacks):
+    from apps.inventory.models import AssetObservation
+    from apps.reporting.models import ReportRun
+    from apps.reporting.registry import REPORT_TYPES
+
+    AssetObservation.objects.filter(customer=world.customer_a).update(last_seen_online=NOW - timedelta(days=6))
+    rows, _ = _csv(
+        world,
+        world.engineer_a,
+        world.customer_a,
+        "asset_inventory",
+        django_capture_on_commit_callbacks,
+        {"offline": True, "offline_days": 7},
+    )
+    original = ReportRun.objects.get(customer=world.customer_a, report_type="asset_inventory")
+    pins = original.as_of_generation_ids
+    assert pins["inventory_filter_at"]
+    monkeypatch.setattr(timezone, "now", lambda: NOW + timedelta(days=20))
+    report = REPORT_TYPES["asset_inventory"]
+    re_pins = report.pin(world.customer_a, pins)
+    assert list(report.rows(world.customer_a, original.filters, re_pins)) == []
+    header = rows.index(next(r for r in rows if r and r[0] == "device_id"))
+    assert rows[header + 1 :] == []
+
+
+def test_selected_device_report_is_scoped_and_exact(world, synced, django_capture_on_commit_callbacks):
+    selected = list(Asset.objects.filter(customer=world.customer_a).order_by("external_id")[:2])
+    rows, _ = _csv(
+        world,
+        world.engineer_a,
+        world.customer_a,
+        "asset_inventory",
+        django_capture_on_commit_callbacks,
+        {"asset_ids": ",".join(str(asset.id) for asset in selected)},
+    )
+    header = rows.index(next(row for row in rows if row and row[0] == "device_id"))
+    assert {row[0] for row in rows[header + 1 :]} == {asset.external_id for asset in selected}
+    foreign = Asset.objects.filter(customer=world.customer_b).first()
+    response = world.client(world.engineer_a).post(
+        f"/api/v1/customers/{world.customer_a.id}/reports/",
+        {"report_type": "asset_inventory", "filters": {"asset_ids": f"{selected[0].id},{foreign.id}"}},
+    )
+    assert response.status_code == 400
+    response = world.client(world.engineer_a).post(
+        f"/api/v1/customers/{world.customer_a.id}/reports/",
+        {"report_type": "asset_inventory", "filters": {"asset_ids": "invalid"}},
+    )
+    assert response.status_code == 400
+
+
 def test_quarantined_records_absent_from_customer_views(world, synced):
     data = vsa_assets(2, 11, "x") + vsa_assets(1, 99, "leak")
     transport = FixtureVsaTransport([], scripted=[FakeResponse(200, {"Data": data, "Meta": {"TotalCount": 3}})])

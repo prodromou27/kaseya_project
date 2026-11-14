@@ -27,7 +27,7 @@ const trends: TrendResponse = {
   }],
 };
 
-function routes(opts: { superAdmin?: boolean; customers?: Customer[]; integrations?: unknown[]; approved?: number } = {}) {
+function routes(opts: { superAdmin?: boolean; customers?: Customer[]; integrations?: unknown[]; approved?: number; healthFails?: boolean; noUpdateData?: boolean } = {}) {
   const me = opts.superAdmin
     ? makeMe({ is_super_admin: true, memberships: [], global_capabilities: ["system.manage", "system.cross_customer"] })
     : makeMe();
@@ -38,21 +38,41 @@ function routes(opts: { superAdmin?: boolean; customers?: Customer[]; integratio
     "GET /api/v1/integrations/": { body: page(opts.integrations ?? []) },
     "GET /api/v1/connector-hosts/": { body: { results: [], deployment: [] } },
     "GET /api/v1/mappings/": { body: { ...page([]), count: opts.approved ?? 0 } },
-    [`GET ${base}/device-health/summary/`]: { body: health },
+    [`GET ${base}/device-health/summary/`]: opts.healthFails ? { status: 503, body: { error: { code: "unavailable", message: "Health summary unavailable." } } } : { body: health },
     [`GET ${base}/trends/`]: { body: trends },
+    [`GET ${base}/software/summary/`]: { body: { unique_assets_with_outdated: 19, totals: { outdated: 24 }, comparable_installations: 202, eligible_installations: 210 } },
+    [`GET ${base}/os-updates/summary/`]: { body: { devices_total: 40, devices_reporting_updates: opts.noUpdateData ? 0 : 38, devices_by_severity: { Critical: 17 } } },
+    [`GET ${base}/datasets/`]: { body: [] },
   } as never);
 }
 
 describe("dashboard", () => {
+  it("keeps failed health data visible as an error and unknown counts", async () => {
+    routes({ healthFails: true });
+    renderApp("/");
+    const summary = await screen.findByRole("region", { name: "Summary" });
+    expect(within(summary).getByRole("alert")).toHaveTextContent("Health summary unavailable.");
+    expect(within(summary).getByRole("link", { name: /^Devices/ })).toHaveTextContent("—");
+    expect(within(summary).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("does not display zero missing updates when no devices reported evidence", async () => {
+    routes({ noUpdateData: true });
+    renderApp("/");
+    const summary = await screen.findByRole("region", { name: "Summary" });
+    expect(within(summary).getByRole("link", { name: /Missing critical updates/ })).toHaveTextContent("—of 0 devices reporting updates");
+  });
   it("shows headline numbers that link to their pages, and the user's role instead of capability codes", async () => {
     routes();
     renderApp("/");
     const summary = await screen.findByRole("region", { name: "Summary" });
     const offline = within(summary).getByRole("link", { name: /Offline \/ stale/ });
     expect(offline).toHaveTextContent("5");
-    expect(offline).toHaveAttribute("href", "/device-health");
-    expect(within(summary).getByRole("link", { name: /Missing critical updates/ })).toHaveTextContent("7of 38 devices reporting");
-    expect(within(summary).getByRole("link", { name: /Outdated software/ })).toHaveAttribute("href", "/software");
+    expect(offline).toHaveAttribute("href", "/device-health?connectivity=offline,stale,never_seen");
+    // Current customer totals differ from the last single-source historical point (7 and 9).
+    expect(within(summary).getByRole("link", { name: /Missing critical updates/ })).toHaveTextContent("17of 38 devices reporting");
+    expect(within(summary).getByRole("link", { name: /Outdated software/ })).toHaveTextContent("19");
+    expect(within(summary).getByRole("link", { name: /Outdated software/ })).toHaveAttribute("href", "/software?state=outdated");
     expect(within(summary).getByRole("link", { name: /Antivirus issues/ })).toHaveTextContent("3");
     expect(screen.getByText("Engineer")).toBeInTheDocument();
     expect(screen.queryByText(/customer\.export/)).not.toBeInTheDocument();
@@ -86,16 +106,17 @@ describe("dashboard", () => {
     expect(screen.queryByRole("region", { name: "Get started" })).not.toBeInTheDocument();
   });
 
-  it("keeps the main navigation short and folds specialist pages under More", async () => {
+  it("exposes engineer workflows in searchable sections and retains role restrictions", async () => {
     routes();
     renderApp("/");
     const nav = await screen.findByRole("navigation", { name: "Main" });
     for (const label of ["Dashboard", "Devices", "Device health", "Windows updates", "Software", "Reports"]) {
       expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
     }
-    expect(within(nav).queryByRole("link", { name: "Patch policies" })).not.toBeInTheDocument();
-    await userEvent.click(within(nav).getByRole("button", { name: /More/ }));
     expect(within(nav).getByRole("link", { name: "Patch policies" })).toBeInTheDocument();
     expect(within(nav).queryByRole("link", { name: "Settings" })).not.toBeInTheDocument(); // not a super admin
+    await userEvent.type(within(nav).getByLabelText("Find a page"), "onboarding");
+    expect(within(nav).getByRole("link", { name: "Onboarding check" })).toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "Devices" })).not.toBeInTheDocument();
   });
 });

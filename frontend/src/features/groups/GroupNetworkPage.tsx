@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
 import { QueryBoundary } from "../../components/States";
@@ -10,6 +10,7 @@ import { formatUtc } from "../../lib/format";
 import type { Adapter, Customer, GroupNetwork } from "../../lib/types";
 import { NetworkReview } from "./ExpectedSubnets";
 import { SelectCustomer } from "../../components/SelectCustomer";
+import { ExportButton } from "../reports/ExportButton";
 
 export function AdapterList({ adapters }: { adapters: Adapter[] }) {
   if (adapters.length === 0) return <span className="text-xs text-slate-400">no adapters reported</span>;
@@ -40,9 +41,11 @@ export function AdapterList({ adapters }: { adapters: Adapter[] }) {
 }
 
 function View({ customer, groupId }: { customer: Customer; groupId: string }) {
+  const [params] = useSearchParams();
+  const instance = params.get("instance") ?? "";
   const query = useQuery({
-    queryKey: ["group-network", customer.id, groupId],
-    queryFn: ({ signal }) => api.get<GroupNetwork>(`/customers/${customer.id}/groups/${groupId}/network/`, undefined, signal),
+    queryKey: ["group-network", customer.id, groupId, instance],
+    queryFn: ({ signal }) => api.get<GroupNetwork>(`/customers/${customer.id}/groups/${groupId}/network/`, { instance }, signal),
   });
   return (
     <QueryBoundary query={query}>
@@ -51,8 +54,11 @@ function View({ customer, groupId }: { customer: Customer; groupId: string }) {
           <PageHeader title={n.group?.name || `Group ${groupId}`}
             subtitle={<span>group {groupId} · site {n.group?.site_external_id ?? "?"} · org {n.group?.organization_external_id ?? "?"}{" "}
               · as of {n.as_of.map(formatUtc).join(", ")} · data basis {n.data_basis.join(", ")}</span>}
-            actions={<Link className="btn-secondary" to={`/assets?group_id=${groupId}`}>Open in Assets</Link>} />
+            actions={<Link className="btn-secondary" to={`/assets?group_id=${groupId}${n.instance_id ? `&instance=${n.instance_id}` : ""}`}>Open in Assets</Link>} />
           <Notice tone="info">{n.note}</Notice>
+          {customer.my_capabilities.includes("customer.export") ? <div className="my-3">
+            <ExportButton customer={customer} reportType="group_network" label="Export group network" filters={{ group_id: groupId, instance: n.instance_id ?? instance }} />
+          </div> : null}
           <div className="my-3 grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
             {[
               ["Devices in group", n.counts.devices],

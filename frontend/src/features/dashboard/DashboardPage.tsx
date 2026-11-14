@@ -9,6 +9,7 @@ import type { Customer, Me } from "../../lib/types";
 import { KpiTiles } from "./KpiTiles";
 import { SetupChecklist } from "./SetupChecklist";
 import { Trends } from "./Trends";
+import { DataSources } from "../inventory/DataSources";
 
 const ROLE_LABEL: Record<string, string> = { admin: "Customer admin", engineer: "Engineer", viewer: "Viewer" };
 
@@ -44,7 +45,8 @@ export function DashboardPage() {
 
       {selected ? (
         <>
-          <KpiTiles customer={selected} />
+          <KpiTiles key={selected.id} customer={selected} />
+          <DataSources key={`sources-${selected.id}`} customer={selected} />
           <section aria-labelledby="sel-heading" className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded border border-slate-200 bg-white px-4 py-3 text-sm">
             <h2 id="sel-heading" className="sr-only">Selected customer</h2>
             <span><span className="text-slate-500">Customer</span> <span className="font-medium">{selected.code}</span></span>

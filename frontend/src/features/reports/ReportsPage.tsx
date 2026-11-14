@@ -18,6 +18,7 @@ import {
   type ReportScheduleRow,
   type ReportTemplate,
 } from "../../lib/types";
+import { useUrlFilters } from "../../lib/useUrlFilters";
 import { SelectCustomer } from "../../components/SelectCustomer";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -48,7 +49,7 @@ function FilterInputs({ template, value, onChange }: { template: ReportTemplate;
               <option value="">Default</option><option value="true">Yes</option><option value="false">No</option>
             </select>
           ) : (
-            <input id={id} className="input w-44" maxLength={100} value={value[name] ?? ""}
+            <input id={id} className="input w-44" maxLength={name === "asset_ids" ? 19000 : 100} value={value[name] ?? ""}
                    inputMode={f.type === "IntegerField" ? "numeric" : undefined}
                    onChange={(e) => onChange({ ...value, [name]: e.target.value })} />
           )}
@@ -69,7 +70,7 @@ function clean(filters: Record<string, string>): Record<string, string | boolean
 
 function NewReport({ customer, templates }: { customer: Customer; templates: ReportTemplate[] }) {
   const queryClient = useQueryClient();
-  const [key, setKey] = useState(templates[0]?.key ?? "");
+  const [key, setKey] = useState(templates.find((template) => template.key === "asset_inventory")?.key ?? templates[0]?.key ?? "");
   const [format, setFormat] = useState("csv");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const template = templates.find((t) => t.key === key);
@@ -112,11 +113,12 @@ function NewReport({ customer, templates }: { customer: Customer; templates: Rep
 }
 
 function RunHistory({ customer }: { customer: Customer }) {
+  const { page, setPage } = useUrlFilters({});
   const queryClient = useQueryClient();
   const key = ["reports", customer.id];
   const query = useQuery({
-    queryKey: key,
-    queryFn: ({ signal }) => api.get<Paginated<ReportRun>>(`/customers/${customer.id}/reports/`, undefined, signal),
+    queryKey: [...key, page],
+    queryFn: ({ signal }) => api.get<Paginated<ReportRun>>(`/customers/${customer.id}/reports/`, { page }, signal),
     refetchInterval: (q) => (q.state.data?.results.some((r) => r.state === "queued" || r.state === "running") ? 2000 : false),
   });
   const regenerate = useMutation({
@@ -146,7 +148,7 @@ function RunHistory({ customer }: { customer: Customer }) {
     <>
       {regenerate.isError ? <p role="alert" className="text-sm text-red-700">{describeError(regenerate.error)}</p> : null}
       <QueryBoundary query={query}>
-        {(data) => <DataTable caption={`${customer.code} reports`} columns={columns} rows={data.results} total={data.count} getRowId={(r) => r.id} emptyTitle="No reports generated yet." />}
+        {(data) => <DataTable caption={`${customer.code} reports`} columns={columns} rows={data.results} total={data.count} page={page} onPageChange={setPage} getRowId={(r) => r.id} emptyTitle="No reports generated yet." />}
       </QueryBoundary>
     </>
   );
@@ -249,7 +251,8 @@ function Inbox() {
 export function ReportsPage() {
   const { selected } = useCustomers();
   const templates = useTemplates();
-  const [tab, setTab] = useState("new");
+  const { filters: { tab }, update } = useUrlFilters({ tab: "new" });
+  const setTab = (value: string) => update({ tab: value });
   const canExport = selected?.my_capabilities.includes(CAP.export) ?? false;
   return (
     <>
@@ -257,9 +260,9 @@ export function ReportsPage() {
       <Tabs label="Report sections" active={tab} onChange={setTab} tabs={[
         { id: "new", label: "New report", content: !selected ? <SelectCustomer>Reports are generated for exactly one customer.</SelectCustomer>
             : !canExport ? <EmptyState title="You do not have export permission for this customer." />
-            : <QueryBoundary query={templates}>{(t) => <NewReport customer={selected} templates={allowedTemplates(t, selected)} />}</QueryBoundary> },
-        { id: "history", label: "History", content: selected && canExport ? <RunHistory customer={selected} /> : <EmptyState title="Select a customer you can export for." /> },
-        { id: "scheduled", label: "Definitions & schedules", content: selected && canExport ? <Definitions customer={selected} /> : <EmptyState title="Select a customer you can export for." /> },
+            : <QueryBoundary query={templates}>{(t) => <NewReport key={selected.id} customer={selected} templates={allowedTemplates(t, selected)} />}</QueryBoundary> },
+        { id: "history", label: "History", content: selected && canExport ? <RunHistory key={selected.id} customer={selected} /> : <EmptyState title="Select a customer you can export for." /> },
+        { id: "scheduled", label: "Definitions & schedules", content: selected && canExport ? <Definitions key={selected.id} customer={selected} /> : <EmptyState title="Select a customer you can export for." /> },
         { id: "inbox", label: "Delivered to me", content: <Inbox /> },
       ]} />
     </>

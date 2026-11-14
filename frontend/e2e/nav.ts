@@ -1,10 +1,10 @@
 import type { Page } from "@playwright/test";
 
-/** Click a main-navigation entry, opening "More" first when the entry is folded there. */
+/** Workflow links are always discoverable; open the mobile navigation when necessary. */
 export async function openNav(page: Page, label: string): Promise<void> {
   const nav = page.getByRole("navigation", { name: "Main" });
   const link = nav.getByRole("link", { name: label, exact: true });
-  if (!(await link.isVisible())) await nav.getByRole("button", { name: /More/ }).click();
+  if (!(await link.isVisible())) await page.getByRole("button", { name: "Menu", exact: true }).click();
   await link.click();
 }
 

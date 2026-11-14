@@ -31,11 +31,11 @@ NETWORK_NOTE = (
 )
 
 
-def _group_counts(customer_id: Any, gen_ids: list[Any], stale_days: int) -> dict[str, dict[str, int]]:
+def _group_counts(customer_id: Any, gen_ids: list[Any], stale_days: int) -> dict[tuple[Any, str], dict[str, int]]:
     cutoff = timezone.now() - timedelta(days=stale_days)
     rows = (
         AssetObservation.objects.filter(customer_id=customer_id, generation_id__in=gen_ids)
-        .values("group_external_id")
+        .values("generation_id", "group_external_id")
         .annotate(
             devices=Count("id"),
             stale=Count("id", filter=Q(last_seen_online__lt=cutoff)),
@@ -45,13 +45,20 @@ def _group_counts(customer_id: Any, gen_ids: list[Any], stale_days: int) -> dict
             no_update_data=Count("id", filter=~Q(patch_observation__available_status="collected")),
         )
     )
-    return {r["group_external_id"]: {k: v for k, v in r.items() if k != "group_external_id"} for r in rows}
+    return {
+        (r["generation_id"], r["group_external_id"]): {
+            k: v for k, v in r.items() if k not in {"generation_id", "group_external_id"}
+        }
+        for r in rows
+    }
 
 
 def hierarchy(customer_id: Any, stale_days: int = 7) -> dict[str, Any]:
-    gens = list(current_generations(customer_id))
+    gens = list(current_generations(customer_id).select_related("integration_instance"))
     gen_ids = [g.id for g in gens]
     counts = _group_counts(customer_id, gen_ids, stale_days)
+    source_by_generation = {g.id: str(g.integration_instance_id) for g in gens}
+    source_names = {g.id: g.integration_instance.name for g in gens}
     empty = {
         "devices": 0,
         "stale": 0,
@@ -68,22 +75,23 @@ def hierarchy(customer_id: Any, stale_days: int = 7) -> dict[str, Any]:
                 out[k] += it["counts"][k]
         return out
 
-    groups_by_site: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    groups_by_site: dict[tuple[Any, str], list[dict[str, Any]]] = defaultdict(list)
     listed_groups = set()
     for g in GroupNode.objects.filter(customer_id=customer_id, generation_id__in=gen_ids).order_by("name"):
-        listed_groups.add(g.external_id)
-        groups_by_site[g.site_external_id].append(
+        listed_groups.add((g.generation_id, g.external_id))
+        groups_by_site[(g.generation_id, g.site_external_id)].append(
             {
                 "external_id": g.external_id,
+                "instance_id": source_by_generation[g.generation_id],
                 "name": g.name,
                 "is_active": g.is_active,
-                "counts": counts.get(g.external_id, dict(empty)),
+                "counts": counts.get((g.generation_id, g.external_id), dict(empty)),
             }
         )
-    sites_by_org: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    sites_by_org: dict[tuple[Any, str], list[dict[str, Any]]] = defaultdict(list)
     for s in SiteNode.objects.filter(customer_id=customer_id, generation_id__in=gen_ids).order_by("name"):
-        groups = groups_by_site.pop(s.external_id, [])
-        sites_by_org[s.organization_external_id].append(
+        groups = groups_by_site.pop((s.generation_id, s.external_id), [])
+        sites_by_org[(s.generation_id, s.organization_external_id)].append(
             {
                 "external_id": s.external_id,
                 "name": s.name,
@@ -93,8 +101,17 @@ def hierarchy(customer_id: Any, stale_days: int = 7) -> dict[str, Any]:
         )
     orgs = []
     for o in OrganizationNode.objects.filter(customer_id=customer_id, generation_id__in=gen_ids).order_by("name"):
-        sites = sites_by_org.get(o.external_id, [])
-        orgs.append({"external_id": o.external_id, "name": o.name, "sites": sites, "counts": total(sites)})
+        sites = sites_by_org.get((o.generation_id, o.external_id), [])
+        orgs.append(
+            {
+                "external_id": o.external_id,
+                "instance_id": source_by_generation[o.generation_id],
+                "source": source_names[o.generation_id],
+                "name": o.name,
+                "sites": sites,
+                "counts": total(sites),
+            }
+        )
     # Devices whose group was not in the active group list, or that were absent from the device list.
     unassigned = dict(empty)
     for gid, c in counts.items():
@@ -114,8 +131,29 @@ def hierarchy(customer_id: Any, stale_days: int = 7) -> dict[str, Any]:
     }
 
 
-def group_network(customer_id: Any, group_external_id: str) -> dict[str, Any] | None:
+def group_network(customer_id: Any, group_external_id: str, instance_id: str | None = None) -> dict[str, Any] | None:
     gens = list(current_generations(customer_id))
+    from rest_framework.exceptions import ValidationError
+
+    if instance_id:
+        gens = [g for g in gens if str(g.integration_instance_id) == str(instance_id)]
+    else:
+        available_ids = [g.id for g in gens]
+        source_ids = set(
+            GroupNode.objects.filter(
+                customer_id=customer_id, generation_id__in=available_ids, external_id=group_external_id
+            ).values_list("generation__integration_instance_id", flat=True)
+        )
+        source_ids.update(
+            AssetObservation.objects.filter(
+                customer_id=customer_id, generation_id__in=available_ids, group_external_id=group_external_id
+            ).values_list("generation__integration_instance_id", flat=True)
+        )
+        if len(source_ids) > 1:
+            raise ValidationError(
+                {"instance": "This group ID exists in multiple VSA instances. Select a source instance."}
+            )
+        gens = [g for g in gens if g.integration_instance_id in source_ids]
     gen_ids = [g.id for g in gens]
     node = GroupNode.objects.filter(
         customer_id=customer_id, generation_id__in=gen_ids, external_id=group_external_id
@@ -216,6 +254,7 @@ def group_network(customer_id: Any, group_external_id: str) -> dict[str, Any] | 
             "site_external_id": node.site_external_id,
             "organization_external_id": node.organization_external_id,
         },
+        "instance_id": str(gens[0].integration_instance_id) if gens else None,
         "group_listed": node is not None,
         "as_of": [g.published_at for g in gens],
         "data_basis": sorted({g.data_basis for g in gens}),
@@ -240,6 +279,7 @@ def group_network(customer_id: Any, group_external_id: str) -> dict[str, Any] | 
         "devices": devices,
         "note": NETWORK_NOTE,
         "expected_subnets": expected,
+        "expected_subnets_note": "Expected subnet rules whose source IDs collide across VSA instances are not applied.",
         "outside_expected_subnet": outside,
         "addresses_not_evaluated_against_expectation": not_evaluated,
         "address_changes": changes,
@@ -282,6 +322,22 @@ def _expected_subnet_review(
             | Q(scope_type="site", scope_external_id__in=site_ids)
         )
     )
+    # Existing expectations have customer-local IDs, not instance keys. Ambiguous rules cannot certify this source.
+    generations = current_generations(customer_id)
+    counts_by_scope = {
+        kind: dict(
+            model.objects.filter(
+                customer_id=customer_id,
+                generation__in=generations,
+                external_id__in=[rule.scope_external_id for rule in rows if rule.scope_type == kind],
+            )
+            .values("external_id")
+            .annotate(sources=Count("generation__integration_instance_id", distinct=True))
+            .values_list("external_id", "sources")
+        )
+        for kind, model in (("group", GroupNode), ("site", SiteNode))
+    }
+    rows = [rule for rule in rows if counts_by_scope[rule.scope_type].get(rule.scope_external_id) == 1]
     nets = [ipaddress.ip_network(e.cidr) for e in rows]
     outside: list[dict[str, Any]] = []
     not_evaluated = 0

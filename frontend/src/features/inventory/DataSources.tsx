@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
 import { ErrorState, LoadingState } from "../../components/States";
 import { Badge, Notice, statusTone } from "../../components/ui";
@@ -32,6 +33,17 @@ const STUCK_AFTER_MS = 2 * 60 * 1000;
 export function DataSources({ customer }: { customer: Customer }) {
   const queryClient = useQueryClient();
   const datasets = useDatasets(customer.id);
+  const previousGeneration = useRef<string | null>(null);
+  const generationKey = datasets.data?.map((dataset) => `${dataset.mapping_id}:${dataset.generation_id}`).sort().join("|") ?? null;
+  useEffect(() => {
+    if (generationKey === null) return;
+    if (previousGeneration.current !== null && previousGeneration.current !== generationKey) {
+      for (const key of ["assets", "software", "os-updates", "device-health", "trends", "lifecycle", "hierarchy"]) {
+        void queryClient.invalidateQueries({ queryKey: [key, customer.id] });
+      }
+    }
+    previousGeneration.current = generationKey;
+  }, [generationKey, queryClient, customer.id]);
   const canSync = customer.my_capabilities.includes(CAP.sync);
   const syncNow = useMutation({
     mutationFn: () => api.post<unknown>(`/customers/${customer.id}/sync-runs/`),

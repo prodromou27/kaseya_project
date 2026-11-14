@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useUrlFilters } from "../../lib/useUrlFilters";
 import { Link } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
@@ -129,7 +130,7 @@ function Thresholds({ customer, summary }: { customer: Customer; summary: Health
 function Devices({ customer, summary, filter, setFilter }: {
   customer: Customer; summary: HealthSummary; filter: Partial<Record<HealthDimension, string>>; setFilter: (f: Partial<Record<HealthDimension, string>>) => void;
 }) {
-  const [page, setPage] = useState(1);
+  const { page, setPage } = useUrlFilters({});
   const query = useQuery({
     queryKey: ["device-health", customer.id, "devices", filter, page],
     queryFn: ({ signal }) => api.get<Paginated<HealthRow>>(`/customers/${customer.id}/device-health/devices/`, { ...filter, page }, signal),
@@ -140,7 +141,7 @@ function Devices({ customer, summary, filter, setFilter }: {
       <h2 id="dev-h" className="mb-2 text-sm font-semibold">Devices</h2>
       {active.length ? (
         <p className="mb-2 flex flex-wrap items-center gap-1 text-sm">Filtered by
-          {active.map(([d, v]) => <Badge key={d} tone="info">{DIMENSION_TITLE[d]}: {summary.labels[d][v] ?? v}</Badge>)}
+          {active.map(([d, v]) => <Badge key={d} tone="info">{DIMENSION_TITLE[d]}: {v.split(",").map((value) => summary.labels[d]?.[value] ?? value).join(" or ")}</Badge>)}
           <button type="button" className="text-xs text-sky-800 underline" onClick={() => setFilter({})}>clear</button>
         </p>
       ) : null}
@@ -163,7 +164,13 @@ function Devices({ customer, summary, filter, setFilter }: {
 }
 
 function View({ customer }: { customer: Customer }) {
-  const [filter, setFilter] = useState<Partial<Record<HealthDimension, string>>>({});
+  const { filters: filter, update, reset } = useUrlFilters({
+    connectivity: "", agent_installed: "", agent_version: "", disk: "", antivirus: "", firewall: "",
+  });
+  const setFilter = (values: Partial<Record<HealthDimension, string>>) => {
+    if (!Object.keys(values).length) reset();
+    else update({ connectivity: "", agent_installed: "", agent_version: "", disk: "", antivirus: "", firewall: "", ...values });
+  };
   const query = useQuery({
     queryKey: ["device-health", customer.id, "summary"],
     queryFn: ({ signal }) => api.get<HealthSummary>(`/customers/${customer.id}/device-health/summary/`, undefined, signal),
@@ -174,6 +181,7 @@ function View({ customer }: { customer: Customer }) {
         <div className="space-y-4">
           <p className="text-sm text-slate-600">{s.devices} devices · snapshot {s.as_of.map(formatUtc).join(", ") || "never"} · data basis {s.data_basis.join(", ") || "none"}</p>
           <Notice tone="info"><ul className="list-disc pl-4">{s.notes.map((n) => <li key={n}>{n}</li>)}</ul></Notice>
+          <Devices customer={customer} summary={s} filter={filter} setFilter={setFilter} />
           {s.devices === 0 ? <EmptyState title="No devices in the current snapshot." /> : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {(Object.keys(s.dimensions) as HealthDimension[]).map((d) => (
@@ -181,10 +189,10 @@ function View({ customer }: { customer: Customer }) {
               ))}
             </div>
           )}
-          <DataTable caption="Attention by group" rows={s.by_group} getRowId={(r) => `${r.group_external_id}-${r.group_name}`} emptyTitle="No groups."
+          <DataTable caption="Attention by group" rows={s.by_group} getRowId={(r) => `${r.instance_id ?? ""}-${r.group_external_id}-${r.group_name}`} emptyTitle="No groups."
             columns={[
               { header: "Site", cell: ({ row }) => String(row.original.site || "—") },
-              { header: "Group", cell: ({ row }) => row.original.group_external_id ? <Link className="text-sky-800 hover:underline" to={`/groups/${row.original.group_external_id}`}>{row.original.group_name || row.original.group_external_id}</Link> : row.original.group_name },
+              { header: "Group", cell: ({ row }) => row.original.group_external_id ? <Link className="text-sky-800 hover:underline" to={`/groups/${row.original.group_external_id}${row.original.instance_id ? `?instance=${row.original.instance_id}` : ""}`}>{row.original.group_name || row.original.group_external_id}</Link> : row.original.group_name },
               { header: "Devices", accessorKey: "devices" },
               { header: "Offline / stale / never seen", cell: ({ row }) => row.original.connectivity_attention ?? 0 },
               { header: "Agent not installed", cell: ({ row }) => row.original.agent_not_installed ?? 0 },
@@ -195,7 +203,6 @@ function View({ customer }: { customer: Customer }) {
               { header: "Explicit no patch policy", cell: ({ row }) => row.original.no_patch_policy ?? 0 },
             ]} />
           <Thresholds key={JSON.stringify(s.thresholds)} customer={customer} summary={s} />
-          <Devices customer={customer} summary={s} filter={filter} setFilter={setFilter} />
         </div>
       )}
     </QueryBoundary>
@@ -207,7 +214,7 @@ export function DeviceHealthPage() {
   return (
     <>
       <PageHeader title="Device health" subtitle="Agent connectivity and version, disk space and security state from the latest VSA X snapshot." />
-      {!selected ? <SelectCustomer /> : <View customer={selected} />}
+      {!selected ? <SelectCustomer /> : <View key={selected.id} customer={selected} />}
     </>
   );
 }

@@ -32,7 +32,7 @@ export function Trends({ customer }: { customer: Customer }) {
             <TrendChart
               title="Devices over time"
               unit="devices, latest published dataset per day"
-              xLabels={d.points.map((p) => p.day)}
+              xLabels={d.points.map((p) => d.points.some((other) => other.source !== p.source) ? `${p.day} / ${p.source}` : p.day)}
               series={[
                 { key: "devices", label: "In inventory", values: d.points.map((p) => p.devices) },
                 { key: "outdated", label: "With outdated software", values: d.points.map((p) => p.software?.devices_with_outdated ?? null) },

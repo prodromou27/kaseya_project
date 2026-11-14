@@ -88,17 +88,26 @@ function NewComparison({ customer }: { customer: Customer }) {
   });
   const p = preview.data;
   const current = mapping ?? p?.mapping ?? {};
+  const hasIdentifier = p?.identifier_fields.some((key) => current[key] !== undefined && current[key] !== null) ?? false;
+  const stage = !upload ? 0 : !hasIdentifier ? 1 : 2;
 
   return (
     <section aria-labelledby="new-h" className="mb-6 rounded border border-slate-200 bg-white p-4">
       <h2 id="new-h" className="mb-2 font-semibold">New comparison</h2>
+      <ol aria-label="Comparison steps" className="mb-4 grid gap-2 border-b border-slate-200 pb-4 text-xs sm:grid-cols-4">
+        {["Upload inventory", "Map & preview", "Run comparison", "Review & export"].map((label, index) => (
+          <li key={label} aria-current={index === stage ? "step" : undefined} className={`flex items-center gap-2 ${index === stage ? "font-semibold text-sky-800" : "text-slate-500"}`}>
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${index <= stage ? "bg-sky-100 text-sky-800" : "bg-slate-100"}`}>{index + 1}</span>{label}
+          </li>
+        ))}
+      </ol>
       <p className="mb-3 text-xs text-slate-500">
         Upload the customer's expected device list (.xlsx or .csv, at most 5 MB). Macro-enabled and legacy formats are refused,
         formulas are never evaluated, and the file is deleted automatically after 72 hours.
       </p>
       <Field label="Expected inventory file">
         {(id) => (
-          <input id={id} type="file" accept=".xlsx,.csv" className="text-sm"
+          <input id={id} type="file" accept=".xlsx,.csv" className="max-w-full text-sm" disabled={send.isPending || start.isPending}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) send.mutate(f); }} />
         )}
       </Field>
@@ -125,6 +134,7 @@ function NewComparison({ customer }: { customer: Customer }) {
               )}
             </Field>
           </div>
+          {preview.isFetching ? <p role="status" className="text-xs text-slate-500">Validating mapping and preparing preview…</p> : null}
           {preview.isError ? <p role="alert" className="text-sm text-red-700">{describeError(preview.error)}</p> : null}
           {p ? (
             <>
@@ -164,7 +174,7 @@ function NewComparison({ customer }: { customer: Customer }) {
                 <input type="checkbox" checked={allowStale} onChange={(e) => setAllowStale(e.target.checked)} />
                 Compare even if the snapshot is stale (every row is then flagged STALE_SOURCE)
               </label>
-              <button type="button" className="btn-primary" disabled={start.isPending} onClick={() => start.mutate()}>
+              <button type="button" className="btn-primary" disabled={start.isPending || preview.isFetching || send.isPending || !hasIdentifier} onClick={() => start.mutate()}>
                 Start comparison
               </button>
               {start.isError ? <p role="alert" className="text-sm text-red-700">{describeError(start.error)}</p> : null}

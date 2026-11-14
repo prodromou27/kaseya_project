@@ -211,6 +211,7 @@ export type SoftwareRow = {
 };
 
 export type AssetDetail = {
+  customer?: Pick<Customer, "id" | "code" | "name">;
   details: AssetDetails | null;
   third_party_patch_status: ThirdPartyPatchStatus;
   os_updates: null | { status: DevicePatchStatus; updates: DeviceOsUpdateRow[] };
@@ -452,9 +453,10 @@ export type NodeCounts = {
   no_network_data: number;
   no_update_data: number;
 };
-export type GroupTreeNode = { external_id: string; name: string; is_active: boolean | null; counts: NodeCounts };
+export type GroupTreeNode = { external_id: string; instance_id?: string; name: string; is_active: boolean | null; counts: NodeCounts };
 export type SiteTreeNode = { external_id: string; name: string; groups: GroupTreeNode[]; counts: NodeCounts };
-export type OrgTreeNode = { external_id: string; name: string; sites: SiteTreeNode[]; counts: NodeCounts };
+export type OrgTreeNode = {
+  instance_id?: string; source?: string; external_id: string; name: string; sites: SiteTreeNode[]; counts: NodeCounts };
 export type HierarchyResponse = {
   as_of: string[];
   data_basis: string[];
@@ -480,6 +482,7 @@ export type Adapter = {
 };
 
 export type GroupNetwork = {
+  instance_id?: string;
   group: null | { external_id: string; name: string; is_active: boolean | null; site_external_id: string; organization_external_id: string };
   group_listed: boolean;
   as_of: string[];

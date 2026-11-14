@@ -13,6 +13,24 @@ type Row = { id: string; name: string };
 const columns: ColumnDef<Row, unknown>[] = [{ header: "Name", accessorKey: "name" }];
 
 describe("DataTable", () => {
+  it("selects only displayed records for read-only reporting and clears the selection", async () => {
+    render(<DataTable caption="People" selectable getRowId={(row) => row.id} columns={columns} rows={[{ id: "1", name: "Alex" }, { id: "2", name: "Sam" }]}
+      selectionActions={(rows) => <span>Report includes {rows.map((row) => row.name).join(", ")}</span>} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select row 2" }));
+    expect(screen.getByText("Report includes Sam")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all rows on this page" }));
+    expect(screen.getByText("Report includes Alex, Sam")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(screen.queryByText(/Report includes/)).not.toBeInTheDocument();
+  });
+  it("lets an engineer choose columns while retaining at least one visible column", async () => {
+    render(<DataTable caption="People" columnChooser columns={[...columns, { id: "id", header: "Identifier", accessorKey: "id" }]} rows={[{ id: "1", name: "Alex" }]} />);
+    await userEvent.click(screen.getByText("Columns", { exact: true }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Identifier" }));
+    expect(screen.queryByRole("columnheader", { name: "Identifier" })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Name" })).toBeDisabled();
+    expect(screen.getByRole("region", { name: "People table" })).toHaveAttribute("tabindex", "0");
+  });
   it("renders an accessible table with caption and column headers", () => {
     render(<DataTable caption="People" columns={columns} rows={[{ id: "1", name: "<b>x</b>" }]} total={1} />);
     const table = screen.getByRole("table", { name: "People" });

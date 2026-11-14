@@ -32,7 +32,7 @@ test("engineer browses org > site > group and the group's reported network", asy
 test("device page shows network, hardware and security tabs and the third-party status notice", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
   await openNav(page, "Devices");
-  await page.getByLabel("Search").fill("10.1.10.86");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("10.1.10.86");
   await expect(page.getByText("2 records · page 1 of 1")).toBeVisible();
   await page.getByRole("table", { name: "DEMO-A assets" }).getByRole("link").first().click();
   await page.getByRole("tab", { name: "Network" }).click();
