@@ -1,0 +1,250 @@
+{
+  "fixture": true,
+  "errors": [],
+  "observations": [
+    {
+      "name": "dashboard",
+      "width": 1440,
+      "path": "/",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "devices",
+      "width": 1440,
+      "path": "/assets",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "device-detail",
+      "width": 1440,
+      "path": "/assets/4280910f-514a-405e-8cc6-9661ab36e058",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "software",
+      "width": 1440,
+      "path": "/software",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 1440,
+      "path": "/windows-updates",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "onboarding",
+      "width": 1440,
+      "path": "/onboarding",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "groups",
+      "width": 1440,
+      "path": "/groups",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "reports",
+      "width": 1440,
+      "path": "/reports",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "settings",
+      "width": 1440,
+      "path": "/admin",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "health",
+      "width": 1440,
+      "path": "/device-health",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "changes",
+      "width": 1440,
+      "path": "/changes",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": [
+        "Could not load dataThere is no earlier complete snapshot to compare with. (ref df3226afa5d34ec692b3ed0a2ea27281)Try again"
+      ]
+    },
+    {
+      "name": "notifications",
+      "width": 1440,
+      "path": "/notifications",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "policies",
+      "width": 1440,
+      "path": "/patch-policies",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "lifecycle",
+      "width": 1440,
+      "path": "/lifecycle",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "customers",
+      "width": 1440,
+      "path": "/customers",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "dashboard",
+      "width": 390,
+      "path": "/",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "devices",
+      "width": 390,
+      "path": "/assets",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "device-detail",
+      "width": 390,
+      "path": "/assets/4280910f-514a-405e-8cc6-9661ab36e058",
+      "documentWidth": 812,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "software",
+      "width": 390,
+      "path": "/software",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 390,
+      "path": "/windows-updates",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "onboarding",
+      "width": 390,
+      "path": "/onboarding",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "groups",
+      "width": 390,
+      "path": "/groups",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "reports",
+      "width": 390,
+      "path": "/reports",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "settings",
+      "width": 390,
+      "path": "/admin",
+      "documentWidth": 675,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "health",
+      "width": 390,
+      "path": "/device-health",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "changes",
+      "width": 390,
+      "path": "/changes",
+      "documentWidth": 481,
+      "viewportWidth": 390,
+      "alerts": [
+        "Could not load dataThere is no earlier complete snapshot to compare with. (ref 608f4dd99dc94bddabaa49d0bd693431)Try again"
+      ]
+    },
+    {
+      "name": "notifications",
+      "width": 390,
+      "path": "/notifications",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "policies",
+      "width": 390,
+      "path": "/patch-policies",
+      "documentWidth": 476,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "lifecycle",
+      "width": 390,
+      "path": "/lifecycle",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "customers",
+      "width": 390,
+      "path": "/customers",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    }
+  ]
+}

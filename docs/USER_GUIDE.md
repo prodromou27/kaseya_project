@@ -1,5 +1,21 @@
 # Engineer and viewer user guide
 
+## Verified VSA workflows — 2026-11-14
+
+These paths were exercised with synthetic fixtures; live source accuracy remains a separate pilot gate.
+
+1. Select an authorized customer in the header. The scope strip identifies the customer for every view. Navigation is grouped by workflow, and **Find a page** narrows navigation links. Header device search applies only to the selected customer.
+2. Select a dashboard metric to open its exact investigation: offline/stale/never-seen health, critical disk, antivirus issues, critical available OS updates or outdated software versions. Source freshness/failures are visible on the dashboard.
+3. In **Devices**, use search, group/site/type/OS/online filters and sorting. The URL retains the view and page. **Columns** controls visible columns. Check rows for read-only reporting, then **Export selected devices**; selection is limited to the displayed page and resets when its page/filter view changes. Regular **Export inventory** exports the filtered population, not just one page.
+4. Open a device to investigate its grouped overview and existing software, updates, policies, network, hardware/security, notifications, onboarding and history tabs. Tabs survive reload. **Back to devices** restores the originating filtered inventory URL. Wide tables and tab bars scroll within their containers; table headers stay visible.
+5. **Software** classifications compare installed/reference versions; they are not pending patch claims. Device links open the investigation workspace. **Windows updates** separates available/installed rows, source severity and uncollected/unsupported populations. Filters and pagination stay in the URL.
+6. **Onboarding check** uploads only after a customer is selected. Its progress indicator guides upload, mapping/preview, comparison and review/export. A new preview must finish validating before comparison can start. Ambiguous identities remain review items; no automatic move or merge occurs.
+7. **Groups & network** separates source instances even when IDs match. Open a group to inspect reported adapters/addresses and use **Export group network** for CSV/XLSX/PDF. The file pins the source snapshot and retains missing-data states. Derived CIDRs are inventory observations, not physical topology.
+8. **Reports** starts with inventory and supports format choice, saved definitions, schedules and paginated history. Downloads show the actual file format and remain protected by current customer permissions.
+9. In a current device's **Operations** tab, an engineer with proposal permission can select an active destination in the same source/customer/organization and provide a reason. A different authorized administrator reviews it under **Group move approvals**. Requests expire after 24 hours and cannot be approved against changed or stale inventory. **Approval never executes a VSA change.**
+
+Final screens and checks: [CODEX_VERIFICATION.md](CODEX_VERIFICATION.md). Existing design targets below may include future capabilities; the remediation backlog explicitly records remaining refinements and gates.
+
 **Purpose:** Help internal authorized users interpret reports correctly. **Status:** Planned UI workflows, not existing screenshots or deployed instructions.
 
 ## 1. Signing in and selecting a customer

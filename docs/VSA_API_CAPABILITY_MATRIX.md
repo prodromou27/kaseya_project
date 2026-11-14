@@ -1,5 +1,19 @@
 # Kaseya VSA X REST API — capability matrix
 
+## Remediation verification — 2026-11-14
+
+The public reference at https://api.vsax.net/ was re-opened during the Codex audit. The help-site root returned HTTP 404 through the research tool. No installed tenant/version was accessed and no new live vendor request was made. Existing route/field fixtures were rerun in the complete **585-test PostgreSQL suite**; this is fixture validation, not new live evidence.
+
+| Remediation feature | Documented vendor capability | Implemented | Fixture-tested | Live-tested by this run | Limitation |
+|---|---|---|---|---|---|
+| Current dashboard and filtered inventory/software/update drilldowns | Existing read-only normalized source data | Yes | Yes | No | Current customer aggregate; historical trend points are separate |
+| Group-network CSV/XLSX/PDF (R10) | Existing reported adapter/IP/mask/gateway/DNS observations | Yes | All three formats, source/customer scope and absent sections | No | Derived CIDRs are not topology discovery |
+| Group move proposal/review | Internal portal CRUD; no vendor endpoint used | Yes | Independent approval, expiry, immutable source/destination and tenant denial | No | No execution route, write credentials or vendor readback |
+| Third-party patch applicability/deployment | Not established for the configured integration | No | Explicit unavailable UI retained | No | Version-outdated is separate from pending/deployed patch |
+| Failed-update/reboot state | Requires authoritative field/capability verification | No | Unavailable states retained | No | No state is inferred from KB inventory |
+
+This update does not promote any route below to live-verified or authorize a VSA write. Full results and external gates: CODEX_VERIFICATION.md.
+
 **Public documentation checked:** 2026-11-12; **source** <https://api.vsax.net/>.  
 **Installed tenant/version:** unknown until pilot. **Live test status:** `PENDING` for every route below.  
 **Current public help release as checked:** VSA 10.29 (<https://help.vsa10.kaseya.com/help/Content/0-Home/release-notes/2026/10.29.htm>); do not assume customer on-prem VSA is on that release.

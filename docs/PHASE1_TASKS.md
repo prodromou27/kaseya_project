@@ -46,12 +46,12 @@
 - [x] **VSA4-03 [P1]** Notifications + approved custom fields; sensitive-field allowlist. AC: audit/PII minimization. — *Done `a436ecc` (fixture): budgeted per-device notifications (window, redaction of secrets/e-mail/DOMAIN\\user, recurring patterns, R15); customer-approved custom field allowlist with two-person approval, credential-like names refused and dropped at ingest, nothing requested without approvals; audited; `test_device_details.py`, E2E `vsa4-notifications.spec.ts`. Tenant-wide `/api/v3/notifications` deliberately not used. LIVE_VALIDATION_PENDING.*
 - [x] **VSA4-04 [P1]** Historical snapshot diff: group/IP/software/agent/OS changes. AC: no fabricated actor/time. — *Done `136ddb6` (fixture): diff of two complete snapshots of the same instance (devices added/removed, hostname, group, site, OS, agent, IPs, software); sections compared only when collected in both; changes reported as observed between snapshot publish times with no actor; R16; `test_changes.py`, E2E `vsa4-changes.spec.ts` (resync of unchanged data → zero changes).*
 - [x] **VSA4-05 [P2]** Software/OS lifecycle catalog + sources/end dates; confidence. AC: unverified entries unknown. — *Done `(this commit)` (fixture): `LifecycleEntry` (OS family or catalog product, dotted version prefix, end of support, extended support, https source, checked date, confidence); two-person review; approved rows immutable (DB trigger); only approved *official* entries classify, everything else (no entry, secondary source, conflicting entries, unparsable version, uncatalogued software) is unknown; Lifecycle page, admin catalog tab, dashboard tile, report R17 pinned to snapshot + date + entry IDs; `test_lifecycle.py`, `lifecycle.test.tsx`. No vendor dates are shipped: demo entries are labelled illustrative (.invalid source).*
-- [ ] **VSA4-06 [P2]** Performance, 100k asset load fixture, sync health, cache/indexes. AC: documented load and query results.
+- [ ] **VSA4-06 [P2]** Performance, 100k asset load fixture, sync health, cache/indexes. AC: documented load and query results. - *PARTIAL (2026-11-14): bounded 100k normalized-inventory fixture and query evidence complete; health summary 16.3327s to 1.2915s, 9 queries; initial JS 576KB to 342KB. No speculative index/cache added. Related-data, concurrent and vendor-sync load remain target-environment gates. See CODEX_PERFORMANCE.md.*
 
 ## VSA5 — Exceptional write path, disabled by default
 
 - [ ] **VSA5-01 [GATED]** Separate action permission model, feature flag + vaulted write credential and signed independent owner approval. AC: defaults OFF.
-- [ ] **VSA5-02 [GATED]** Propose/approve state machine with immutable diff, policy impact, expiry, no self approval. AC: cross-customer denied.
+- [x] **VSA5-02 [GATED]** Propose/approve state machine with immutable diff, policy impact, expiry, no self approval. AC: cross-customer denied. - *Internal workflow implemented and fixture-verified (2026-11-14): migrations 0009/0010, separate capabilities, 24-hour expiry, immutable content/final decisions, independent approval even in single-admin mode, audit and browser path. No execute route or vendor write credential. VSA5-03/04 stay gated.*
 - [ ] **VSA5-03 [GATED]** One documented device move PUT, durable attempt, readback, unknown outcome and audit. AC: timeout no double PUT.
 - [ ] **VSA5-04 [GATED]** Authorized pilot and readback acceptance. AC: written approval and evidence; bulk move remains disabled.
 
@@ -64,3 +64,5 @@
 - [ ] **VSAP-05 [P0]** Final acceptance checklist, reports/coverage/recovery/reliability metrics and runbook handoff.
 
 **Not included in this phase:** IT Glue, PSA, Tenable, MCP, scripts/patching/reboots, bulk moves, VSA policy editing or source DB queries.
+
+Codex remediation and current verification: CODEX_VERIFICATION.md. No live field-level API validation or production sign-off was performed.

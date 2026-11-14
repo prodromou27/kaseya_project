@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-14",
+  "data_origin": "synthetic fixture only",
+  "baseline": "595d3e3",
+  "backend_tests": 585,
+  "frontend_tests": 74,
+  "full_browser_tests": 36,
+  "network_report_browser_tests": 1,
+  "screenshots_after": 34,
+  "page_overflows_after": 0,
+  "browser_errors_after": 0,
+  "bandit_medium_high_findings": 0,
+  "bandit_exit": 0,
+  "shellcheck_exit": 0,
+  "npm_vulnerabilities": 0,
+  "pip_audit_exit": 0,
+  "production_deployed": false,
+  "live_vendor_requests": false
+}

@@ -72,3 +72,22 @@
 ## Evidence register template
 
 For each checked task add a short entry under a future `docs/PHASE_ACCEPTANCE_<phase>.md` with task ID, commit hash, exact commands, tests result, source-fixture/live status and reviewer.
+
+## Codex remediation delivery - 2026-11-14
+
+The historical P0-P5 checkboxes above remain acceptance history. Current VSA-only remediation work is tracked in CODEX_REMEDIATION_BACKLOG.md; evidence and files are in CODEX_VERIFICATION.md and CODEX_CHANGED_FILES.txt.
+
+- [x] **CX-00** Independent implementation/UI baseline and prioritized audit.
+- [x] **CX-01** Shared inventory/list/export filters, selected-device scope, URL state and column chooser.
+- [x] **CX-02** Workflow navigation, scope/search, responsive shared controls and recovery boundary.
+- [x] **CX-03** Current customer dashboard aggregates, exact drilldowns, source health and visible failures.
+- [x] **CX-04** Persistent software/Windows filters, pagination, device links and honest export population.
+- [x] **CX-05** Reconciliation progress and preview validation feedback; existing end-to-end comparison/workbook verified.
+- [x] **CX-06** Grouped device investigation, persistent tabs/return filters, responsive layout and provenance.
+- [x] **CX-07** Source-qualified hierarchy/group identity, ambiguous-ID refusal and pinned R10 network exports.
+- [x] **CX-08** Bounded 100k normalized-inventory query benchmark and health-summary optimization; broader production load stays gated.
+- [x] **CX-09** Internal immutable group-change proposals and independent review; vendor execution absent.
+- [ ] **CX-10** Approved target environment, Docker/AlmaLinux health, real SSO/MFA, secrets/restore and representative live pilot.
+- [ ] **CX-11** Independent security audit in the required isolated environment; local scans passed.
+
+Final local evidence: **585 PostgreSQL tests**, **74 frontend tests**, **36-test full browser pass** including the network-export browser test, **34 desktop/mobile screens** with no overflow/JavaScript errors, clean lint/type/schema/build checks. No production deployment or new live vendor validation. First unchecked historical task remains **P0-02 / VSA0-02**, requiring Docker. Remaining UI refinements are explicitly recorded in the remediation backlog.

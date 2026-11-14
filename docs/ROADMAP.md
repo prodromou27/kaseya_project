@@ -59,3 +59,9 @@ VSA inventory and software-version reporting deliver the core requested outcome.
 ## Progress reporting instructions
 
 Coding agents must update `TASKS.md` checkboxes and this roadmap **only after verified implementation**, including commit, tests and gaps. Use `CHANGELOG.md` to record user-visible features with evidence. Never mark a stage complete on design artifacts alone.
+
+## VSA application remediation - 2026-11-14
+
+CX-00 through CX-09 are implemented and fixture-verified: workflow navigation/design system, responsive device investigation, exact current dashboard drilldowns, persistent filters, scoped selected-device exports, reconciliation progression, source-qualified groups and new R10 network CSV/XLSX/PDF, report history fixes, internal immutable move review, and measured health-summary/bundle improvements. Evidence: CODEX_VERIFICATION.md.
+
+Production gates remain open. VSA0-02/P0-02 needs Docker; VSAP requires real SSO/MFA, approved key custody/backup/restore and a representative live pilot. Independent security review needs the required isolated execution environment. Move execution remains unavailable without a separately authorized implementation/pilot. Broader UI refinements and related-data/concurrent load remain in CODEX_REMEDIATION_BACKLOG.md. IT Glue/PSA/Tenable/MCP remain outside this improvement phase.

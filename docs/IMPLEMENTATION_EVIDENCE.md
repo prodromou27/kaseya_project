@@ -21,3 +21,12 @@
 | Simplification + first-host sync fixes | `9290ad2`, `72a5996`, `f41aa45`, (this commit) | Connect VSA wizard, short navigation, Settings, folded notes, single-admin approvals; Redis protected mode, auto schedules, requeue of lost runs, accepted counts, sync_status | `pytest` -> **553 passed**; Vitest -> **68 passed**; Playwright -> **31 passed** (run with REQUIRE_SECOND_APPROVER=true) (2026-11-14) | fixture + **live host**: the operator's AlmaLinux deployment synced 342 devices from its VSA X server after the Redis fix (sync_status output, 2026-11-13) | live VSA field-level validation (VSAP-04) still pending |
 
 Update only after actual code and tests. Never mark a task complete on written design alone.
+
+## Codex remediation - 2026-11-14
+
+| Tasks | Implementation | Actual checks | Data origin | Gates |
+|---|---|---|---|---|
+| CX-00 through CX-07, CX-09; VSA5-02 internal | Audit/redesign, shared filters/export scope, dashboard/drilldowns, source-qualified hierarchy, R10 network reports, internal immutable move review; additive inventory 0009/0010 | 585 pytest; 74 Vitest; TypeScript/ESLint/Ruff/schema/build clean; full 36 Playwright pass including network download; 34 screenshots, zero overflow/JS errors | synthetic fixture only | live pilot, Docker/host/SSO/restore/security gates; vendor execution absent |
+| CX-08; VSA4-06 bounded fixture | 100k benchmark and compact health aggregation; lazy routes | 100k assets; 16.3327s to 1.2915s health summary, 9 queries; inventory page ~0.30s/4 queries; initial JS ~342KB; migrations down/up retained 100k assets | synthetic normalized storage; no vendor calls | related-data/concurrent/actual sync load not claimed |
+
+Exact commands, corrected intermediate failures, file manifest, screenshots, scans and rollback evidence: CODEX_VERIFICATION.md and evidence/codex-2026-11-14/. This run did not deploy, run CI, access a live tenant or close production gates.

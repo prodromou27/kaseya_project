@@ -1,0 +1,278 @@
+{
+  "fixture": true,
+  "errors": [],
+  "observations": [
+    {
+      "name": "dashboard",
+      "width": 1440,
+      "path": "/",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "devices",
+      "width": 1440,
+      "path": "/assets",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "device-detail",
+      "width": 1440,
+      "path": "/assets/d3e62d9b-5fcf-41e0-b3c9-ce480e3f9532",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "software",
+      "width": 1440,
+      "path": "/software",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 1440,
+      "path": "/windows-updates",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "onboarding",
+      "width": 1440,
+      "path": "/onboarding",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "groups",
+      "width": 1440,
+      "path": "/groups",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "reports",
+      "width": 1440,
+      "path": "/reports",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "settings",
+      "width": 1440,
+      "path": "/admin",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "health",
+      "width": 1440,
+      "path": "/device-health",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "changes",
+      "width": 1440,
+      "path": "/changes",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "notifications",
+      "width": 1440,
+      "path": "/notifications",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "policies",
+      "width": 1440,
+      "path": "/patch-policies",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "group-moves",
+      "width": 1440,
+      "path": "/group-moves",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "lifecycle",
+      "width": 1440,
+      "path": "/lifecycle",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "customers",
+      "width": 1440,
+      "path": "/customers",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "group-network",
+      "width": 1440,
+      "path": "/groups/20022?instance=2ef05226-d762-4e85-9401-d2e8f2aba14e",
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "alerts": []
+    },
+    {
+      "name": "dashboard",
+      "width": 390,
+      "path": "/",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "devices",
+      "width": 390,
+      "path": "/assets",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "device-detail",
+      "width": 390,
+      "path": "/assets/d3e62d9b-5fcf-41e0-b3c9-ce480e3f9532",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "software",
+      "width": 390,
+      "path": "/software",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "windows-updates",
+      "width": 390,
+      "path": "/windows-updates",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "onboarding",
+      "width": 390,
+      "path": "/onboarding",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "groups",
+      "width": 390,
+      "path": "/groups",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "reports",
+      "width": 390,
+      "path": "/reports",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "settings",
+      "width": 390,
+      "path": "/admin",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "health",
+      "width": 390,
+      "path": "/device-health",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "changes",
+      "width": 390,
+      "path": "/changes",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "notifications",
+      "width": 390,
+      "path": "/notifications",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "policies",
+      "width": 390,
+      "path": "/patch-policies",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "group-moves",
+      "width": 390,
+      "path": "/group-moves",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "lifecycle",
+      "width": 390,
+      "path": "/lifecycle",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "customers",
+      "width": 390,
+      "path": "/customers",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    },
+    {
+      "name": "group-network",
+      "width": 390,
+      "path": "/groups/20022?instance=2ef05226-d762-4e85-9401-d2e8f2aba14e",
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "alerts": []
+    }
+  ]
+}

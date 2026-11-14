@@ -2,6 +2,18 @@
 
 All implementation claims require linked evidence. Use semantic versions for application releases once a working application exists.
 
+## [Unreleased] - 2026-11-14 - VSA application remediation
+
+- Added the independent application audit, UI plan, gap analysis, remediation register, browser evidence, security review and deployment/rollback instructions.
+- Reorganized navigation around operations, software/patching, reconciliation, reporting and administration; added active scope, device/page search, responsive tabs/forms, table scrolling/sticky headers and recovery UI.
+- Fixed current dashboard aggregation and exact attention drilldowns; made failed/unknown source evidence visible.
+- Unified list/report inventory filtering, pinned offline cutoff, added current-page read-only selection/export, persistent filters/tabs/pages and column selection.
+- Fixed multi-instance hierarchy identity and ambiguous group access; added pinned, customer/source-scoped group-network CSV/XLSX/PDF exports (R10), including missing network sections.
+- Improved software/Windows investigation, reconciliation progress and report-history pagination/format labels.
+- Added internal immutable group-change proposal/review with separate permissions, expiry, independent approval and audit. Vendor execution remains disabled and unimplemented.
+- Added a safe isolated 100k fixture benchmark; optimized health summary from 16.3327s to 1.2915s (9 queries). Split routes reduced initial JavaScript from about 576KB to 342KB.
+- Validation: 585 PostgreSQL tests, 74 frontend tests, full 36-test browser pass including network export; 34 screenshots without overflow/JS errors; lint/types/schema/build and dependency/SAST checks passed. Fixture-only; production/live gates remain open. See CODEX_VERIFICATION.md for failures corrected and precise limits.
+
 ## [Docs 0.1.0] — 2026-11-12
 
 ### Added

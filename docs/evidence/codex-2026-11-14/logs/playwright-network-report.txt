@@ -1,0 +1,14 @@
+
+Running 1 test using 1 worker
+
+npx.cmd : (node:32896) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At line:2 char:53
++ ... nly-2026!'; npx.cmd playwright test e2e/z-codex-workflows.spec.ts --g ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:32896) Wa... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\z-codex-workflows.spec.ts:26:1 › group network exports reported facts with source identity and provenance (3.5s)
+
+  1 passed (4.7s)

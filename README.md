@@ -1,5 +1,7 @@
 # Odyssey Kaseya Analytics & Reporting Portal
 
+**2026-11-14 application remediation:** the existing VSA portal now has workflow navigation, responsive investigation views, persistent filters, current dashboard drilldowns, matching list/export filters, source-qualified groups, network exports and internal independent move review. Verified locally with 585 PostgreSQL tests, 74 frontend tests and browser workflows. Start with [verification and screenshots](docs/CODEX_VERIFICATION.md), [remaining work](docs/CODEX_REMEDIATION_BACKLOG.md) and [deployment/rollback](docs/CODEX_DEPLOYMENT_AND_ROLLBACK.md). Fixture validation does not close production gates; vendor writes remain disabled.
+
 **Project state:** P0 foundation, P1 VSA X inventory and software versions, and P2 Windows updates, CSV/XLSX/PDF reports, schedules and history are implemented and **fixture-tested** (no live VSA X validation yet). The phase gates stay open until a Docker boot, a green CI run, a live pilot and owner sign-off. See [PHASE_ACCEPTANCE_P2.md](docs/PHASE_ACCEPTANCE_P2.md).
 
 **Owner:** Odyssey internal engineering  

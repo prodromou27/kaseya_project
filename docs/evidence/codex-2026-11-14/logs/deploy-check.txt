@@ -1,0 +1,14 @@
+.venv/Scripts/python.exe : System check identified some issues:
+At line:2 char:325
++ ... -password'; .venv/Scripts/python.exe manage.py check --deploy --fail- ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (System check identified some issues::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+WARNINGS:
+?: (security.W008) Your SECURE_SSL_REDIRECT setting is not set to True. Unless your site should be available over both 
+SSL and non-SSL connections, you may want to either set this setting True or configure a load balancer or 
+reverse-proxy server to redirect all connections to HTTPS.
+
+System check identified 1 issue (1 silenced).
