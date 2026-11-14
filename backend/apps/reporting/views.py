@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q, QuerySet
 from django.http import FileResponse
 from django.utils import timezone
@@ -272,13 +272,43 @@ class SavedViewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SavedView
-        fields = ["id", "name", "view_type", "filters", "shared", "owner", "created_at", "updated_at"]
+        fields = ["id", "name", "view_type", "filters", "layout", "shared", "owner", "created_at", "updated_at"]
         read_only_fields = ["id", "owner", "created_at", "updated_at"]
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         from apps.inventory.models import Asset
 
         view_type = attrs.get("view_type") or getattr(self.instance, "view_type", None)
+        layout = attrs.get("layout", getattr(self.instance, "layout", {}))
+        if not isinstance(layout, dict) or set(layout) - {"columns", "density", "page_size"}:
+            raise ValidationError({"layout": "Use columns, density and page_size only."})
+        if layout and view_type != "assets":
+            raise ValidationError({"layout": "List presentation is currently supported for devices only."})
+        columns = layout.get("columns")
+        allowed_columns = {
+            "hostname",
+            "site_name",
+            "group_name",
+            "os",
+            "device_type",
+            "last_seen",
+            "software",
+            "client_version",
+        }
+        if columns is not None and (
+            not isinstance(columns, list)
+            or not columns
+            or len(columns) > len(allowed_columns)
+            or any(not isinstance(c, str) or c not in allowed_columns for c in columns)
+            or len(set(columns)) != len(columns)
+        ):
+            raise ValidationError({"layout": "Choose at least one distinct supported device column."})
+        if "density" in layout and layout["density"] not in ("compact", "comfortable"):
+            raise ValidationError({"layout": "Density must be compact or comfortable."})
+        if "page_size" in layout and (
+            type(layout["page_size"]) is not int or layout["page_size"] not in (25, 50, 100, 200)
+        ):
+            raise ValidationError({"layout": "Page size must be 25, 50, 100 or 200."})
         filters = attrs.get("filters", getattr(self.instance, "filters", {})) or {}
         if not isinstance(filters, dict):
             raise ValidationError({"filters": "Must be an object."})
@@ -335,19 +365,46 @@ class CustomerSavedViewViewSet(CustomerScopedMixin, viewsets.ModelViewSet):
             ctx["customer"] = self.get_customer()
         return ctx
 
+    @transaction.atomic
     def perform_create(self, serializer: SavedViewSerializer) -> None:
-        serializer.save(customer=self.get_customer(), owner=self.request.user)
+        obj = self._save_view(serializer, customer=self.get_customer(), owner=self.request.user)
+        self._audit_view("created", obj)
+
+    def _save_view(self, serializer: SavedViewSerializer, **values: Any) -> SavedView:
+        try:
+            with transaction.atomic():
+                return serializer.save(**values)
+        except IntegrityError as exc:
+            if getattr(getattr(exc.__cause__, "diag", None), "constraint_name", None) != "reporting_view_name_unique":
+                raise
+            raise ValidationError(
+                {"name": "You already have a view with this name. Update it or choose another name."}
+            ) from exc
+
+    def _audit_view(self, action: str, obj: SavedView) -> None:
+        record_event(
+            action=f"saved_view.{action}",
+            outcome="success",
+            actor=self.request.user,
+            customer=obj.customer_id,
+            target_type="saved_view",
+            target_id=str(obj.id),
+            request=self.request,
+        )
 
     def _owned(self, obj: SavedView) -> None:
         if obj.owner_id != self.request.user.pk:
             raise PermissionDenied("Only the owner can change this saved view.")
 
+    @transaction.atomic
     def perform_update(self, serializer: SavedViewSerializer) -> None:
         self._owned(serializer.instance)
-        serializer.save()
+        self._audit_view("updated", self._save_view(serializer))
 
+    @transaction.atomic
     def perform_destroy(self, instance: SavedView) -> None:
         self._owned(instance)
+        self._audit_view("deleted", instance)
         instance.delete()
 
 

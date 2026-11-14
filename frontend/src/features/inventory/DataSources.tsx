@@ -30,7 +30,7 @@ const SYNC_ERRORS: Record<string, string> = {
 const STUCK_AFTER_MS = 2 * 60 * 1000;
 
 /** Source freshness and sync state. Stale/never-synced data is always shown explicitly, never hidden. */
-export function DataSources({ customer }: { customer: Customer }) {
+export function DataSources({ customer, compact = false }: { customer: Customer; compact?: boolean }) {
   const queryClient = useQueryClient();
   const datasets = useDatasets(customer.id);
   const previousGeneration = useRef<string | null>(null);
@@ -63,6 +63,18 @@ export function DataSources({ customer }: { customer: Customer }) {
         propose a mapping; a super administrator must approve it.
       </Notice>
     );
+  }
+  if (compact && !syncNow.isError && !syncNow.isSuccess && datasets.data.every((d) => d.status === "fresh" && d.last_run?.state === "completed" && !d.last_run.quarantined)) {
+    return <section aria-label="Data sources" className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1">{datasets.data.map((d) => <div key={d.mapping_id} className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-medium text-slate-700">{d.integration.name}</span><Badge tone="good">fresh</Badge>{d.data_basis ? <Badge tone={statusTone[d.data_basis]}>{d.data_basis}</Badge> : null}
+          <span className="text-slate-500">as of {formatUtc(d.as_of)} / {d.row_count} devices</span>
+        </div>)}</div>
+        {canSync ? <button type="button" className="btn-secondary" disabled={syncNow.isPending} onClick={() => syncNow.mutate()}>{syncNow.isPending ? "Requesting..." : "Sync now (read-only)"}</button> : null}
+      </div>
+      {datasets.data.some((d) => d.data_basis === "fixture") ? <p className="mt-1 text-xs text-sky-800">Fixture data: synthetic demo records, not a live VSA X tenant.</p> : null}
+    </section>;
   }
   return (
     <section aria-labelledby="sources-heading" className="mb-4 rounded border border-slate-200 bg-white p-3">

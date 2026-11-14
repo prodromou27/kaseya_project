@@ -17,6 +17,7 @@ from django.utils import timezone
 from .models import (
     AssetObservation,
     GroupNode,
+    GroupSetting,
     IpAddressObservation,
     NetworkAdapterObservation,
     OrganizationNode,
@@ -75,6 +76,14 @@ def hierarchy(customer_id: Any, stale_days: int = 7) -> dict[str, Any]:
                 out[k] += it["counts"][k]
         return out
 
+    next_instance = {g.id: g.integration_instance_id for g in gens}
+    onboarding_keys = set(
+        GroupSetting.objects.filter(
+            customer_id=customer_id,
+            integration_instance_id__in=source_by_generation.values(),
+            is_onboarding=True,
+        ).values_list("integration_instance_id", "group_external_id")
+    )
     groups_by_site: dict[tuple[Any, str], list[dict[str, Any]]] = defaultdict(list)
     listed_groups = set()
     for g in GroupNode.objects.filter(customer_id=customer_id, generation_id__in=gen_ids).order_by("name"):
@@ -85,6 +94,7 @@ def hierarchy(customer_id: Any, stale_days: int = 7) -> dict[str, Any]:
                 "instance_id": source_by_generation[g.generation_id],
                 "name": g.name,
                 "is_active": g.is_active,
+                "is_onboarding": (next_instance[g.generation_id], g.external_id) in onboarding_keys,
                 "counts": counts.get((g.generation_id, g.external_id), dict(empty)),
             }
         )

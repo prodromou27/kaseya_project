@@ -29,6 +29,7 @@ from .queries import current_generations, current_observations, stale_cutoff
 
 class AssetRowSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(source="asset_id")
+    instance_id = serializers.UUIDField(source="generation.integration_instance_id")
     external_id = serializers.CharField(source="asset.external_id")
     active = serializers.BooleanField(source="asset.active")
     source = serializers.CharField(source="generation.integration_instance.name")
@@ -64,6 +65,7 @@ class AssetRowSerializer(serializers.ModelSerializer):
             "software_count",
             "active",
             "source",
+            "instance_id",
             "data_basis",
             "generation_id",
             "as_of",
@@ -113,6 +115,27 @@ class CustomerAssetViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewsets.
                 "os": distinct("os_name"),
                 "device_type": distinct("device_type"),
                 "site": distinct("site_external_id"),
+                "sites": list(
+                    qs.order_by("site_name", "site_external_id")
+                    .values(
+                        "site_external_id",
+                        "site_name",
+                        "generation__integration_instance_id",
+                        "generation__integration_instance__name",
+                    )
+                    .distinct()[:500]
+                ),
+                "groups": list(
+                    qs.order_by("group_name", "group_external_id")
+                    .values(
+                        "group_external_id",
+                        "group_name",
+                        "site_name",
+                        "generation__integration_instance_id",
+                        "generation__integration_instance__name",
+                    )
+                    .distinct()[:500]
+                ),
             }
         )
 

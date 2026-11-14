@@ -58,16 +58,24 @@ function routes(extra: Record<string, unknown> = {}) {
 }
 
 describe("groups & network", () => {
-  it("renders the org > site > group tree with honest counts", async () => {
+  it("finds groups in the directory and opens the scoped device population", async () => {
     routes();
     renderApp("/groups");
+    const directory = await screen.findByRole("table", { name: "Agent groups" });
+    expect(within(directory).getByRole("link", { name: "3 devices in Workstations at HQ" })).toHaveAttribute("href", "/assets?group_id=20011");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search groups" }), "Servers");
+    expect(within(screen.getByRole("table", { name: "Agent groups" })).queryByText("Workstations")).not.toBeInTheDocument();
+  });
+  it("renders the org > site > group tree with honest counts", async () => {
+    routes();
+    renderApp("/groups?view=hierarchy");
     const orgs = await screen.findByRole("list", { name: "Organisations" });
     expect(within(orgs).getByText("Demo Org A")).toBeInTheDocument();
     expect(within(orgs).getByRole("link", { name: "Workstations" })).toHaveAttribute("href", "/groups/20011");
     expect(within(orgs).getByText("inactive")).toBeInTheDocument();
     expect(within(orgs).getAllByText("1 no network data").length).toBeGreaterThan(0);
-    expect(screen.getByText(/2 device\(s\) are not in any listed active group/)).toBeInTheDocument();
-    expect(screen.getByText(/1 device-list entries had no inventory record/)).toBeInTheDocument();
+    expect(screen.getByText(/2 device\(s\) are outside the listed groups/)).toBeInTheDocument();
+    expect(screen.getByText(/1 source device-list entries have no inventory record/)).toBeInTheDocument();
   });
 
   it("shows derived subnets, review flags and not-collected devices for a group", async () => {
@@ -85,9 +93,9 @@ describe("groups & network", () => {
   it("filters assets by the VSA group from the URL", async () => {
     const { calls } = routes();
     renderApp("/assets?group_id=20011");
-    expect(await screen.findByText("VSA group 20011")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Remove Group filter" })).toBeInTheDocument();
     expect(calls.some((c) => c.url.startsWith(`${base}/assets/?`) && c.url.includes("group_id=20011"))).toBe(true);
-    await userEvent.click(screen.getByRole("button", { name: "clear" }));
-    expect(screen.queryByText("VSA group 20011")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove Group filter" }));
+    expect(screen.queryByRole("button", { name: "Remove Group filter" })).not.toBeInTheDocument();
   });
 });

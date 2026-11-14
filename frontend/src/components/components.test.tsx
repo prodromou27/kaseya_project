@@ -13,6 +13,23 @@ type Row = { id: string; name: string };
 const columns: ColumnDef<Row, unknown>[] = [{ header: "Name", accessorKey: "name" }];
 
 describe("DataTable", () => {
+  it("prevents actions on stale rows while replacement results are loading", () => {
+    const { container } = render(<DataTable caption="People" loading columns={columns} rows={[{ id: "1", name: "Alex" }]} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Updating results");
+    expect(container.querySelector("tbody")).toHaveAttribute("inert");
+  });
+  it("offers page recovery even when an old page no longer has records", async () => {
+    const change = vi.fn();
+    render(<DataTable caption="People" columns={columns} rows={[]} total={60} page={3} pageSize={50} onPageChange={change} />);
+    expect(screen.getByText("No records.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "First" }));
+    expect(change).toHaveBeenCalledWith(1);
+    await userEvent.clear(screen.getByLabelText("Go to page"));
+    await userEvent.type(screen.getByLabelText("Go to page"), "2");
+    await userEvent.click(screen.getByRole("button", { name: "Go" }));
+    expect(change).toHaveBeenCalledWith(2);
+  });
+
   it("selects only displayed records for read-only reporting and clears the selection", async () => {
     render(<DataTable caption="People" selectable getRowId={(row) => row.id} columns={columns} rows={[{ id: "1", name: "Alex" }, { id: "2", name: "Sam" }]}
       selectionActions={(rows) => <span>Report includes {rows.map((row) => row.name).join(", ")}</span>} />);

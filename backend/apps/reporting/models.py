@@ -89,6 +89,7 @@ class SavedView(models.Model):
     customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="saved_views")
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     name = models.CharField(max_length=120)
+    layout = models.JSONField(default=dict, blank=True)
     view_type = models.CharField(max_length=16, choices=ViewType.choices)
     filters = models.JSONField(default=dict)
     shared = models.BooleanField(default=False, help_text="Visible to everyone with read access to the customer.")

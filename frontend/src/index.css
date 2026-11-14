@@ -34,6 +34,15 @@
   .filter-bar {
     @apply rounded-lg border border-slate-200 bg-white p-3;
   }
+  .list-workspace { @apply rounded-xl border border-slate-200 bg-white p-4; }
+  .list-label { @apply flex min-w-0 flex-col gap-1 text-xs font-medium text-slate-600; }
+  .list-disclosure { @apply border-t border-slate-100 py-2 text-xs; }
+  .list-disclosure > summary { @apply w-fit cursor-pointer font-medium text-slate-600 hover:text-sky-800; }
+  .list-options .list-disclosure { @apply border-0 py-0; }
+  .list-options .list-disclosure[open] { flex-basis: 100%; }
+  .list-preset { @apply rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-sky-300 hover:text-sky-800; }
+  .list-preset[aria-pressed="true"] { @apply border-sky-200 bg-sky-50 text-sky-800; }
+  .filter-chip { @apply inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:border-red-200 hover:bg-red-50; overflow-wrap: anywhere; }
   .data-table tbody tr:nth-child(even) {
     @apply bg-slate-50/50;
   }

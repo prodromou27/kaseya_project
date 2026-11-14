@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router";
+import { useEffect, useState } from "react";
 
 import { DataTable } from "../../components/DataTable";
 import { QueryBoundary } from "../../components/States";
@@ -42,13 +43,15 @@ export function AdapterList({ adapters }: { adapters: Adapter[] }) {
 
 function GroupPurpose({ customer, groupId, instance }: { customer: Customer; groupId: string; instance: string }) {
   const qc = useQueryClient();
+  const [optimistic, setOptimistic] = useState<boolean | null>(null);
   const url = `/customers/${customer.id}/groups/${groupId}/settings/?instance=${instance}`;
   const query = useQuery({ queryKey: ["group-purpose", customer.id, groupId, instance], queryFn: ({ signal }) => api.get<{ is_onboarding: boolean }>(url, undefined, signal) });
-  const save = useMutation({ mutationFn: (is_onboarding: boolean) => api.post<{ is_onboarding: boolean }>(url, { is_onboarding }), onSuccess: (saved) => { qc.setQueryData(["group-purpose", customer.id, groupId, instance], saved); void qc.invalidateQueries({ queryKey: ["group-purpose", customer.id] }); void qc.invalidateQueries({ queryKey: ["group-move-options", customer.id] }); } });
+  useEffect(() => { if (query.data?.is_onboarding === optimistic) setOptimistic(null); }, [query.data?.is_onboarding, optimistic]);
+  const save = useMutation({ onError: () => setOptimistic(null), mutationFn: (is_onboarding: boolean) => api.post<{ is_onboarding: boolean }>(url, { is_onboarding }), onSuccess: (saved) => { qc.setQueryData(["group-purpose", customer.id, groupId, instance], saved); void qc.invalidateQueries({ queryKey: ["group-purpose", customer.id] }); void qc.invalidateQueries({ queryKey: ["group-move-options", customer.id] }); void qc.invalidateQueries({ queryKey: ["hierarchy", customer.id] }); } });
   return <QueryBoundary query={query}>{(data) => <section className="investigation-card my-3 space-y-2" aria-label="Group purpose">
     <h2 className="text-sm font-semibold">Group purpose</h2>
     <p className="text-sm">{data.is_onboarding ? "Onboarding group: temporary installation destination. Administrators transfer agents manually when ready." : "Standard agent group. CIDR matches can suggest this group after its subnets are approved below."}</p>
-    {customer.my_capabilities.includes("customer.manage_exceptions") ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={save.isPending ? save.variables : data.is_onboarding} disabled={save.isPending} onChange={(event) => save.mutate(event.target.checked)} />Use as an onboarding group</label> : null}
+    {customer.my_capabilities.includes("customer.manage_exceptions") ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={optimistic ?? data.is_onboarding} disabled={save.isPending || optimistic !== null} onChange={(event) => { setOptimistic(event.target.checked); save.mutate(event.target.checked); }} />Use as an onboarding group</label> : null}
     {save.isError ? <p role="alert" className="text-sm text-red-700">Could not save group purpose. Retry.</p> : null}
   </section>}</QueryBoundary>;
 }
@@ -69,7 +72,7 @@ function View({ customer, groupId }: { customer: Customer; groupId: string }) {
               · as of {n.as_of.map(formatUtc).join(", ")} · data basis {n.data_basis.join(", ")}</span>}
             actions={<Link className="btn-secondary" to={`/assets?group_id=${groupId}${n.instance_id ? `&instance=${n.instance_id}` : ""}`}>Open in Assets</Link>} />
           <Notice tone="info">{n.note}</Notice>
-          {n.instance_id && n.group_listed ? <GroupPurpose customer={customer} groupId={groupId} instance={n.instance_id} /> : null}
+          {n.instance_id && n.group_listed ? <GroupPurpose key={`${groupId}:${n.instance_id}`} customer={customer} groupId={groupId} instance={n.instance_id} /> : null}
           {customer.my_capabilities.includes("customer.export") ? <div className="my-3">
             <ExportButton customer={customer} reportType="group_network" label="Export group network" filters={{ group_id: groupId, instance: n.instance_id ?? instance }} />
           </div> : null}

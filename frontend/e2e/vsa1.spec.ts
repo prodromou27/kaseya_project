@@ -16,6 +16,7 @@ async function login(page: Page, email: string) {
 test("engineer browses org > site > group and the group's reported network", async ({ page }) => {
   await login(page, "demo.engineer.a@demo.invalid");
   await openNav(page, "Groups & network");
+  await page.getByRole("tab", { name: "Hierarchy", exact: true }).click();
   const orgs = page.getByRole("list", { name: "Organisations" });
   await expect(orgs).toBeVisible();
   await expect(orgs.getByText("130 devices").first()).toBeVisible();
@@ -26,7 +27,7 @@ test("engineer browses org > site > group and the group's reported network", asy
   await expect(page.getByText(/not discovered topology/)).toBeVisible();
   await expect(page.getByText("duplicate IP").first()).toBeVisible();
   await page.getByRole("link", { name: "Open in Assets" }).click();
-  await expect(page.getByText(/VSA group \d+/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove Group filter" })).toBeVisible();
 });
 
 test("device page shows network, hardware and security tabs and the third-party status notice", async ({ page }) => {

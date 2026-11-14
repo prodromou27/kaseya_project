@@ -160,6 +160,7 @@ export const CAP = {
 // ---------------------------------------------------------------- P1: inventory, sync, software
 
 export type AssetRow = {
+  instance_id?: string;
   id: string;
   external_id: string;
   hostname: string;
@@ -427,7 +428,8 @@ export type ReportScheduleRow = {
   last_run_at: string | null;
 };
 
-export type SavedViewRow = { id: string; name: string; view_type: string; filters: Record<string, string>; shared: boolean; owner: string };
+export type ListLayout = { columns?: string[]; density?: "compact" | "comfortable"; page_size?: number };
+export type SavedViewRow = { layout?: ListLayout; id: string; name: string; view_type: string; filters: Record<string, string>; shared: boolean; owner: string };
 
 export type TrendPoint = {
   day: string;
@@ -453,7 +455,7 @@ export type NodeCounts = {
   no_network_data: number;
   no_update_data: number;
 };
-export type GroupTreeNode = { external_id: string; instance_id?: string; name: string; is_active: boolean | null; counts: NodeCounts };
+export type GroupTreeNode = { is_onboarding?: boolean; external_id: string; instance_id?: string; name: string; is_active: boolean | null; counts: NodeCounts };
 export type SiteTreeNode = { external_id: string; name: string; groups: GroupTreeNode[]; counts: NodeCounts };
 export type OrgTreeNode = {
   instance_id?: string; source?: string; external_id: string; name: string; sites: SiteTreeNode[]; counts: NodeCounts };
