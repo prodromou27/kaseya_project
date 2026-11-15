@@ -1,0 +1,55 @@
+FF..                                                                     [100%]
+================================== FAILURES ===================================
+_________ test_onboarding_purpose_authorized_audited_and_manual_hints _________
+tests\test_group_suggestions.py:75: in test_onboarding_purpose_authorized_audited_and_manual_hints
+    assert data["suggestions"][0]["matches"] == [{"cidr": "10.0.1.0/24", "addresses": ["10.0.1.10"]}]
+E   AssertionError: assert [{'cidr': '10..._devices': 1}] == [{'cidr': '10...'10.0.1.10']}]
+E
+E     At index 0 diff: {'cidr': '10.0.1.0/24', 'addresses': ['10.0.1.10'], 'basis': 'approved_subnet', 'peer_devices': 0} != {'cidr': '10.0.1.0/24', 'addresses': ['10.0.1.10']}
+E     Left contains one more item: {'cidr': '10.0.1.0/24', 'addresses': ['10.0.1.10'], 'basis': 'observed_subnet', 'peer_devices': 1}
+E     Use -v to get more diff
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:48:33.701809+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "3e53474a-08ad-400e-9932-19465d269dd6", "customer_id": "3b4f237c-cdc6-4ee7-8430-fde0cdc92769", "target_type": "sync_run", "target_id": "8162a622-ef59-424b-80b3-744ee5d1be7b"}
+{"ts": "2026-11-14T21:48:34.292981+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "6f29eef2-be43-4d47-982b-c95bb4ccf96b", "customer_id": "3b4f237c-cdc6-4ee7-8430-fde0cdc92769", "target_type": "sync_run", "target_id": "8162a622-ef59-424b-80b3-744ee5d1be7b"}
+{"ts": "2026-11-14T21:48:34.407520+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "073e8a78-21e5-4e92-8815-30c9775991ac", "customer_id": "29fe0300-025d-4ac8-8fd9-61580f7a4593", "target_type": "sync_run", "target_id": "aa65b027-2530-4436-aae8-ea6b9aaca625"}
+{"ts": "2026-11-14T21:48:34.570746+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "4d3686fd-6f1d-46ca-8b46-23c44eba5e22", "customer_id": "29fe0300-025d-4ac8-8fd9-61580f7a4593", "target_type": "sync_run", "target_id": "aa65b027-2530-4436-aae8-ea6b9aaca625"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-11-14T21:48:37.381072+00:00", "level": "WARNING", "logger": "django.request", "message": "Bad Request: /api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/", "request_id": null, "status_code": 400, "request": "<WSGIRequest: POST '/api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/?instance=bcf8cd61-8ffd-402f-82bd-7978e6c9726e'>"}
+{"ts": "2026-11-14T21:48:37.427381+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "684415988c494c1db8553a6105937a3c", "audit_action": "authz.denied", "audit_outcome": "denied", "audit_id": "12ed39ee-fcd8-442f-80d2-40f20d6bb0a1", "customer_id": null, "target_type": "customer", "target_id": "3b4f237c-cdc6-4ee7-8430-fde0cdc92769"}
+{"ts": "2026-11-14T21:48:37.427381+00:00", "level": "WARNING", "logger": "django.request", "message": "Not Found: /api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/", "request_id": null, "status_code": 404, "request": "<WSGIRequest: POST '/api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/?instance=bcf8cd61-8ffd-402f-82bd-7978e6c9726e'>"}
+{"ts": "2026-11-14T21:48:37.467849+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "0d6c0fd607f7424dbb1b6a2e3854e21b", "audit_action": "authz.denied", "audit_outcome": "denied", "audit_id": "2468bcad-b6c0-4106-89e9-a8178f1ed444", "customer_id": null, "target_type": "customer", "target_id": "3b4f237c-cdc6-4ee7-8430-fde0cdc92769"}
+{"ts": "2026-11-14T21:48:37.467849+00:00", "level": "WARNING", "logger": "django.request", "message": "Not Found: /api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/", "request_id": null, "status_code": 404, "request": "<WSGIRequest: POST '/api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/?instance=bcf8cd61-8ffd-402f-82bd-7978e6c9726e'>"}
+{"ts": "2026-11-14T21:48:37.524322+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": "e40d2030bf864f1ea34e92d03cc69c5f", "audit_action": "group_setting.updated", "audit_outcome": "success", "audit_id": "06accaaa-5bb9-4a68-94bf-07f8b675c7b7", "customer_id": "3b4f237c-cdc6-4ee7-8430-fde0cdc92769", "target_type": "group_setting", "target_id": "4d3d1e90-f599-406d-a38a-98d7d5a65df1"}
+------------------------------ Captured log call ------------------------------
+WARNING  django.request:log.py:293 Bad Request: /api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/
+INFO     portal.audit:services.py:53 audit_event
+WARNING  django.request:log.py:293 Not Found: /api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/
+INFO     portal.audit:services.py:53 audit_event
+WARNING  django.request:log.py:293 Not Found: /api/v1/customers/3b4f237c-cdc6-4ee7-8430-fde0cdc92769/groups/51/settings/
+INFO     portal.audit:services.py:53 audit_event
+___ test_missing_network_and_unapproved_retired_legacy_rules_never_suggest ____
+tests\test_group_suggestions.py:92: in test_missing_network_and_unapproved_retired_legacy_rules_never_suggest
+    assert hints(world).json()["suggestions"] == []
+E   AssertionError: assert [{'id': '81bc...subnet', ...}] == []
+E
+E     Left contains one more item: {'id': '81bc26c6-3688-46a9-8bb8-6808ecff3c6b', 'name': 'G52', 'external_id': '52', 'basis': 'observed_subnet', ...}
+E     Use -v to get more diff
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:48:39.214135+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "a27e20b4-c8ed-406f-bcc7-52063e02d8f7", "customer_id": "0c80941f-8ff7-4b59-b787-c5d63e7bee72", "target_type": "sync_run", "target_id": "ac211625-adb0-468a-98db-10956a98a1b9"}
+{"ts": "2026-11-14T21:48:39.508849+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "a75981c0-b878-456c-9eb1-607c6b9b2c84", "customer_id": "0c80941f-8ff7-4b59-b787-c5d63e7bee72", "target_type": "sync_run", "target_id": "ac211625-adb0-468a-98db-10956a98a1b9"}
+{"ts": "2026-11-14T21:48:39.533088+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "1d70b04f-c787-4f84-a09c-5691596b840b", "customer_id": "d1cc017c-a916-4735-9a61-2f1aaa040245", "target_type": "sync_run", "target_id": "cdfbcab2-b4d1-4f6b-8c8c-d3ad8dc61dd0"}
+{"ts": "2026-11-14T21:48:39.712184+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "cd1295f8-6af0-41a4-adca-b7e3e5f69d67", "customer_id": "d1cc017c-a916-4735-9a61-2f1aaa040245", "target_type": "sync_run", "target_id": "cdfbcab2-b4d1-4f6b-8c8c-d3ad8dc61dd0"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+=========================== short test summary info ===========================
+FAILED tests/test_group_suggestions.py::test_onboarding_purpose_authorized_audited_and_manual_hints
+FAILED tests/test_group_suggestions.py::test_missing_network_and_unapproved_retired_legacy_rules_never_suggest
+2 failed, 2 passed in 25.93s

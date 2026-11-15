@@ -1,0 +1,19 @@
+...........F..........                                                   [100%]
+================================== FAILURES ===================================
+______ test_group_endpoint_is_paged_scoped_and_has_constant_query_count _______
+tests\test_group_suggestions_ranked.py:108: in test_group_endpoint_is_paged_scoped_and_has_constant_query_count
+    assert data["count"] == 2 and len(data["results"]) == 1 and data["next"]
+E   assert (3 == 2)
+---------------------------- Captured stderr setup ----------------------------
+{"ts": "2026-11-14T21:51:35.329915+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "e652e77f-233c-4d26-9f55-a3280871b1c8", "customer_id": "35d0f0cc-c630-45f3-a4f3-aa6f40746166", "target_type": "sync_run", "target_id": "936a4f0d-0f85-49bc-a4a7-7718b66bbcf5"}
+{"ts": "2026-11-14T21:51:35.641203+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "80532b1e-ce85-414a-b90e-08c07418a2b2", "customer_id": "35d0f0cc-c630-45f3-a4f3-aa6f40746166", "target_type": "sync_run", "target_id": "936a4f0d-0f85-49bc-a4a7-7718b66bbcf5"}
+{"ts": "2026-11-14T21:51:35.665321+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.requested", "audit_outcome": "success", "audit_id": "dd113c0e-8882-4ee2-8a64-bb6a345c88c8", "customer_id": "5dd703d6-c143-4b7b-83c6-3a8d6d88503d", "target_type": "sync_run", "target_id": "cf6c1214-c6a0-4d1a-9a42-e538137f6fc2"}
+{"ts": "2026-11-14T21:51:35.854959+00:00", "level": "INFO", "logger": "portal.audit", "message": "audit_event", "request_id": null, "audit_action": "sync.completed", "audit_outcome": "success", "audit_id": "3797524e-6b3a-4e34-8a86-d54ffae8d50c", "customer_id": "5dd703d6-c143-4b7b-83c6-3a8d6d88503d", "target_type": "sync_run", "target_id": "cf6c1214-c6a0-4d1a-9a42-e538137f6fc2"}
+----------------------------- Captured log setup ------------------------------
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+INFO     portal.audit:services.py:53 audit_event
+=========================== short test summary info ===========================
+FAILED tests/test_group_suggestions_ranked.py::test_group_endpoint_is_paged_scoped_and_has_constant_query_count
+1 failed, 21 passed in 40.78s

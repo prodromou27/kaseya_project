@@ -1,0 +1,11 @@
+
+> odyssey-kaseya-portal-frontend@0.1.0 typecheck
+> tsc -b --noEmit
+
+src/features/onboarding-destinations.test.tsx(43,68): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+e2e/z-onboarding-groups.spec.ts(53,47): error TS2584: Cannot find name 'document'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'.
+e2e/z-onboarding-groups.spec.ts(53,87): error TS2304: Cannot find name 'window'.

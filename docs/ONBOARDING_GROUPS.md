@@ -1,5 +1,7 @@
 # CIDR-01 - onboarding groups and destination suggestions
 
+**CIDR-02 update:** group-level device suggestions now rank approved subnets, observed destination subnets and weaker naming hints. The approved-only behavior below records the original CIDR-01 delivery. See [current behavior and verification](ONBOARDING_SUGGESTIONS.md).
+
 A generic workstation/server installation may intentionally enter a temporary onboarding group. Administrators transfer agents manually later. This slice records that purpose explicitly and suggests destinations from approved subnet evidence; it never calls a vendor write endpoint.
 
 ## Working path and acceptance

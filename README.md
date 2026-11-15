@@ -1,5 +1,7 @@
 # Odyssey Kaseya Analytics & Reporting Portal
 
+**Onboarding placement (CIDR-02):** marked onboarding groups now show per-device destination hints, prioritizing approved subnets, then observed destination subnets, then weaker naming matches. Transfers remain manual. [Behavior and validation](docs/ONBOARDING_SUGGESTIONS.md).
+
 **Latest usability delivery (LIST-02):** focused software/update workspaces, faster search, complete device-coverage paging and matching protected exports. Verified with **614 backend tests, 89 frontend tests and 43 browser scenarios**, plus the final 11-case backend feature rerun. [Changes and evidence](docs/INTELLIGENCE_LISTS.md). Fixture-only; production/live gates remain open.
 
 **Previous usability delivery (LIST-01):** simpler device/group workflows, persistent named device layouts and keyboard-safe filtering. Verified with **603 backend tests, 85 frontend tests and 40 browser scenarios**. [Changes and screenshots](docs/LIST_USABILITY.md). Vendor access remains read-only; validation uses labelled fixtures.

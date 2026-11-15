@@ -1,5 +1,11 @@
 # Changelog
 
+## CIDR-02 - 2026-11-15 - onboarding destination suggestions
+
+- Added paginated, searchable device suggestions directly to marked onboarding groups.
+- Ranked approved subnet matches before subnets observed on destination devices, with naming-only hints last. Every hint explains its basis; competing candidates remain ambiguous and manual transfer is unchanged.
+- Reused the same scoped engine in Device Operations; rejected stale/revoked evidence and excluded foreign, inactive and onboarding destinations. No migration or vendor API change. Actual validation: ONBOARDING_SUGGESTIONS.md.
+
 ## LIST-02 - 2026-11-14
 
 - Split software into Overview/Installations/Exceptions and Windows updates into Update records/Collection coverage/Common updates; retain source and evidence limitations.

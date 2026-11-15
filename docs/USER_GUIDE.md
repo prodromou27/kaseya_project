@@ -143,6 +143,8 @@ section was missing in either snapshot, that device is listed as "not compared" 
 
 ## Generic installations and group suggestions
 
+On an explicitly marked onboarding group's page, **Suggested destinations for onboarding devices** lists each device and its evidence. Approved subnet matches come first, subnets observed on existing destination devices second, naming-only hints last. Search/paging includes devices with no match. Each hint explains its IP/CIDR or naming token; multiple candidates need review. Click a device to open Operations. Administrators can propose additional destination subnets on the destination group's Network review panel; only approved rules are labelled Approved subnet. See ONBOARDING_SUGGESTIONS.md.
+
 A device may legitimately remain in an onboarding agent group after generic installation. Open its **Operations** tab to see reviewed CIDR-based destination hints, matching reported addresses and any overlapping candidates. A missing match does not indicate incorrect placement. VPNs and shared networks can create misleading matches; check policy inheritance and customer/source identity. Choosing **Use [group]** fills the target only. Portal review records a proposal; an administrator transfers the agent manually in VSA.
 
 ## Faster device lists and group navigation

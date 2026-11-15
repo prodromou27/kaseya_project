@@ -1,0 +1,12 @@
+
+> odyssey-kaseya-portal-frontend@0.1.0 test
+> vitest --run src/features/group-suggestions.test.tsx src/features/onboarding-destinations.test.tsx src/features/network-review.test.tsx --maxWorkers=2
+
+
+ RUN  v4.1.12 C:/Users/cprodromou/Documents/kaseya_project/frontend
+
+
+ Test Files  3 passed (3)
+      Tests  11 passed (11)
+   Start at  23:51:17
+   Duration  9.11s (transform 1.81s, setup 1.85s, import 3.66s, tests 4.10s, environment 4.87s)

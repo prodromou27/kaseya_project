@@ -1,5 +1,7 @@
 # Product roadmap and delivery gates
 
+**CIDR-02 correction:** expose device destinations on the onboarding group itself, with approved/observed subnet evidence above naming-only hints and the existing manual review/transfer boundary. No migration or vendor API change. Evidence: ONBOARDING_SUGGESTIONS.md. LIST-03 remains the next product slice; external gates remain open.
+
 **2026-11-14 usability continuation:** LIST-02 completes focused software/update workspaces, search/export parity, full device-coverage paging and a separately protected coverage report. Local fixture evidence: 614 backend tests (plus final 11-case feature rerun), 89 frontend tests, 43 full browser scenarios; no migration needed. See INTELLIGENCE_LISTS.md. Next: LIST-03 guided reconciliation; then LIST-04 presentation beyond Devices and report/mobile refinement. Historical Docker, live pilot and production gates remain open.
 
 **State:** Design baseline as of 2026-11-12. **P0 (`d799241`), P1 (`23550d1`) and P2 Windows updates, reports and history (`c483a8f`) are implemented and fixture-tested.** Their gates stay open until a Docker boot, a green CI run, a live pilot and owner sign-off (see the PHASE_ACCEPTANCE_P0/P1/P2 records). P3–P5 are planned. Use `TASKS.md` for implementation tracking.

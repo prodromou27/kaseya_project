@@ -29,6 +29,8 @@ Next acceptance work: approved representative pilot, Docker/AlmaLinux health, in
 
 ## User-prioritized usability continuation
 
+- **CIDR-02** Onboarding-group destination hints: approved/observed subnet evidence ranks above naming-only matches; paginated group-level investigation and the existing manual proposal path. Evidence and limits: ONBOARDING_SUGGESTIONS.md.
+
 - **LIST-01** Devices and group navigation, saved device layouts and faster filtering: completed and fixture-verified (603 backend, 85 frontend, 40 browser scenarios); proof in LIST_USABILITY.md. Includes named private/shared layouts, filter chips, keyboard-safe debounce, paging, source-qualified group directory and stale-row protection.
 - **LIST-02** Software and Windows-update workspaces, searched list/export parity, complete device coverage paging and protected coverage export: completed and fixture-verified (614 backend tests plus final 11-case feature rerun, 89 frontend tests, 43 full browser scenarios); proof in INTELLIGENCE_LISTS.md.
 - **LIST-03** Next: guided Excel reconciliation progression and clearer review/result actions.

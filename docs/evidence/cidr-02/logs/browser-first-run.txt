@@ -1,0 +1,119 @@
+
+Running 43 tests using 1 worker
+
+npx.cmd : (node:49952) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At line:2 char:96
++ ... nly-2026!'; & npx.cmd playwright test --output=../backend/var/codex-a ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:49952) Wa... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 [chromium] › e2e\foundation.spec.ts:19:1 › anonymous user is sent to login (784ms)
+  ok  2 [chromium] › e2e\foundation.spec.ts:26:1 › engineer sees only their customer and cannot reach another by URL or API (3.2s)
+  ok  3 [chromium] › e2e\foundation.spec.ts:41:1 › engineer cannot open Customer B using its real ID (IDOR) (8.6s)
+  ok  4 [chromium] › e2e\foundation.spec.ts:62:1 › super admin approves the demo source mapping and the audit trail records it (4.2s)
+  ok  5 [chromium] › e2e\foundation.spec.ts:76:1 › customer admin generates and downloads a scoped audit report (4.6s)
+  ok  6 [chromium] › e2e\p1.spec.ts:19:1 › engineer syncs the approved fixture source and browses inventory (33.7s)
+  ok  7 [chromium] › e2e\p1.spec.ts:44:1 › software versions show separate populations and the non-patch disclaimer (4.3s)
+  ok  8 [chromium] › e2e\p1.spec.ts:56:1 › engineer exports a scoped inventory CSV with provenance (3.4s)
+  ok  9 [chromium] › e2e\p1.spec.ts:72:1 › viewer of DEMO-B cannot reach DEMO-A inventory and cannot sync (5.0s)
+  ok 10 [chromium] › e2e\p1.spec.ts:87:1 › catalog import cannot be approved by its own submitter (3.1s)
+  ok 11 [chromium] › e2e\p2.spec.ts:17:1 › windows updates distinguishes reported, not collected and non-Windows devices (6.9s)
+  ok 12 [chromium] › e2e\p2.spec.ts:29:3 › exports XLSX from the Reports page (12.0s)
+  ok 13 [chromium] › e2e\p2.spec.ts:29:3 › exports PDF from the Reports page (8.8s)
+  ok 14 [chromium] › e2e\p2.spec.ts:47:1 › a report can be regenerated from its pinned snapshot (6.1s)
+  ok 15 [chromium] › e2e\p2.spec.ts:55:1 › definition + schedule with an unauthorised recipient is rejected, authorised accepted (5.2s)
+  ok 16 [chromium] › e2e\p2.spec.ts:73:1 › dashboard shows history with a table view (3.3s)
+  ok 17 [chromium] › e2e\vsa1.spec.ts:16:1 › engineer browses org > site > group and the group's reported network (4.8s)
+  ok 18 [chromium] › e2e\vsa1.spec.ts:33:1 › device page shows network, hardware and security tabs and the third-party status notice (4.8s)
+  ok 19 [chromium] › e2e\vsa1.spec.ts:48:1 › customer B viewer cannot reach customer A group network (2.8s)
+  ok 20 [chromium] › e2e\vsa2-network.spec.ts:18:1 › expected subnet needs a second administrator and then flags outside addresses (10.2s)
+  ok 21 [chromium] › e2e\vsa2-onboarding.spec.ts:30:1 › engineer reconciles an expected device list and downloads the workbook (6.8s)
+  ok 22 [chromium] › e2e\vsa2-onboarding.spec.ts:61:1 › macro-enabled workbook is refused before anything is stored (3.5s)
+  ok 23 [chromium] › e2e\vsa2-onboarding.spec.ts:68:1 › customer B cannot see customer A comparisons (4.5s)
+  ok 24 [chromium] › e2e\vsa3-policies.spec.ts:26:1 › engineer sees assignment states kept apart and policy configuration labelled (5.4s)
+  ok 25 [chromium] › e2e\vsa3-policies.spec.ts:42:1 › expectation needs a second administrator, then drives drift (7.6s)
+  ok 26 [chromium] › e2e\vsa4-changes.spec.ts:19:1 › a resync of unchanged data shows no fabricated changes (23.8s)
+  ok 27 [chromium] › e2e\vsa4-changes.spec.ts:43:1 › customer B viewer cannot read customer A changes (3.9s)
+  ok 28 [chromium] › e2e\vsa4-health.spec.ts:19:1 › every health dimension partitions the whole population (3.3s)
+  ok 29 [chromium] › e2e\vsa4-health.spec.ts:38:1 › minimum agent version takes effect only after a second administrator approves (7.2s)
+  ok 30 [chromium] › e2e\vsa4-notifications.spec.ts:19:1 › notifications are redacted and not-collected devices are explicit (3.7s)
+  ok 31 [chromium] › e2e\vsa4-notifications.spec.ts:35:1 › customer admin cannot approve a credential-like custom field (3.1s)
+  ok 32 [chromium] › e2e\z-codex-workflows.spec.ts:12:1 › dashboard attention metrics open the exact filtered investigation (6.2s)
+  ok 33 [chromium] › e2e\z-codex-workflows.spec.ts:26:1 › group network exports reported facts with source identity and provenance (4.2s)
+  ok 34 [chromium] › e2e\z-codex-workflows.spec.ts:42:1 › device investigation retains filters, columns and the active tab across reload (5.5s)
+  ok 35 [chromium] › e2e\z-codex-workflows.spec.ts:57:1 › narrow screens keep tables and tabs inside the viewport and Escape closes navigation (6.1s)
+  ok 36 [chromium] › e2e\z-codex-workflows.spec.ts:74:1 › group assignment proposal requires independent review and never executes a VSA change (7.0s)
+  x  37 [chromium] › e2e\z-intelligence-lists.spec.ts:12:1 › software investigation finds a device and returns to the same filters (11.4h)
+(node:45140) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 38 [chromium] › e2e\z-intelligence-lists.spec.ts:26:1 › Windows coverage pages all devices and exports collection evidence (6.6s)
+  ok 39 [chromium] › e2e\z-intelligence-lists.spec.ts:45:1 › update record search retains the investigation origin through device details (4.4s)
+  ok 40 [chromium] › e2e\z-list-usability.spec.ts:11:1 › engineer saves a layout and retains it across reload, paging, filtering and investigation (7.3s)
+  ok 41 [chromium] › e2e\z-list-usability.spec.ts:50:1 › group directory filters by site and links the exact source population (4.3s)
+  ok 42 [chromium] › e2e\z-list-usability.spec.ts:78:1 › phone list controls stay in the viewport and keyboard search recovers empty results (4.4s)
+  x  43 [chromium] › e2e\z-onboarding-groups.spec.ts:12:1 › onboarding is temporary and reviewed CIDR rules suggest a manual destination (13.5s)
+
+
+  1) [chromium] › e2e\z-intelligence-lists.spec.ts:12:1 › software investigation finds a device and returns to the same filters
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('link', { name: 'Back to software', exact: true })
+
+
+      19 |   await expect(page.getByRole("tab", { name: /Installed software/ })).toHaveAttribute("aria-selected", "true");
+      20 |   await page.reload();
+    > 21 |   await page.getByRole("link", { name: "Back to software", exact: true }).click();
+         |                                                                           ^
+      22 |   await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("DEMOA-WS001");
+      23 |   await expect(page.getByRole("tab", { name: "Installations", exact: true })).toHaveAttribute("aria-selected", "true");
+      24 | });
+        at C:\Users\cprodromou\Documents\kaseya_project\frontend\e2e\z-intelligence-lists.spec.ts:21:75
+
+    Error Context: ..\backend\var\codex-audit\cidr2-browser-traces\z-intelligence-lists-softw-40eee-returns-to-the-same-filters-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\backend\var\codex-audit\cidr2-browser-traces\z-intelligence-lists-softw-40eee-returns-to-the-same-filters-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\backend\var\codex-audit\cidr2-browser-traces\z-intelligence-lists-softw-40eee-returns-to-the-same-filters-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e\z-onboarding-groups.spec.ts:12:1 › onboarding is temporary and reviewed CIDR rules suggest a manual destination
+
+    Error: locator.click: Error: strict mode violation: getByRole('region', { name: 'CIDR group suggestions' }).getByRole('button', { name: 'Use Workstations', exact: true }) resolved to 2 elements:
+        1) <button type="button" class="btn-secondary ml-2">Use Workstations</button> aka getByRole('listitem').filter({ hasText: 'WorkstationsApproved subnet10' }).getByRole('button')
+        2) <button type="button" class="btn-secondary ml-2">Use Workstations</button> aka getByRole('listitem').filter({ hasText: 'WorkstationsNaming onlyDevice' }).getByRole('button')
+
+    Call log:
+      - waiting for getByRole('region', { name: 'CIDR group suggestions' }).getByRole('button', { name: 'Use Workstations', exact: true })
+
+
+      59 |   await expect(suggestions).toContainText("valid temporary installation destination");
+      60 |   await expect(suggestions).toContainText(`${ip.address} in ${ip.address}/32`);
+    > 61 |   await suggestions.getByRole("button", { name: `Use ${target.name}`, exact: true }).click();
+         |                                                                                      ^
+      62 |   await expect(page.getByLabel("Target group")).not.toHaveValue("");
+      63 |   const actual: GroupNetwork = await (await page.request.get(`${base}/groups/${source.external_id}/network/?instance=${org.instance_id}`)).json();
+      64 |   expect(actual.devices.some((row) => row.asset_id === device.asset_id)).toBe(true);
+        at C:\Users\cprodromou\Documents\kaseya_project\frontend\e2e\z-onboarding-groups.spec.ts:61:86
+
+    Error Context: ..\backend\var\codex-audit\cidr2-browser-traces\z-onboarding-groups-onboar-58354-uggest-a-manual-destination-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\backend\var\codex-audit\cidr2-browser-traces\z-onboarding-groups-onboar-58354-uggest-a-manual-destination-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\backend\var\codex-audit\cidr2-browser-traces\z-onboarding-groups-onboar-58354-uggest-a-manual-destination-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › e2e\z-intelligence-lists.spec.ts:12:1 › software investigation finds a device and returns to the same filters
+    [chromium] › e2e\z-onboarding-groups.spec.ts:12:1 › onboarding is temporary and reviewed CIDR rules suggest a manual destination
+  41 passed (11.5h)

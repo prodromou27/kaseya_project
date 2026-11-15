@@ -179,6 +179,8 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
 
 ## Onboarding agent groups and CIDR suggestions
 
+CIDR-02 adds a paginated suggestion list directly to marked onboarding groups. Explicit approved destination CIDRs outrank networks observed on destination peers; naming tokens are weaker evidence. Review the labelled basis and competing candidates before manually transferring an agent. Observed networks are not an approved policy. No additional migration is needed; ONBOARDING_SUGGESTIONS.md records the behavior and verification.
+
 Open Groups & network, choose the source-qualified group and enable **Use as an onboarding group** to identify a generic installation destination. This audited setting uses customer.manage_exceptions and does not change VSA. A temporary onboarding assignment is valid; the administrator decides when to transfer the agent manually.
 
 On each eventual destination group, use **Propose subnet** to add one or more strict IPv4/IPv6 CIDRs with a reason. A different administrator approves each rule under the existing review policy. New rules carry the group's VSA instance identity. Retire outdated rules. Device Operations shows matching approved group rules, addresses and ambiguity; selecting a suggestion only fills the proposal target. Site expectations and unqualified legacy rules do not generate destination suggestions. See ONBOARDING_GROUPS.md for rollout/rollback limits.

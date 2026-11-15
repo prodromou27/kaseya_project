@@ -1,0 +1,62 @@
+
+> odyssey-kaseya-portal-frontend@0.1.0 typecheck
+> tsc -b --noEmit
+
+
+> odyssey-kaseya-portal-frontend@0.1.0 lint
+> eslint . --max-warnings=0
+
+
+> odyssey-kaseya-portal-frontend@0.1.0 test
+> vitest --run --maxWorkers=2
+
+
+ RUN  v4.1.12 C:/Users/cprodromou/Documents/kaseya_project/frontend
+
+
+ Test Files  22 passed (22)
+      Tests  94 passed (94)
+   Start at  11:30:38
+   Duration  36.10s (transform 1.92s, setup 8.09s, import 7.53s, tests 29.16s, environment 21.10s)
+
+
+> odyssey-kaseya-portal-frontend@0.1.0 build
+> tsc -b && vite build
+
+vite v7.3.8 building client environment for production...
+transforming...
+✓ 146 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.51 kB │ gzip:   0.32 kB
+dist/assets/index-BB0t0Dpd.css                    35.34 kB │ gzip:   7.12 kB
+dist/assets/useDebouncedValue-BYk55Yju.js          0.19 kB │ gzip:   0.17 kB
+dist/assets/InvestigationDeviceLink-RBF7eXyU.js    0.29 kB │ gzip:   0.24 kB
+dist/assets/useUrlFilters-DzyM5LZH.js              0.91 kB │ gzip:   0.52 kB
+dist/assets/Tabs-CjtblK3m.js                       1.14 kB │ gzip:   0.67 kB
+dist/assets/ExportButton-DAc6_DyE.js               1.67 kB │ gzip:   0.89 kB
+dist/assets/PolicyDefinitionView-C4xnuGzv.js       2.16 kB │ gzip:   0.82 kB
+dist/assets/CustomersPage-C7Cnx_or.js              2.88 kB │ gzip:   1.35 kB
+dist/assets/GroupSuggestions-C2WuIbG4.js           3.16 kB │ gzip:   1.42 kB
+dist/assets/NotificationsPage-CF5-73sx.js          3.46 kB │ gzip:   1.46 kB
+dist/assets/ChangesPage-xuhLHIoT.js                4.69 kB │ gzip:   1.98 kB
+dist/assets/MappingsPanel-CLKNdj2g.js              5.15 kB │ gzip:   1.88 kB
+dist/assets/ConnectVsaPage-DJHii4Ay.js             6.14 kB │ gzip:   2.34 kB
+dist/assets/LifecyclePage-Cpri8DyA.js              6.16 kB │ gzip:   2.29 kB
+dist/assets/GroupMovesPage-DM5219uz.js             7.10 kB │ gzip:   2.56 kB
+dist/assets/OnboardingPage-STPhiYGo.js             7.99 kB │ gzip:   3.18 kB
+dist/assets/GroupsPage-B_UPxu9T.js                 8.50 kB │ gzip:   2.86 kB
+dist/assets/OnboardingRunPage-fwbywu5g.js          9.34 kB │ gzip:   3.35 kB
+dist/assets/PatchPoliciesPage-4mvq65P0.js          9.87 kB │ gzip:   3.15 kB
+dist/assets/WindowsUpdatesPage-CTbhUR2G.js         9.90 kB │ gzip:   3.16 kB
+dist/assets/DeviceHealthPage-MQgzYwXb.js          10.20 kB │ gzip:   3.46 kB
+dist/assets/CustomerDetailPage-ha30i4Gu.js        11.46 kB │ gzip:   3.71 kB
+dist/assets/ReportsPage-B37DQFQ3.js               11.69 kB │ gzip:   3.81 kB
+dist/assets/SoftwarePage-CiiD_N2O.js              11.73 kB │ gzip:   4.01 kB
+dist/assets/AssetsPage-C08v6zWD.js                14.21 kB │ gzip:   4.49 kB
+dist/assets/GroupNetworkPage-B557t-hg.js          14.46 kB │ gzip:   4.54 kB
+dist/assets/AssetDetailPage-DWHOvyeA.js           17.18 kB │ gzip:   5.27 kB
+dist/assets/AdminPage-BRyEQfvs.js                 41.72 kB │ gzip:  10.59 kB
+dist/assets/DataTable-XpCliigC.js                 55.21 kB │ gzip:  15.04 kB
+dist/assets/index-CP-aCe4W.js                    343.73 kB │ gzip: 107.89 kB
+✓ built in 2.26s
