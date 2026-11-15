@@ -1,5 +1,11 @@
 # Changelog
 
+## CRM-05 - 2026-11-15 - all-customers overview
+
+- `GET /customers/overview/`: one row per customer the user may read (super admins: all; members: their own) with devices, offline/not seen, disk critical, antivirus issues, devices with Critical OS updates, devices with outdated software, lowest compliance baseline score, data as-of and stale flag. Figures come from each customer's own read models.
+- **All customers** page (Overview): sortable side-by-side table, amber attention values, fresh/out-of-date badges, CSV download (formula-safe) and drill-down to the customer's Summary.
+- Verified: 2 backend tests (super admin sees all with matching figures; members see only their customers), IDOR sweep, backend suite 688 passed, 104 frontend tests, 51/51 browser scenarios (accessibility covers /all-customers). Fixture data only.
+
 ## OPS-04 - 2026-11-15 - alerts & watchlists
 
 - New `alerts` app (migration `alerts.0001`): per-user watches per customer - new device appears, device not seen for more than N days, system disk becomes critical, a program (name contains) appears, compliance score below a threshold. Evaluated after every successful sync in the worker (best-effort; never affects the published inventory). Only *newly* matching devices raise an alert, one summarised alert per watch per sync; a new or edited watch is primed with the current state, so it never floods. Access is re-checked at evaluation and when listing; users who lost access receive and see nothing. Identical duplicate watches are refused.

@@ -222,3 +222,9 @@ example remote-access tools) or a compliance score dropping below a percentage. 
 watch listing only what is new since the last check. Pause or remove a watch at any time. Alerts stay in the portal;
 email is not enabled.
 
+## All customers
+
+**All customers** (Overview) shows every customer you can access side by side: devices, offline devices, critical
+disks, antivirus issues, Critical updates, outdated software, the lowest compliance score and whether the data is
+up to date. Click a column to sort, download the table as CSV, or select a customer to open its Summary.
+

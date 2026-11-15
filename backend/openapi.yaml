@@ -4427,6 +4427,23 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/customers/overview/:
+    get:
+      operationId: customers_overview_retrieve
+      description: Key measures for every customer the user may read, side by side
+        (CRM-05).
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/health/live/:
     get:
       operationId: health_live_retrieve

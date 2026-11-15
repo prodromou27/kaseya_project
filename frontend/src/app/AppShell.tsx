@@ -10,7 +10,7 @@ import { AlertBell } from "../features/alerts/AlertsPage";
 
 type NavItem = { to: string; label: string; adminOnly?: boolean };
 export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
-  { label: "Overview", items: [{ to: "/", label: "Dashboard" }, { to: "/compliance", label: "Compliance" }] },
+  { label: "Overview", items: [{ to: "/", label: "Dashboard" }, { to: "/compliance", label: "Compliance" }, { to: "/all-customers", label: "All customers" }] },
   { label: "VSA operations", items: [
     { to: "/assets", label: "Devices" }, { to: "/groups", label: "Groups & network" },
     { to: "/device-health", label: "Device health" }, { to: "/notifications", label: "Notifications" },

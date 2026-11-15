@@ -5,6 +5,7 @@ from typing import Any
 from django.db import IntegrityError, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -75,6 +76,18 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def get_object(self) -> Customer:
         return scope.get_customer_or_404(self.request.user, self.kwargs["pk"], Cap.CUSTOMER_READ, self.request)
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"])
+    def overview(self, request: Request) -> Response:
+        """Key measures for every customer the user may read, side by side (CRM-05)."""
+        from .overview import MAX_CUSTOMERS
+        from .overview import overview as build
+
+        customers = list(self.get_queryset().order_by("code"))
+        return Response(
+            {"results": build(customers), "count": len(customers), "truncated": len(customers) > MAX_CUSTOMERS}
+        )
 
     def perform_create(self, serializer: CustomerSerializer) -> None:
         customer = serializer.save()

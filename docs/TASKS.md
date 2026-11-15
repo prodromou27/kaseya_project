@@ -146,8 +146,8 @@ fixture-verified only (no live VSA X validation).
 - [x] **UX-07** Catalog quick-add from Installed programs; stale onboarding suggestions explained with Sync now (operator feedback). Commit e8e0385.
 - [x] **CIDR-03** Destination plan (devices grouped by target group/site, ties and no-evidence lists, CSV move list) and leading-letter naming evidence. Operator feedback 2026-11-15.
 - [x] **OPS-03** Cleanup centre (duplicates, stale/never seen, no group, onboarding leftovers, no agent, missing serial; CSV to-do list). Commit bbb95a2.
-- [x] **OPS-04** Alerts & watchlists: per-user watches (new device, offline > N days, disk critical, program appears, compliance below), in-portal bell and Alerts page. *Open: email digest (DEC-09).*
-- [ ] **CRM-05** All-customers overview for managers: customers side by side with drill-down and export.
+- [x] **OPS-04** Alerts & watchlists: per-user watches (new device, offline > N days, disk critical, program appears, compliance below), in-portal bell and Alerts page. *Open: email digest (DEC-09).* Commit 44cc735.
+- [x] **CRM-05** All-customers overview: customers side by side (health, updates, software, compliance, freshness), sorting, CSV, drill-down.
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
 
 Still open from earlier phases (unchanged, external): VSA0-02/P0-02 host boot evidence, VSAP-01 vault (Entra dropped, DEC-03), VSAP-02 backup/restore drill on the host, VSAP-04 live pilot, VSAP-05 acceptance, VSA3-06 mail delivery (DEC-09), VSA5 group-move execution (gated, disabled), P3/P4 IT Glue/Autotask (out of Phase 1 scope, DEC-05).
