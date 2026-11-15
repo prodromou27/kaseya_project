@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { QueryBoundary } from "../../components/States";
+import { Notice } from "../../components/ui";
 import { TrendChart } from "../../components/TrendChart";
 import { api } from "../../lib/api";
 import type { Customer, TrendResponse } from "../../lib/types";
@@ -13,10 +14,10 @@ export function Trends({ customer }: { customer: Customer }) {
     queryFn: ({ signal }) => api.get<TrendResponse>(`/customers/${customer.id}/trends/`, { days }, signal),
   });
   return (
-    <section aria-labelledby="trend-h" className="mt-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 id="trend-h" className="text-sm font-semibold text-slate-700">History</h2>
-        <label className="flex items-center gap-2 text-xs">
+    <section aria-labelledby="trend-h" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="trend-h" className="text-sm font-semibold text-slate-900">History</h2>
+        <label className="flex items-center gap-2 text-xs text-slate-600">
           Range
           <select className="input py-1" value={days} onChange={(e) => setDays(Number(e.target.value))}>
             <option value={30}>30 days</option>
@@ -26,7 +27,7 @@ export function Trends({ customer }: { customer: Customer }) {
         </label>
       </div>
       <QueryBoundary query={query} isEmpty={(d) => d.points.length === 0}
-        empty={<p className="text-sm text-slate-500">No published datasets in this range yet.</p>}>
+        empty={<p className="py-8 text-center text-sm text-slate-500">No history in this range yet. It builds up with each sync.</p>}>
         {(d) => (
           <>
             <TrendChart
@@ -39,10 +40,10 @@ export function Trends({ customer }: { customer: Customer }) {
                 { key: "critical", label: "With Critical OS updates", values: d.points.map((p) => p.os_updates.devices_with_critical) },
               ]}
             />
-            <p className="mt-1 text-[11px] text-slate-500">
+            <div className="mt-2"><Notice title="How these figures are counted">
               {d.method} Software figures use each day's reviewed catalog revision; OS update figures count only devices that
               reported update data ({d.points.at(-1)?.os_updates.devices_not_reporting ?? 0} devices without update data on the latest day).
-            </p>
+            </Notice></div>
           </>
         )}
       </QueryBoundary>

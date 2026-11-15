@@ -1,5 +1,11 @@
 # Changelog
 
+## UX-01 - 2026-11-15 - dashboard redesign
+
+- Overview tiles now carry an icon and a text status (Review / OK / No data, never colour alone); a one-line summary states how many checks need review. Two tiles per row on phones, three on desktop.
+- History moved into a card beside a side column with Data sources and a compact Customer card; the counting method folds into "How these figures are counted".
+- Same queries, links and filters; no backend change. Verified: typecheck, lint, 94 frontend tests, the two dashboard browser scenarios, desktop/390px screenshots with no horizontal overflow (fixture data only).
+
 ## CIDR-02 - 2026-11-15 - onboarding destination suggestions
 
 - Added paginated, searchable device suggestions directly to marked onboarding groups.

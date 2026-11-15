@@ -19,6 +19,29 @@ function roleFor(me: Me, customer: Customer): string {
   return m ? (ROLE_LABEL[m.role] ?? m.role) : "—";
 }
 
+function CustomerCard({ me, customer }: { me: Me; customer: Customer }) {
+  return (
+    <section aria-labelledby="sel-heading" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 id="sel-heading" className="text-sm font-semibold text-slate-900">Customer</h2>
+        <Link to={`/customers/${customer.id}`} className="text-sm font-medium text-sky-800 hover:underline">
+          Open customer
+        </Link>
+      </div>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+        <dt className="text-slate-500">Code</dt>
+        <dd className="font-medium text-slate-900">{customer.code}</dd>
+        <dt className="text-slate-500">Status</dt>
+        <dd><Badge tone={statusTone[customer.status]}>{customer.status}</Badge></dd>
+        <dt className="text-slate-500">Data region</dt>
+        <dd className="text-slate-800">{customer.data_region || "Not set"}</dd>
+        <dt className="text-slate-500">Your role</dt>
+        <dd className="text-slate-800">{roleFor(me, customer)}</dd>
+      </dl>
+    </section>
+  );
+}
+
 export function DashboardPage() {
   const me = useMe();
   const { customers, selected, isLoading, isError } = useCustomers();
@@ -46,18 +69,15 @@ export function DashboardPage() {
       {selected ? (
         <>
           <KpiTiles key={selected.id} customer={selected} />
-          <DataSources key={`sources-${selected.id}`} customer={selected} />
-          <section aria-labelledby="sel-heading" className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded border border-slate-200 bg-white px-4 py-3 text-sm">
-            <h2 id="sel-heading" className="sr-only">Selected customer</h2>
-            <span><span className="text-slate-500">Customer</span> <span className="font-medium">{selected.code}</span></span>
-            <span><span className="text-slate-500">Status</span> <Badge tone={statusTone[selected.status]}>{selected.status}</Badge></span>
-            <span><span className="text-slate-500">Data region</span> {selected.data_region || "Not set"}</span>
-            <span><span className="text-slate-500">Your role</span> {roleFor(me, selected)}</span>
-            <Link to={`/customers/${selected.id}`} className="ml-auto text-sky-800 underline">
-              Open customer
-            </Link>
-          </section>
-          <Trends customer={selected} />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="min-w-0 lg:col-span-2">
+              <Trends customer={selected} />
+            </div>
+            <aside className="min-w-0 space-y-4" aria-label="Sources and customer">
+              <div className="[&>section]:mb-0"><DataSources key={`sources-${selected.id}`} customer={selected} /></div>
+              <CustomerCard me={me} customer={selected} />
+            </aside>
+          </div>
         </>
       ) : customers.length > 0 ? (
         <SelectCustomer>Choose the customer you want to look at. You can switch at any time in the header.</SelectCustomer>

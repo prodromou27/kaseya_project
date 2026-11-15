@@ -77,9 +77,9 @@ export function DataSources({ customer, compact = false }: { customer: Customer;
     </section>;
   }
   return (
-    <section aria-labelledby="sources-heading" className="mb-4 rounded border border-slate-200 bg-white p-3">
+    <section aria-labelledby="sources-heading" className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
-        <h2 id="sources-heading" className="text-sm font-semibold text-slate-700">
+        <h2 id="sources-heading" className="text-sm font-semibold text-slate-900">
           Data sources
         </h2>
         {canSync ? (

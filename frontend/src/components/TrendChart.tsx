@@ -48,7 +48,7 @@ export function TrendChart({
 
   if (n === 0) return null;
   return (
-    <figure className="rounded border border-slate-200 bg-white p-3" aria-labelledby={`${id}-t`}>
+    <figure className="m-0" aria-labelledby={`${id}-t`}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <figcaption id={`${id}-t`} className="text-sm font-semibold text-slate-700">
           {title} <span className="font-normal text-slate-500">({unit})</span>
