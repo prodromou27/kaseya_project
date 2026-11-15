@@ -1,5 +1,13 @@
 # Changelog
 
+## CIDR-03 - 2026-11-15 - destination plan and leading-letter naming (operator feedback)
+
+- Naming evidence now compares the **leading letters** of the hostname, so names without separators work (e.g. `DEPARTMENTUSERSX`). A destination "owns" a prefix (3-12 letters) shared by at least half of its devices; a device also matches when its name starts with the first 3+ letters of a group or site name word (e.g. `FIN…` → *Finance*). Generic names (DESKTOP-, LAPTOP-, …) and stopwords give no evidence. Within the naming rank a longer shared prefix ranks first. Network evidence still outranks naming.
+- New `GET /customers/{id}/groups/{group}/suggestions/plan/?instance=` groups the onboarding group's devices by their clearly best destination (group + site); evidence ties are listed as *needs a decision*, devices without evidence separately (max 2,000 devices). Hints only; nothing is moved.
+- Onboarding group page: **By destination** view (default) with "Move N device(s) to <group> · Site <site>" cards and **Download move list (CSV)** for the administrator who transfers agents in VSA; the per-device view remains.
+- Product owner decision: **Entra ID is not required** (DEC-03 closed, ADR-007, VSAP-01/P5-01 updated); local portal accounts are the production sign-in.
+- Verified: 4 new backend tests (DEPARTMENTUSERSX prefix, group-name abbreviation, longer prefix wins and plans, scoping/onboarding-only), full backend suite 680 passed, 102 frontend tests, 50/50 browser scenarios. Fixture data only.
+
 ## CRM-03 - 2026-11-15 - reproducible live-evaluated reports
 
 - Reports whose figures are evaluated at generation time (custom reports on compliance, third-party patching or subnets, and the customer scorecard) now keep their rows with the run (`reporting.FrozenReportRows`, migration `reporting.0004`, customer-scoped, deleted with the run). Regenerating such a report re-renders the kept figures, following the regeneration chain, instead of re-evaluating against newer data; the file's provenance says "Reproduced from the figures evaluated for run …". New reports still evaluate the current data. Snapshot-table reports are unchanged (they already re-pin their generations).

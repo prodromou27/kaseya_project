@@ -145,3 +145,55 @@ def test_revoked_and_stale_snapshots_fail_closed(world, synced):
     CustomerSourceMapping.objects.filter(pk=source.generation.mapping_id).update(mapping_status="proposed")
     assert world.client(world.viewer_a).get(group_url(world, synced)).status_code == 404
     assert device_hints(world, source).status_code == 404
+
+
+def names_only(world, source):
+    source.adapters.all().delete()
+    return device_hints(world, source).json()["suggestions"]
+
+
+def test_department_prefix_without_separator_matches_destination_peers(world, synced):
+    source = prepare(world, synced)
+    source.hostname = "DEPARTMENTUSERSX"
+    source.save(update_fields=["hostname"])
+    AssetObservation.objects.filter(generation=source.generation, group_external_id="52").update(
+        hostname="DEPARTMENTUSERSA"
+    )
+    hints = names_only(world, source)
+    assert [g["external_id"] for g in hints] == ["52"]
+    assert "Name starts with 'DEPARTMENTUS' like 1 of 1 device(s) in this group." in hints[0]["naming_evidence"]
+
+
+def test_leading_letters_match_the_start_of_a_group_name(world, synced):
+    source = prepare(world, synced)
+    source.hostname = "FINUSR01"
+    source.save(update_fields=["hostname"])
+    GroupNode.objects.filter(generation=source.generation, external_id="61").update(name="Finance")
+    hints = names_only(world, source)
+    assert [g["external_id"] for g in hints] == ["61"]
+    assert hints[0]["naming_evidence"] == ["Name starts with 'FIN', the start of the group name 'Finance'."]
+
+
+def test_longer_shared_prefix_ranks_first_and_wins_the_plan(world, synced):
+    source = prepare(world, synced)
+    source.hostname = "DEPTSALESX"
+    source.save(update_fields=["hostname"])
+    AssetObservation.objects.filter(generation=source.generation, group_external_id="52").update(hostname="DEPTSALES7")
+    GroupNode.objects.filter(generation=source.generation, external_id="61").update(name="Dept Office")
+    hints = names_only(world, source)
+    assert [g["external_id"] for g in hints] == ["52", "61"]
+    assert hints[0]["naming_strength"] > hints[1]["naming_strength"]
+    plan = world.client(world.viewer_a).get(base(world) + f"/groups/51/suggestions/plan/?instance={synced['inst'].id}")
+    assert plan.status_code == 200, plan.content
+    body = plan.json()
+    placed = {d["hostname"]: dest["external_id"] for dest in body["destinations"] for d in dest["devices"]}
+    assert placed["DEPTSALESX"] == "52"
+    total = sum(len(d["devices"]) for d in body["destinations"]) + len(body["ambiguous"]) + len(body["unmatched"])
+    assert total == body["devices"] and body["truncated"] is False
+
+
+def test_plan_is_scoped_and_needs_an_onboarding_group(world, synced):
+    url = base(world) + f"/groups/51/suggestions/plan/?instance={synced['inst'].id}"
+    assert world.client(world.viewer_a).get(url).json()["is_onboarding"] is False
+    prepare(world, synced)
+    assert world.client(world.engineer_b).get(url).status_code == 404

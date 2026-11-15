@@ -6,6 +6,7 @@ import { QueryBoundary } from "../../components/States";
 import { Badge, Field } from "../../components/ui";
 import { ApiError, api, describeError } from "../../lib/api";
 import { DataSources } from "../inventory/DataSources";
+import { DestinationPlan } from "./DestinationPlan";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import type { Customer, Paginated } from "../../lib/types";
@@ -32,15 +33,23 @@ type DeviceHints = { asset_id: string; hostname: string; suggestions: GroupSugge
 type Response = Paginated<DeviceHints> & { is_onboarding: boolean; suggestion_note: string };
 
 export function GroupSuggestions({ customer, groupId, instance }: { customer: Customer; groupId: string; instance: string }) {
-  const { filters, update, page, setPage } = useUrlFilters({ suggestion_search: "" });
+  const { filters, update, page, setPage } = useUrlFilters({ suggestion_search: "", suggestion_view: "destination" });
   const search = useDebouncedValue(filters.suggestion_search);
   const query = useQuery({
     queryKey: ["group-destination-suggestions", customer.id, instance, groupId, page, search],
     queryFn: ({ signal }) => api.get<Response>(`/customers/${customer.id}/groups/${groupId}/suggestions/`, { instance, page, search }, signal),
   });
   return <section aria-label="Onboarding destination suggestions" className="investigation-card my-3 space-y-3">
-    <h2 className="font-semibold">Suggested destinations for onboarding devices</h2>
-    <p className="text-sm">Subnet matches come first. Naming is a weaker hint. Open a device to review a proposal; an administrator transfers the agent manually.</p>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h2 className="font-semibold">Suggested destinations for onboarding devices</h2>
+      <div role="group" aria-label="Suggestion view" className="flex gap-1">
+        {[["destination", "By destination"], ["device", "By device"]].map(([v, label]) => (
+          <button key={v} type="button" aria-pressed={filters.suggestion_view === v} className="list-preset" onClick={() => update({ suggestion_view: v ?? "destination" }, true)}>{label}</button>
+        ))}
+      </div>
+    </div>
+    <p className="text-sm">Subnet matches come first; then the start of the device name (for example DEPARTMENT… or FIN…) compared with the destination's devices and group/site names. Open a device to review a proposal; an administrator transfers the agent manually.</p>
+    {filters.suggestion_view === "destination" && !(query.error instanceof ApiError && /stale/i.test(describeError(query.error))) ? <DestinationPlan customer={customer} groupId={groupId} instance={instance} /> : <>
     <Field label="Find onboarding device">{(id) => <input id={id} className="input max-w-md" type="search" maxLength={100} value={filters.suggestion_search} onChange={(event) => update({ suggestion_search: event.target.value }, true)} placeholder="Device hostname" />}</Field>
     {query.isError && page > 1 ? <button type="button" className="btn-secondary" onClick={() => setPage(1)}>Return to first page</button> : null}
     {query.error instanceof ApiError && query.error.status === 400 && /stale/i.test(describeError(query.error)) ? (
@@ -60,5 +69,6 @@ export function GroupSuggestions({ customer, groupId, instance }: { customer: Cu
           </div> },
         ]} />
     </>}</QueryBoundary>}
+    </>}
   </section>;
 }

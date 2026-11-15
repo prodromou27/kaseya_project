@@ -43,6 +43,9 @@ test("onboarding is temporary and reviewed CIDR rules suggest a manual destinati
   await page.goto(sourceUrl);
   const groupSuggestions = page.getByRole("region", { name: "Onboarding destination suggestions", exact: true });
   await expect(groupSuggestions).toBeVisible();
+  // Default view: devices grouped under the destination they should move to.
+  await expect(groupSuggestions.getByRole("region", { name: /^Move to / }).getByRole("link", { name: device.hostname, exact: true })).toBeVisible();
+  await groupSuggestions.getByRole("button", { name: "By device", exact: true }).click();
   await groupSuggestions.getByRole("searchbox", { name: "Find onboarding device" }).fill(device.hostname);
   const deviceTable = groupSuggestions.getByRole("table", { name: "Onboarding device suggestions" });
   await expect(deviceTable.locator("tbody tr")).toHaveCount(1);

@@ -1905,6 +1905,42 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/groups/{id}/suggestions/plan/:
+    get:
+      operationId: customers_groups_suggestions_plan_retrieve
+      description: Onboarding devices grouped by their clearly best destination group
+        (and site); ties and devices without evidence are listed separately. Hints
+        only; nothing is moved.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]{1,18}$
+        required: true
+      - in: query
+        name: instance
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/health-thresholds/:
     get:
       operationId: customers_health_thresholds_list

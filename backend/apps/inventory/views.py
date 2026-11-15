@@ -563,6 +563,83 @@ class CustomerGroupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
         response.data.update({"is_onboarding": enabled, "suggestion_note": NOTE})
         return response
 
+    PLAN_MAX_DEVICES = 2000
+
+    @extend_schema(
+        description="Onboarding devices grouped by their clearly best destination group (and site); ties and "
+        "devices without evidence are listed separately. Hints only; nothing is moved.",
+        parameters=[OpenApiParameter("instance", OpenApiTypes.UUID, required=True)],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=["get"], url_path="suggestions/plan")
+    def suggestion_plan(self, request: Request, pk: str | None = None, **kwargs: Any) -> Response:
+        from collections import defaultdict
+
+        from .group_suggestions import NOTE, SuggestionContext, onboarding, plan
+        from .models import GroupNode, IpAddressObservation
+
+        customer = self.get_customer()
+        instance = _uuid(request.query_params.get("instance"))
+        group = (
+            GroupNode.objects.filter(
+                customer=customer,
+                generation__in=current_generations(customer.id),
+                generation__integration_instance_id=instance,
+                external_id=pk,
+            )
+            .select_related("generation")
+            .first()
+        )
+        if group is None:
+            raise NotFound()
+        if group.generation.published_at < stale_cutoff():
+            raise ValidationError({"detail": "Source inventory is stale. Synchronize before reviewing suggestions."})
+        if not onboarding(customer.id, instance, pk):
+            return Response(
+                {
+                    "is_onboarding": False,
+                    "destinations": [],
+                    "ambiguous": [],
+                    "unmatched": [],
+                    "devices": 0,
+                    "truncated": False,
+                    "suggestion_note": NOTE,
+                }
+            )
+        members = list(
+            current_observations(customer.id)
+            .filter(
+                generation_id=group.generation_id,
+                organization_external_id=group.organization_external_id,
+                group_external_id=pk,
+            )
+            .order_by("hostname", "asset_id")[: self.PLAN_MAX_DEVICES + 1]
+        )
+        truncated = len(members) > self.PLAN_MAX_DEVICES
+        members = members[: self.PLAN_MAX_DEVICES]
+        if not members:
+            return Response(
+                {
+                    "is_onboarding": True,
+                    "destinations": [],
+                    "ambiguous": [],
+                    "unmatched": [],
+                    "devices": 0,
+                    "truncated": False,
+                    "suggestion_note": NOTE,
+                }
+            )
+        context = SuggestionContext(members[0])
+        by_observation = defaultdict(list)
+        for ip in IpAddressObservation.objects.filter(
+            customer=customer, adapter__observation_id__in=[m.id for m in members]
+        ).select_related("adapter"):
+            by_observation[ip.adapter.observation_id].append(ip)
+        result = plan(context, members, by_observation, context.site_names)
+        return Response(
+            {"is_onboarding": True, **result, "devices": len(members), "truncated": truncated, "suggestion_note": NOTE}
+        )
+
     @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
     @action(detail=True, methods=["get", "post"], url_path="settings")
     def group_settings(self, request: Request, pk: str | None = None, **kwargs: Any) -> Response:

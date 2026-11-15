@@ -22,7 +22,7 @@
 | P2 OS updates + reports | Available/installed OS update models, dashboards, CSV/XLSX/PDF, schedule and historical generation | Metrics consistent with exports; stale/unknown handling correct | P1, report branding inputs |
 | P3 IT Glue | Safe field allowlist, org/configuration sync, reviewable asset match | No passwords; mapping/reconciliation tests | Approved IT Glue key/region |
 | P4 Autotask PSA | API-only user, zone discovery, companies/tickets, analytics | Ticket counts/source UI compare; no cost/secret data | Approved restricted API user |
-| P5 Production readiness | Entra OIDC MFA, vault, backup+restore, monitoring, load test, security sign-off | Formal go/no-go checklist passes | All prior gates and internal approvals |
+| P5 Production readiness | Local accounts (Entra not required, DEC-03), vault, backup+restore, monitoring, load test, security sign-off | Formal go/no-go checklist passes | All prior gates and internal approvals |
 
 ## Release targets (not dates)
 

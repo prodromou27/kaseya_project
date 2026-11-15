@@ -12,7 +12,7 @@ function setup(results: unknown[] = [], status = 200, count = results.length) {
     ...page(results), count, is_onboarding: true, suggestion_note: "Network first. Manual transfer only.",
   } } }).calls;
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-    <MemoryRouter><GroupSuggestions customer={customerA} groupId="51" instance="source-a" /></MemoryRouter>
+    <MemoryRouter initialEntries={["/groups/51?suggestion_view=device"]}><GroupSuggestions customer={customerA} groupId="51" instance="source-a" /></MemoryRouter>
   </QueryClientProvider>);
   return calls;
 }
@@ -58,9 +58,32 @@ it("explains stale data and offers a sync instead of a generic load error", asyn
     [`GET /api/v1/customers/${customerA.id}/datasets/`]: { body: [] },
   });
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-    <MemoryRouter><GroupSuggestions customer={customerA} groupId="51" instance="source-a" /></MemoryRouter>
+    <MemoryRouter initialEntries={["/groups/51?suggestion_view=device"]}><GroupSuggestions customer={customerA} groupId="51" instance="source-a" /></MemoryRouter>
   </QueryClientProvider>);
   const alert = await screen.findByRole("alert");
   expect(alert).toHaveTextContent("Suggestions are paused because this customer's data is out of date.");
   expect(alert).toHaveTextContent("Settings → System status");
+});
+
+it("groups onboarding devices by destination and lists ties separately", async () => {
+  mockFetch({
+    [`GET /api/v1/customers/${customerA.id}/groups/51/suggestions/plan/`]: { body: {
+      is_onboarding: true, devices: 4, truncated: false, suggestion_note: "Network first.",
+      destinations: [{ external_id: "61", name: "Finance", site_external_id: "6", site_name: "Nicosia", devices: [
+        { asset_id: "a1", hostname: "FINUSR01", basis: "naming", evidence: ["Name starts with 'FIN', the start of the group name 'Finance'."] },
+        { asset_id: "a2", hostname: "FINUSR02", basis: "observed_subnet", evidence: ["10.4.0.0/24 (observed subnet)"] },
+      ] }],
+      ambiguous: [{ asset_id: "a3", hostname: "SALES9", candidates: ["Sales HQ", "Sales Branch"] }],
+      unmatched: [{ asset_id: "a4", hostname: "XYZ" }],
+    } },
+  });
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <MemoryRouter><GroupSuggestions customer={customerA} groupId="51" instance="source-a" /></MemoryRouter>
+  </QueryClientProvider>);
+  const finance = await screen.findByRole("region", { name: "Move to Finance" });
+  expect(finance).toHaveTextContent("Move 2 device(s) to Finance");
+  expect(finance).toHaveTextContent("Site Nicosia");
+  expect(within(finance).getByRole("link", { name: "FINUSR01" })).toHaveAttribute("href", "/assets/a1?tab=operations");
+  expect(screen.getByRole("region", { name: "Needs a decision" })).toHaveTextContent("could go to Sales HQ or Sales Branch");
+  expect(screen.getByRole("button", { name: "Download move list (CSV)" })).toBeInTheDocument();
 });

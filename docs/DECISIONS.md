@@ -12,7 +12,7 @@
 | ADR-004 | Customer ID attached to every scoped record | Prevent multi-customer leaks and simplify audit | Mandatory |
 | ADR-005 | Read-only vendor integration in v1 | Minimize operational risk; no patch/ticket actions | Mandatory |
 | ADR-006 | Reviewed software reference catalog | Source APIs expose installed versions, not guaranteed missing third-party patch applicability | Mandatory |
-| ADR-007 | Microsoft Entra OIDC for production | Central identity/MFA/account lifecycle | Proposed pending IdP config |
+| ADR-007 | Microsoft Entra OIDC for production | Central identity/MFA/account lifecycle | **Not required (2026-11-15, product owner).** Local portal accounts are the production sign-in; the OIDC code stays available but disabled |
 | ADR-008 | Docker Compose on AlmaLinux | Approved internal host pattern | Proposed pending operations validation |
 | ADR-009 | No secret retrieval from IT Glue | Reporting requirement does not need privileged credential content | Mandatory |
 | ADR-010 | Per-customer data-processing approval | Contractual restrictions vary by customer | Mandatory |
@@ -41,7 +41,7 @@
 |---|---|---|---|
 | DEC-01 | Odyssey security/privacy | Which customers may be imported into central reporting DB? | No restricted customer onboarding |
 | DEC-02 | IT operations | Exact VM/host sizing, HA, PostgreSQL storage, backup/restore objectives? | Pilot only, no HA claim |
-| DEC-03 | Identity administrator | Entra tenant, SSO app registration, access groups and MFA policy? | No production access |
+| DEC-03 | Identity administrator | Entra tenant, SSO app registration, access groups and MFA policy? | **Closed (2026-11-15, product owner): Entra ID is not required.** Production uses local portal accounts with the existing password policy, lockout/throttling, session timeout and audit |
 | DEC-04 | Vendor admins | VSA token privilege scope, instances and pilot orgs? | Fixture mode |
 | DEC-05 | Vendor admins | IT Glue region and safe configuration field allowlist? | Connector disabled |
 | DEC-06 | Vendor admins | Autotask zone, copied restricted API user, permitted ticket fields? | Connector disabled |

@@ -59,7 +59,7 @@
 
 ## P5 — Production-readiness and release
 
-- [ ] **P5-01 [C] Entra SSO/MFA:** production identity policy, session hardening, bootstrap restrictions. **AC:** actual UAT identity test.
+- [x] **P5-01 [C] Entra SSO/MFA:** ~~production identity policy~~ — *Not required (product owner, 2026-11-15, DEC-03). Local accounts with password policy, throttling, session timeout and audit are the production sign-in.*
 - [ ] **P5-02 [C] Secrets and connector egress:** vault/rotation, SSRF/TLS allowlist. **AC:** verified egress and redaction tests.
 - [ ] **P5-03 [C] Encrypted off-host backup:** scheduled backups, keys and report artifacts. **AC:** recoverability and retention evidence.
 - [ ] **P5-04 [C] Isolated restore test:** verify full functionality, roles, audit and pinned snapshots. **AC:** successful signed restore record.
@@ -142,9 +142,10 @@ fixture-verified only (no live VSA X validation).
 - [x] **RPT-07** Custom report builder (7 sources, columns, typed filters, preview, generate, save, schedule). Commit bde71fb.
 - [x] **CRM-01** Customer workspace: Summary tab per customer (health, compliance, patching gaps, subnets, sources, recent reports), each number linked to its investigation.
 - [x] **CRM-02** Monthly customer scorecard (all areas, 30-day comparison from retained snapshots), PDF from the customer Summary, schedulable. Commit b93c48b.
-- [x] **CRM-03** Live-evaluated report figures (compliance, third-party, subnets, scorecard) are kept with the run; regeneration reproduces them.
+- [x] **CRM-03** Live-evaluated report figures (compliance, third-party, subnets, scorecard) are kept with the run; regeneration reproduces them. Commit 3125ec2.
 - [x] **UX-07** Catalog quick-add from Installed programs; stale onboarding suggestions explained with Sync now (operator feedback). Commit e8e0385.
+- [x] **CIDR-03** Destination plan (devices grouped by target group/site, ties and no-evidence lists, CSV move list) and leading-letter naming evidence. Operator feedback 2026-11-15.
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
 
-Still open from earlier phases (unchanged, external): VSA0-02/P0-02 host boot evidence, VSAP-01 Entra/vault, VSAP-02 backup/restore drill on the host, VSAP-04 live pilot, VSAP-05 acceptance, VSA3-06 mail delivery (DEC-09), VSA5 group-move execution (gated, disabled), P3/P4 IT Glue/Autotask (out of Phase 1 scope, DEC-05).
+Still open from earlier phases (unchanged, external): VSA0-02/P0-02 host boot evidence, VSAP-01 vault (Entra dropped, DEC-03), VSAP-02 backup/restore drill on the host, VSAP-04 live pilot, VSAP-05 acceptance, VSA3-06 mail delivery (DEC-09), VSA5 group-move execution (gated, disabled), P3/P4 IT Glue/Autotask (out of Phase 1 scope, DEC-05).
 
