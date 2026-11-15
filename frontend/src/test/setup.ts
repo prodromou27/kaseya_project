@@ -5,6 +5,9 @@ import { afterEach, vi } from "vitest";
 // findBy*/waitFor default to 1 s, which loaded developer machines exceed when files run in parallel.
 configure({ asyncUtilTimeout: 5000 });
 
+// jsdom has no layout, so scrolling is a no-op.
+if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => undefined;
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();

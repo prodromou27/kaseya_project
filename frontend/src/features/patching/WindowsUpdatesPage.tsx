@@ -58,11 +58,14 @@ function Summary({ s, onStatus }: { s: OsUpdateSummary; onStatus: (st: UpdateSta
           </button>
         ))}
       </div>
-      <p className="mb-3 text-xs text-slate-500">
-        Installed updates (per-device, budgeted collection):{" "}
-        {STATUSES.filter((st) => s.installed_section[st]).map((st) => `${UPDATE_STATUS_LABEL[st]} ${s.installed_section[st]}`).join(" · ") || "none"}.
-        As of {s.as_of.map(formatUtc).join(", ") || "—"} · data basis {s.data_basis.join(", ") || "none"}
-      </p>
+      <details className="mb-3 text-xs text-slate-500">
+        <summary className="w-fit cursor-pointer hover:text-sky-800">Installed-update history collection · as of {s.as_of.map(formatUtc).join(", ") || "—"}</summary>
+        <p className="mt-1">
+          Collected per device within each sync's call budget:{" "}
+          {STATUSES.filter((st) => s.installed_section[st]).map((st) => `${UPDATE_STATUS_LABEL[st]} ${s.installed_section[st]}`).join(" · ") || "none"}.
+          Data basis {s.data_basis.join(", ") || "none"}.
+        </p>
+      </details>
 
     </>
   );

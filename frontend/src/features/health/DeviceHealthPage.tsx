@@ -37,8 +37,8 @@ function Partition({ dim, summary, onPick }: { dim: HealthDimension; summary: He
   const values = summary.dimensions[dim];
   const total = summary.devices;
   return (
-    <section aria-label={DIMENSION_TITLE[dim]} className="rounded border border-slate-200 bg-white p-3">
-      <h3 className="mb-1 text-sm font-semibold">{DIMENSION_TITLE[dim]}</h3>
+    <section aria-label={DIMENSION_TITLE[dim]} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="mb-2 text-sm font-semibold text-slate-900">{DIMENSION_TITLE[dim]}</h3>
       <table className="w-full text-xs">
         <caption className="sr-only">{`${DIMENSION_TITLE[dim]} — ${total} devices`}</caption>
         <tbody>
@@ -65,6 +65,14 @@ function Thresholds({ customer, summary }: { customer: Customer; summary: Health
   const canManage = customer.my_capabilities.includes(CAP.manageExceptions);
   const history = useQuery({ queryKey: ["health-thresholds", customer.id], queryFn: ({ signal }) => api.get<HealthThresholdsRow[]>(base, undefined, signal) });
   const t = summary.thresholds;
+  const pending = history.data?.some((r) => r.state === "proposed") ?? false;
+  // Opens by itself when a change awaits approval, then stays open (an approval must not hide its own result).
+  const [open, setOpen] = useState(false);
+  const [autoOpened, setAutoOpened] = useState(false);
+  if (pending && !autoOpened) {
+    setAutoOpened(true);
+    setOpen(true);
+  }
   const [form, setForm] = useState({
     offline_hours: String(t.offline_hours), stale_days: String(t.stale_days), disk_warning_free_pct: String(t.disk_warning_free_pct),
     disk_critical_free_pct: String(t.disk_critical_free_pct), minimum_agent_version: t.minimum_agent_version, reason: "",
@@ -86,11 +94,15 @@ function Thresholds({ customer, summary }: { customer: Customer; summary: Health
     <Field label={label}>{(id) => <input id={id} className="input w-28" type={type} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />}</Field>
   );
   return (
-    <section aria-labelledby="thr-h" className="rounded border border-slate-200 bg-white p-4">
-      <h2 id="thr-h" className="mb-1 font-semibold">Thresholds</h2>
+    <details aria-labelledby="thr-h" className="rounded-xl border border-slate-200 bg-white shadow-sm" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="cursor-pointer px-4 py-3 text-sm hover:text-sky-800">
+        <h2 id="thr-h" className="inline font-semibold text-slate-900">Thresholds</h2>{" "}
+        {t.source === "approved" ? <Badge tone="good">approved</Badge> : <Badge tone="info">documented defaults</Badge>}
+        <span className="ml-2 text-slate-500">offline after {t.offline_hours} h · disk critical below {t.disk_critical_free_pct}%{pending ? " · a change is waiting for approval" : ""}</span>
+      </summary>
+      <div className="border-t border-slate-100 p-4">
       <p className="mb-2 text-sm">
-        {t.source === "approved" ? <Badge tone="good">approved</Badge> : <Badge tone="info">documented defaults</Badge>}{" "}
-        offline after {t.offline_hours} h · stale after {t.stale_days} days · disk warning below {t.disk_warning_free_pct}% / critical below {t.disk_critical_free_pct}% ·
+        Offline after {t.offline_hours} h · stale after {t.stale_days} days · disk warning below {t.disk_warning_free_pct}% / critical below {t.disk_critical_free_pct}% ·
         minimum agent {t.minimum_agent_version || <em>not set (agent age not evaluated)</em>}
       </p>
       <QueryBoundary query={history}>
@@ -123,7 +135,8 @@ function Thresholds({ customer, summary }: { customer: Customer; summary: Health
           {propose.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(propose.error)}</p> : null}
         </form>
       ) : null}
-    </section>
+      </div>
+    </details>
   );
 }
 
@@ -138,7 +151,7 @@ function Devices({ customer, summary, filter, setFilter }: {
   const active = Object.entries(filter).filter(([, v]) => v) as [HealthDimension, string][];
   return (
     <section aria-labelledby="dev-h">
-      <h2 id="dev-h" className="mb-2 text-sm font-semibold">Devices</h2>
+      <h2 id="dev-h" className="mb-2 scroll-mt-24 text-sm font-semibold text-slate-900">Devices</h2>
       {active.length ? (
         <p className="mb-2 flex flex-wrap items-center gap-1 text-sm">Filtered by
           {active.map(([d, v]) => <Badge key={d} tone="info">{DIMENSION_TITLE[d]}: {v.split(",").map((value) => summary.labels[d]?.[value] ?? value).join(" or ")}</Badge>)}
@@ -181,14 +194,15 @@ function View({ customer }: { customer: Customer }) {
         <div className="space-y-4">
           <p className="text-sm text-slate-600">{s.devices} devices · snapshot {s.as_of.map(formatUtc).join(", ") || "never"} · data basis {s.data_basis.join(", ") || "none"}</p>
           <Notice tone="info"><ul className="list-disc pl-4">{s.notes.map((n) => <li key={n}>{n}</li>)}</ul></Notice>
-          <Devices customer={customer} summary={s} filter={filter} setFilter={setFilter} />
           {s.devices === 0 ? <EmptyState title="No devices in the current snapshot." /> : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {(Object.keys(s.dimensions) as HealthDimension[]).map((d) => (
-                <Partition key={d} dim={d} summary={s} onPick={(dim, v) => setFilter({ [dim]: v })} />
+                <Partition key={d} dim={d} summary={s} onPick={(dim, v) => { setFilter({ [dim]: v }); window.requestAnimationFrame(() => document.getElementById("dev-h")?.scrollIntoView({ block: "start" })); }} />
               ))}
             </div>
           )}
+          <Devices customer={customer} summary={s} filter={filter} setFilter={setFilter} />
+          <h2 className="!mb-[-0.5rem] pt-2 text-sm font-semibold text-slate-900">By group</h2>
           <DataTable caption="Attention by group" rows={s.by_group} getRowId={(r) => `${r.instance_id ?? ""}-${r.group_external_id}-${r.group_name}`} emptyTitle="No groups."
             columns={[
               { header: "Site", cell: ({ row }) => String(row.original.site || "—") },

@@ -1,5 +1,11 @@
 # Changelog
 
+## UX-04 - 2026-11-15 - device health and Windows updates layout
+
+- Device health: summary cards first, then the device list (picking a cohort filters and scrolls to it), then "By group". Thresholds fold into a section whose summary always shows approved/defaults; it opens by itself when a change awaits approval.
+- Windows updates: the installed-update collection counts fold into one line.
+- Verified: 95 frontend tests, 43/43 browser scenarios on a fresh fixture database (one health scenario updated to open Thresholds). No backend change.
+
 ## UX-03 - 2026-11-15 - software page works without a catalog
 
 - New read-only `GET /customers/{id}/software/installed/` (customer-scoped, current inventory only): installed programs grouped by name and publisher, with device counts and the top versions as reported. No catalog or version judgement needed.

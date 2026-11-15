@@ -38,6 +38,7 @@ test("every health dimension partitions the whole population", async ({ page }) 
 test("minimum agent version takes effect only after a second administrator approves", async ({ page }) => {
   await login(page, "demo.admin.a@demo.invalid");
   await openNav(page, "Device health");
+  await page.getByText("Thresholds", { exact: true }).click();
   await page.getByLabel("Minimum agent version").fill("5.1");
   await page.getByLabel("Reason").fill("Agent baseline (E2E)");
   await page.getByRole("button", { name: "Propose thresholds" }).click();
