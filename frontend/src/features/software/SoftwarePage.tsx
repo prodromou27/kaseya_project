@@ -29,6 +29,7 @@ import { softwareColumns } from "../inventory/AssetDetailPage";
 import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { DataSources } from "../inventory/DataSources";
 import { ThirdPartyPatching } from "./ThirdPartyPatching";
+import { AddToCatalog } from "./AddToCatalog";
 import { ExportButton } from "../reports/ExportButton";
 import { SelectCustomer } from "../../components/SelectCustomer";
 
@@ -48,6 +49,8 @@ type InstalledProgram = { name: string; publisher: string; devices: number; vers
 
 /** What the source reported as installed, grouped by name/publisher. Needs no catalog. */
 function InstalledPrograms({ customer }: { customer: Customer }) {
+  const me = useMe();
+  const [adding, setAdding] = useState<InstalledProgram | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const term = useDebouncedValue(search, 300);
@@ -65,11 +68,15 @@ function InstalledPrograms({ customer }: { customer: Customer }) {
         {row.original.version_count > row.original.versions.length ? <span className="text-xs text-slate-500">+{row.original.version_count - row.original.versions.length} more</span> : null}
       </span>
     ) },
+    ...(me.is_super_admin ? [{ header: "", id: "catalog", cell: ({ row }: { row: { original: InstalledProgram } }) => (
+      <button type="button" className="btn-secondary" onClick={() => setAdding(row.original)}>Add to catalog</button>
+    ) } as ColumnDef<InstalledProgram, unknown>] : []),
   ];
   return (
     <div className="space-y-3">
       <p className="text-sm text-slate-600">Everything the source reported as installed. No catalog needed; versions are shown as reported, without judging them.</p>
       <label className="list-label">Find a program<input className="input max-w-md" type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Name or publisher" /></label>
+      {adding ? <AddToCatalog key={`${adding.name}|${adding.publisher}`} program={adding} onClose={() => setAdding(null)} /> : null}
       <QueryBoundary query={query}>
         {(data) => <DataTable caption="Installed programs" columns={columns} rows={data.results} total={data.count} page={page} pageSize={50} onPageChange={setPage}
           getRowId={(r) => `${r.name}|${r.publisher}`} emptyTitle={term ? "No programs match your search." : "No installed software reported in the current inventory."} />}
@@ -83,7 +90,7 @@ function NoCatalog({ onShowInstalled }: { onShowInstalled: () => void }) {
   return (
     <EmptyState title="No catalogued products yet, so versions are not compared.">
       <span className="block">Installed software is still collected. <button type="button" className="font-medium text-sky-800 underline" onClick={onShowInstalled}>See installed programs</button>.</span>
-      {me.is_super_admin ? <span className="mt-1 block">To flag outdated versions, add products and their current version under <Link className="font-medium text-sky-800 underline" to="/admin?tab=catalog">Settings → Software catalog</Link>.</span> : null}
+      {me.is_super_admin ? <span className="mt-1 block">To flag outdated versions, open <button type="button" className="font-medium text-sky-800 underline" onClick={onShowInstalled}>Installed programs</button> and use <strong>Add to catalog</strong> on the programs you care about (or import many under <Link className="font-medium text-sky-800 underline" to="/admin?tab=catalog">Settings → Software catalog</Link>).</span> : null}
     </EmptyState>
   );
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## UX-07 - 2026-11-15 - catalog quick-add and stale-suggestion guidance (operator feedback)
+
+- Software → Installed programs: super admins can **Add to catalog** from any row. Vendor, product, an exact-name alias and the newest version seen in the estate are pre-filled; the current version and an https evidence link must be confirmed (same import + approval path and audit as Settings → Software catalog; with a second approver required the entry waits for approval). The empty-catalog message now points to this.
+- Onboarding destination suggestions: when the customer's last successful sync is older than the freshness limit the backend still refuses (deliberate fail-closed rule), but the page now explains why, shows the data source with **Sync now**, and points to Settings → System status instead of a generic "Could not load data".
+- Verified: 101 frontend tests (stale-state test added), 49/49 browser scenarios on a fresh fixture database (new catalog quick-add flow). No backend change.
+
 ## CRM-01 - 2026-11-15 - customer workspace
 
 - Customer page opens on a new **Summary** tab: device health issues, compliance scores per baseline, Critical OS updates and third-party patch gaps, subnet issues, data-source freshness and the five most recent reports. Every number links to the matching filtered investigation and selects that customer first. Values show "…" while loading and "—" only when there is no data. The former Overview tab is now **Details**.

@@ -4,7 +4,8 @@ import { Link } from "react-router";
 import { DataTable } from "../../components/DataTable";
 import { QueryBoundary } from "../../components/States";
 import { Badge, Field } from "../../components/ui";
-import { api } from "../../lib/api";
+import { ApiError, api, describeError } from "../../lib/api";
+import { DataSources } from "../inventory/DataSources";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import type { Customer, Paginated } from "../../lib/types";
@@ -42,7 +43,13 @@ export function GroupSuggestions({ customer, groupId, instance }: { customer: Cu
     <p className="text-sm">Subnet matches come first. Naming is a weaker hint. Open a device to review a proposal; an administrator transfers the agent manually.</p>
     <Field label="Find onboarding device">{(id) => <input id={id} className="input max-w-md" type="search" maxLength={100} value={filters.suggestion_search} onChange={(event) => update({ suggestion_search: event.target.value }, true)} placeholder="Device hostname" />}</Field>
     {query.isError && page > 1 ? <button type="button" className="btn-secondary" onClick={() => setPage(1)}>Return to first page</button> : null}
-    <QueryBoundary query={query}>{(data) => <>
+    {query.error instanceof ApiError && query.error.status === 400 && /stale/i.test(describeError(query.error)) ? (
+      <div role="alert" className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <p><strong>Suggestions are paused because this customer's data is out of date.</strong> The last successful sync is older than the freshness limit, and placement hints from old data could point a device to the wrong group.</p>
+        <p>Run a sync below. If it keeps failing, a super administrator can see why under Settings → System status.</p>
+        <div className="[&>section]:mb-0"><DataSources customer={customer} /></div>
+      </div>
+    ) : <QueryBoundary query={query}>{(data) => <>
       <p className="text-xs text-slate-500">{data.suggestion_note}</p>
       <DataTable caption="Onboarding device suggestions" rows={data.results} total={data.count} page={page} onPageChange={setPage} getRowId={(row) => row.asset_id} loading={query.isFetching || search !== filters.suggestion_search}
         emptyTitle="No onboarding devices match." columns={[
@@ -52,6 +59,6 @@ export function GroupSuggestions({ customer, groupId, instance }: { customer: Cu
             {row.original.suggestions.length ? row.original.suggestions.map((suggestion) => <div key={suggestion.id}><strong>{suggestion.name}</strong><SuggestionEvidence suggestion={suggestion} /></div>) : <p>No matching subnet or naming evidence. Placement is not classified as incorrect. Add approved subnets on destination groups to improve suggestions.</p>}
           </div> },
         ]} />
-    </>}</QueryBoundary>
+    </>}</QueryBoundary>}
   </section>;
 }

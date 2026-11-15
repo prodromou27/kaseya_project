@@ -51,3 +51,16 @@ it("shows API failure with no fabricated placement hint", async () => {
   expect(await screen.findByRole("alert")).toBeInTheDocument();
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
 });
+
+it("explains stale data and offers a sync instead of a generic load error", async () => {
+  mockFetch({
+    [`GET /api/v1/customers/${customerA.id}/groups/51/suggestions/`]: { status: 400, body: { error: { code: "validation_error", message: "Invalid input.", details: { detail: ["Source inventory is stale. Synchronize before reviewing suggestions."] }, request_id: "r" } } },
+    [`GET /api/v1/customers/${customerA.id}/datasets/`]: { body: [] },
+  });
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <MemoryRouter><GroupSuggestions customer={customerA} groupId="51" instance="source-a" /></MemoryRouter>
+  </QueryClientProvider>);
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent("Suggestions are paused because this customer's data is out of date.");
+  expect(alert).toHaveTextContent("Settings → System status");
+});
