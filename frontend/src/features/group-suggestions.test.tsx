@@ -43,3 +43,15 @@ it("shows API failures without inventing suggestions", async () => {
   expect(await screen.findByRole("alert")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Use Office" })).not.toBeInTheDocument();
 });
+
+it("distinguishes identical destination names by stable group ID", async () => {
+  const calls = setup([
+    { id: "g1", name: "Office", external_id: "52", site: "5", basis: "naming", matches: [] },
+    { id: "g2", name: "Office", external_id: "61", site: "6", basis: "naming", matches: [] },
+  ], true);
+  await userEvent.click(await screen.findByRole("button", { name: "Use Office · ID 52" }));
+  expect(screen.getByLabelText("Target group")).toHaveValue("g1");
+  expect(screen.getByRole("button", { name: "Use Office · ID 61" })).toBeInTheDocument();
+  expect(screen.getByText("Site 5 · group ID 52")).toBeInTheDocument();
+  expect(calls.filter((call) => call.method === "POST")).toHaveLength(0);
+});

@@ -32,6 +32,8 @@ export function NetworkReview({ customer, groupId, net }: { customer: Customer; 
   const [cidr, setCidr] = useState("");
   const [reason, setReason] = useState("");
   const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["group-destination-suggestions", customer.id] });
+    void qc.invalidateQueries({ queryKey: ["group-move-options", customer.id] });
     void qc.invalidateQueries({ queryKey: ["expected-subnets", customer.id] });
     void qc.invalidateQueries({ queryKey: ["group-network", customer.id, groupId] });
   };

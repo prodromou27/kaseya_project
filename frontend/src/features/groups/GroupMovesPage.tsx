@@ -12,6 +12,7 @@ import { formatUtc } from "../../lib/format";
 import type { Customer, Paginated } from "../../lib/types";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { SelectCustomer } from "../../components/SelectCustomer";
+import { SuggestionEvidence, type GroupSuggestion } from "./GroupSuggestions";
 
 type Proposal = {
   id: string; asset: string; device_name: string; source_group_name: string;
@@ -22,7 +23,7 @@ type Proposal = {
 type MoveOptions = {
   source_group: string; policy_impact: string; execution_enabled: false;
   source_is_onboarding: boolean; suggestion_note: string; suggestions_ambiguous: boolean;
-  suggestions: { id: string; name: string; matches: { cidr: string; addresses: string[] }[] }[];
+  suggestions: GroupSuggestion[];
   groups: { id: string; name: string; external_id: string; site: string }[];
 };
 
@@ -49,9 +50,9 @@ export function ProposeGroupMove({ customer, assetId }: { customer: Customer; as
         <p className="text-xs text-slate-500">{data.suggestion_note}</p>
         {data.suggestions_ambiguous ? <Notice tone="warn">Several groups match. Review overlapping subnets and adapter evidence before choosing.</Notice> : null}
         {data.suggestions?.length ? <ul>{data.suggestions.map((suggestion) => <li key={suggestion.id} className="mb-2">
-          <strong>{suggestion.name}</strong>: {suggestion.matches.map((match) => `${match.addresses.join(", ")} in ${match.cidr}`).join("; ")}
-          {customer.my_capabilities.includes("customer.group_move.propose") ? <button type="button" className="btn-secondary ml-2" onClick={() => setTarget(suggestion.id)}>Use {suggestion.name}</button> : null}
-        </li>)}</ul> : <p>No approved group subnet matches the reported addresses. Placement is not classified as incorrect.</p>}
+          <strong>{suggestion.name}</strong><SuggestionEvidence suggestion={suggestion} />
+          {customer.my_capabilities.includes("customer.group_move.propose") ? <button type="button" className="btn-secondary ml-2" onClick={() => setTarget(suggestion.id)}>Use {suggestion.name}{suggestion.external_id ? ` · ID ${suggestion.external_id}` : ""}</button> : null}
+        </li>)}</ul> : <p>No matching subnet or naming evidence. Placement is not classified as incorrect. Add approved subnets on destination groups to improve suggestions.</p>}
       </section>
       {customer.my_capabilities.includes("customer.group_move.propose") ? (
         <form className="flex flex-wrap items-end gap-3" aria-label="Group move proposal" onSubmit={(event) => { event.preventDefault(); propose.mutate(); }}>

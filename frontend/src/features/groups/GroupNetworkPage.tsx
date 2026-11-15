@@ -10,6 +10,7 @@ import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import type { Adapter, Customer, GroupNetwork } from "../../lib/types";
 import { NetworkReview } from "./ExpectedSubnets";
+import { GroupSuggestions } from "./GroupSuggestions";
 import { SelectCustomer } from "../../components/SelectCustomer";
 import { ExportButton } from "../reports/ExportButton";
 
@@ -50,9 +51,10 @@ function GroupPurpose({ customer, groupId, instance }: { customer: Customer; gro
   const save = useMutation({ onError: () => setOptimistic(null), mutationFn: (is_onboarding: boolean) => api.post<{ is_onboarding: boolean }>(url, { is_onboarding }), onSuccess: (saved) => { qc.setQueryData(["group-purpose", customer.id, groupId, instance], saved); void qc.invalidateQueries({ queryKey: ["group-purpose", customer.id] }); void qc.invalidateQueries({ queryKey: ["group-move-options", customer.id] }); void qc.invalidateQueries({ queryKey: ["hierarchy", customer.id] }); } });
   return <QueryBoundary query={query}>{(data) => <section className="investigation-card my-3 space-y-2" aria-label="Group purpose">
     <h2 className="text-sm font-semibold">Group purpose</h2>
-    <p className="text-sm">{data.is_onboarding ? "Onboarding group: temporary installation destination. Administrators transfer agents manually when ready." : "Standard agent group. CIDR matches can suggest this group after its subnets are approved below."}</p>
+    <p className="text-sm">{data.is_onboarding ? "Onboarding group: temporary installation destination. Administrators transfer agents manually when ready." : "Standard agent group. Approved subnets below take priority over observed subnet and naming hints."}</p>
     {customer.my_capabilities.includes("customer.manage_exceptions") ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={optimistic ?? data.is_onboarding} disabled={save.isPending || optimistic !== null} onChange={(event) => { setOptimistic(event.target.checked); save.mutate(event.target.checked); }} />Use as an onboarding group</label> : null}
     {save.isError ? <p role="alert" className="text-sm text-red-700">Could not save group purpose. Retry.</p> : null}
+    {data.is_onboarding ? <GroupSuggestions key={`${groupId}:${instance}`} customer={customer} groupId={groupId} instance={instance} /> : null}
   </section>}</QueryBoundary>;
 }
 

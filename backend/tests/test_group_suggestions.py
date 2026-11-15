@@ -72,12 +72,14 @@ def test_onboarding_purpose_authorized_audited_and_manual_hints(world, synced): 
     assert data["source_is_onboarding"] is True
     assert data["execution_enabled"] is False
     assert data["suggestions"][0]["external_id"] == "52"
-    assert data["suggestions"][0]["matches"] == [{"cidr": "10.0.1.0/24", "addresses": ["10.0.1.10"]}]
+    match = data["suggestions"][0]["matches"][0]
+    assert match["cidr"] == "10.0.1.0/24" and match["addresses"] == ["10.0.1.10"]
+    assert match["basis"] == "approved_subnet"
     assert "manually" in data["suggestion_note"]
     assert AuditEvent.objects.filter(customer=world.customer_a, action="group_setting.updated").count() == 1
 
 
-def test_missing_network_and_unapproved_retired_legacy_rules_never_suggest(world, synced):  # noqa: F811
+def test_unapproved_rules_never_become_approved_evidence_and_missing_network_is_unknown(world, synced):  # noqa: F811
     rule(world, synced, state="proposed")
     rule(world, synced, cidr="10.0.0.0/16", state="retired")
     ExpectedSubnet.objects.create(
@@ -89,9 +91,9 @@ def test_missing_network_and_unapproved_retired_legacy_rules_never_suggest(world
         state="approved",
         proposed_by=world.admin_a,
     )
-    assert hints(world).json()["suggestions"] == []
+    assert {g["basis"] for g in hints(world).json()["suggestions"]} == {"observed_subnet"}
     rule(world, synced, cidr="10.0.1.0/24", state="rejected")
-    assert hints(world).json()["suggestions"] == []
+    assert {m["basis"] for g in hints(world).json()["suggestions"] for m in g["matches"]} == {"observed_subnet"}
     observation(world).adapters.all().delete()
     assert hints(world).json()["suggestions"] == []
 

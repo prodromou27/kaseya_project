@@ -6,7 +6,7 @@ from typing import Any
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
@@ -492,6 +492,76 @@ class CustomerGroupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
             Cap.CUSTOMER_MANAGE_EXCEPTIONS if self.request.method == "POST" else Cap.CUSTOMER_READ
         )
         return super().get_customer()
+
+    @extend_schema(
+        description="Paginated onboarding device destinations, ranked by subnet evidence before naming hints.",
+        parameters=[
+            OpenApiParameter("instance", OpenApiTypes.UUID, required=True),
+            OpenApiParameter("search", OpenApiTypes.STR, description="Hostname search, at most 100 characters."),
+            OpenApiParameter("page", OpenApiTypes.INT),
+            OpenApiParameter("page_size", OpenApiTypes.INT, description="At most 200 devices per page."),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=["get"])
+    def suggestions(self, request: Request, pk: str | None = None, **kwargs: Any) -> Response:
+        from collections import defaultdict
+
+        from .group_suggestions import NOTE, SuggestionContext, onboarding
+        from .models import GroupNode, IpAddressObservation
+
+        customer = self.get_customer()
+        instance = _uuid(request.query_params.get("instance"))
+        group = (
+            GroupNode.objects.filter(
+                customer=customer,
+                generation__in=current_generations(customer.id),
+                generation__integration_instance_id=instance,
+                external_id=pk,
+            )
+            .select_related("generation")
+            .first()
+        )
+        if group is None:
+            raise NotFound()
+        if group.generation.published_at < stale_cutoff():
+            raise ValidationError({"detail": "Source inventory is stale. Synchronize before reviewing suggestions."})
+        enabled = onboarding(customer.id, instance, pk)
+        search = serializers.CharField(required=False, allow_blank=True, max_length=100).run_validation(
+            request.query_params.get("search", "")
+        )
+        members = (
+            current_observations(customer.id)
+            .filter(
+                generation_id=group.generation_id,
+                organization_external_id=group.organization_external_id,
+                group_external_id=pk,
+                hostname__icontains=search,
+            )
+            .order_by("hostname", "asset_id")
+        )
+        page = self.paginate_queryset(members if enabled else members.none())
+        results = []
+        if page:
+            context = SuggestionContext(page[0])
+            # Fetch the observation key with each address; no per-device queries.
+            ips = IpAddressObservation.objects.filter(
+                customer=customer, adapter__observation_id__in=[row.id for row in page]
+            ).select_related("adapter")
+            by_observation = defaultdict(list)
+            for ip in ips:
+                by_observation[ip.adapter.observation_id].append(ip)
+            results = [
+                {
+                    "asset_id": str(row.asset_id),
+                    "hostname": row.hostname,
+                    **context.evaluate(row, by_observation[row.id]),
+                }
+                for row in page
+            ]
+        response = self.get_paginated_response(results)
+        response.data.update({"is_onboarding": enabled, "suggestion_note": NOTE})
+        return response
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
     @action(detail=True, methods=["get", "post"], url_path="settings")

@@ -38,6 +38,7 @@ function routes(caps: string[] = customerA.my_capabilities, n: GroupNetwork = ne
     "GET /api/v1/customers/": { body: page([customer]) },
     [`GET ${base}/groups/51/network/`]: { body: n },
     [`GET ${base}/groups/51/settings/`]: { body: { is_onboarding: false } },
+    [`GET ${base}/groups/51/suggestions/`]: { body: { ...page([]), is_onboarding: true, suggestion_note: "Network first; manual transfer." } },
     [`POST ${base}/groups/51/settings/`]: { body: { is_onboarding: true } },
     [`GET ${base}/expected-subnets/`]: { body: [subnet] },
     [`POST ${base}/expected-subnets/`]: { status: 201, body: { ...subnet, id: "s2", state: "proposed" } },

@@ -125,7 +125,7 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         observation, groups = moves.options(customer.id, asset_id)
         from .group_suggestions import suggestions
 
-        hints = suggestions(observation, groups)
+        hints = suggestions(observation)
         return Response(
             {
                 **hints,
