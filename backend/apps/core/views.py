@@ -10,6 +10,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import IsSystemAdmin
+
 
 class LivenessView(APIView):
     authentication_classes: list = []
@@ -35,3 +37,15 @@ class ReadinessView(APIView):
         except Exception:
             return Response({"status": "unavailable", "checks": {"database": "fail"}}, status=503)
         return Response({"status": "ok", "checks": {"database": "ok"}})
+
+
+class SystemStatusView(APIView):
+    """``GET /api/v1/system/status/`` — operational findings for super administrators (no vendor calls)."""
+
+    permission_classes = [IsSystemAdmin]
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    def get(self, request: Request) -> Response:
+        from .system_status import collect
+
+        return Response(collect(check_worker=request.query_params.get("worker", "1") != "0"))

@@ -63,7 +63,7 @@
 - [ ] **P5-02 [C] Secrets and connector egress:** vault/rotation, SSRF/TLS allowlist. **AC:** verified egress and redaction tests.
 - [ ] **P5-03 [C] Encrypted off-host backup:** scheduled backups, keys and report artifacts. **AC:** recoverability and retention evidence.
 - [ ] **P5-04 [C] Isolated restore test:** verify full functionality, roles, audit and pinned snapshots. **AC:** successful signed restore record.
-- [ ] **P5-05 [H] Logs/monitoring:** sync failures, queue lag, source 429, stale data, mass export, audit forwarding. **AC:** alert simulation.
+- [ ] **P5-05 [H] Logs/monitoring:** sync failures, queue lag, source 429, stale data, mass export, audit forwarding. **AC:** alert simulation. — *PARTIAL (2026-11-15): in-portal System status (Settings → System status, `GET /api/v1/system/status/`, super admin) reports worker/broker, queue lag and stuck runs, 24 h sync failures by cause incl. 429, stale sources, export volume per user and failed sign-ins; dashboard banner on errors. Tested by simulated conditions. **Pending:** external alert delivery and audit-log forwarding (needs the operator's monitoring target).*
 - [ ] **P5-06 [H] Performance/load:** representative 100k assets, millions of observations, large exports, rate budget. **AC:** measured/approved SLOs.
 - [ ] **P5-07 [C] Security review:** OWASP/tenant leaks, dependency scan, secret scan, data-processing approval. **AC:** no unresolved critical findings.
 - [ ] **P5-08 [C] Pilot customer:** VSA UI comparisons, report accuracy, IT Glue/PSA safe validation. **AC:** approved evidence.

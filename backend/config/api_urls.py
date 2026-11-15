@@ -1,8 +1,11 @@
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView
 
+from apps.core.views import SystemStatusView
+
 urlpatterns = [
     path("health/", include("apps.core.urls")),
+    path("system/status/", SystemStatusView.as_view(), name="system-status"),
     path("auth/", include("apps.accounts.urls")),
     path("", include("apps.accounts.admin_urls")),
     path("", include("apps.customers.urls")),

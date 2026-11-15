@@ -4602,6 +4602,23 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/system/status/:
+    get:
+      operationId: system_status_retrieve
+      description: '``GET /api/v1/system/status/`` — operational findings for super
+        administrators (no vendor calls).'
+      tags:
+      - system
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/users/:
     get:
       operationId: users_list

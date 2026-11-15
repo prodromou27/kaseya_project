@@ -19,6 +19,7 @@ import { ConnectorHostsPanel } from "./ConnectorHostsPanel";
 import { CredentialForm, credentialLabel, useProviders } from "./CredentialForm";
 import { EditIntegrationForm } from "./EditIntegrationForm";
 import { LifecycleCatalogPanel } from "./LifecycleCatalogPanel";
+import { SystemStatusPanel } from "./SystemStatusPanel";
 import { mappingColumns } from "../customers/MappingsPanel";
 
 function UsersPanel() {
@@ -398,6 +399,7 @@ export function AdminPage() {
           { id: "lifecycle", label: "Lifecycle catalog", content: <LifecycleCatalogPanel /> },
           { id: "quarantine", label: "Sync quarantine", content: <QuarantinePanel /> },
           { id: "sync-schedules", label: "Sync schedules", content: <SyncSchedulesPanel /> },
+          { id: "status", label: "System status", content: <SystemStatusPanel /> },
           { id: "audit", label: "Audit log", content: <AuditTable path="/audit-events/" caption="System audit events" /> },
         ]}
       />

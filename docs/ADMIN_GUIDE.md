@@ -182,6 +182,10 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
     names and item counts, plus the per-device detail calls. It never prints values or credentials and is audited
     (`integration.probe`). An empty page in the portal plus "missing on every sampled device" here means VSA X did
     not return that data (agent setting or token permission), not a portal fault.
+25. **System status:** Settings → System status (super admin) shows whether the background worker and queue are
+    healthy, syncs in the last 24 h and their failure causes, customers whose data is out of date, export volume
+    and failed sign-ins. It refreshes every minute; a red banner appears on the dashboard when something is broken.
+    It reads only the portal's own database and makes no VSA X calls.
 
 ## Onboarding agent groups and CIDR suggestions
 

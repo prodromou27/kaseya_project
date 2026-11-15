@@ -1,5 +1,11 @@
 # Changelog
 
+## OPS-02 - 2026-11-15 - system status (P5-05, in-portal part)
+
+- `GET /api/v1/system/status/` (super admin only, no vendor calls) and Settings → System status: worker/broker reachability (bounded ~2 s when Redis is down; skipped in eager mode), queue lag and runs stuck >15 min or running >2 h, 24 h sync outcomes and failure causes (incl. rate limiting), stale or never-synced sources, exports per user per hour, failed sign-ins. Each signal is a finding with level, code and plain message.
+- Dashboard shows a red banner to super admins only when a finding is an error.
+- Verified: 6 backend tests (permission, stale, stuck queue + failure, worker down, eager skip), 96 frontend tests, 43/43 browser scenarios, OpenAPI regenerated. External alerting and audit forwarding remain open (P5-05).
+
 ## OPS-01 - 2026-11-15 - read-only VSA X data probe
 
 - `manage.py vsa_probe`: one small asset page with the sync's exact `include`, plus the four per-device detail calls, through the same allowlisted read-only client. Prints section presence, item counts and field names only (no hostnames, software, versions, IPs or secrets); audited as `integration.probe`. Ends with plain findings such as "InstalledSoftware is missing on every sampled device".

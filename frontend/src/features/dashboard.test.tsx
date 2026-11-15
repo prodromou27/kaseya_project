@@ -27,7 +27,7 @@ const trends: TrendResponse = {
   }],
 };
 
-function routes(opts: { superAdmin?: boolean; customers?: Customer[]; integrations?: unknown[]; approved?: number; healthFails?: boolean; noUpdateData?: boolean } = {}) {
+function routes(opts: { superAdmin?: boolean; customers?: Customer[]; integrations?: unknown[]; approved?: number; healthFails?: boolean; noUpdateData?: boolean; status?: unknown } = {}) {
   const me = opts.superAdmin
     ? makeMe({ is_super_admin: true, memberships: [], global_capabilities: ["system.manage", "system.cross_customer"] })
     : makeMe();
@@ -43,6 +43,7 @@ function routes(opts: { superAdmin?: boolean; customers?: Customer[]; integratio
     [`GET ${base}/software/summary/`]: { body: { unique_assets_with_outdated: 19, totals: { outdated: 24 }, comparable_installations: 202, eligible_installations: 210 } },
     [`GET ${base}/os-updates/summary/`]: { body: { devices_total: 40, devices_reporting_updates: opts.noUpdateData ? 0 : 38, devices_by_severity: { Critical: 17 } } },
     [`GET ${base}/datasets/`]: { body: [] },
+    ...(opts.status ? { "GET /api/v1/system/status/": { body: opts.status } } : {}),
   } as never);
 }
 
@@ -93,6 +94,29 @@ describe("dashboard", () => {
     const card = await screen.findByRole("region", { name: "Get started" });
     expect(card).toHaveTextContent("Connect VSA X to get started");
     expect(within(card).getByRole("link", { name: "Connect VSA" })).toHaveAttribute("href", "/setup");
+  });
+
+  it("shows a super admin a system problem and the status page explains it", async () => {
+    const status = {
+      generated_at: "2026-11-15T10:00:00Z", level: "error", worker: { checked: true, answering: 0 },
+      queue: { queued_stuck: 1, running_long: 0, oldest_queued_minutes: 22 },
+      syncs_24h: { by_state: { queued: 1, completed: 3 }, errors: {} }, stale_sources: [{ customer: "ACME", integration: "VSA", as_of: null }],
+      exports_24h: 2, failed_logins_24h: 0,
+      findings: [
+        { level: "error", code: "worker_down", message: "No background worker answered: syncs and reports cannot run." },
+        { level: "warn", code: "data_stale", message: "1 customer source(s) older than 26 h or never synced." },
+      ],
+    };
+    routes({ superAdmin: true, approved: 1, status,
+      integrations: [{ id: "i", name: "VSA", provider: "vsa_x", is_fixture: false, credential_configured: true, last_test_outcome: "ok", enabled: true }] });
+    renderApp("/");
+    const banner = await screen.findByRole("alert", { name: "System problem" });
+    expect(banner).toHaveTextContent("No background worker answered");
+    await userEvent.click(within(banner).getByRole("link", { name: "Open system status" }));
+    expect(await screen.findByRole("region", { name: "Overall status" })).toHaveTextContent("Problem");
+    expect(screen.getByRole("list", { name: "Findings" })).toHaveTextContent("older than 26 h");
+    expect(screen.getByText("22 min")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Out-of-date data" })).toHaveTextContent("ACME via VSA · never synced");
   });
 
   it("hides the call to action once VSA is connected", async () => {

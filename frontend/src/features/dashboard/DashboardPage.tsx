@@ -8,6 +8,7 @@ import { useCustomers } from "../../lib/customerContext";
 import type { Customer, Me } from "../../lib/types";
 import { KpiTiles } from "./KpiTiles";
 import { SetupChecklist } from "./SetupChecklist";
+import { SystemStatusBanner } from "../admin/SystemStatusPanel";
 import { Trends } from "./Trends";
 import { DataSources } from "../inventory/DataSources";
 
@@ -49,7 +50,7 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard" subtitle={selected ? `${selected.code} — ${selected.name}` : "No customer selected"} />
-      {me.is_super_admin ? <SetupChecklist /> : null}
+      {me.is_super_admin ? <><SystemStatusBanner /><SetupChecklist /></> : null}
 
       {isLoading ? <LoadingState /> : null}
       {isError ? <ErrorState error={new Error("Customers could not be loaded.")} /> : null}
