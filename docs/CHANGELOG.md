@@ -1,5 +1,13 @@
 # Changelog
 
+## TPP-01 - 2026-11-15 - third-party patch exposure report
+
+- VSA X exposes no third-party patch deployment state. The new report states what the collected evidence supports: for each installed program on each device, the catalog version state (outdated/current/…) and whether the device's assigned VSA patch policy contains a SoftwareRule for that program (normalised name match). Coverage: rule in policy / no rule in policy / no patch policy / policy not collected.
+- "Outdated and no rule in policy" and "outdated and no patch policy" are the actionable gaps; "rule in policy" is configuration only and is labelled "deployment not reported". The disclaimer is part of every response.
+- API (customer.read, customer-scoped): `GET /customers/{id}/software/third-party/` (per program; `search`, `outdated=true`) and `…/third-party/devices/` (`program`, `coverage`, `version_state`, `search`; paged). No schema change.
+- UI: Software → Third-party patching tab with gap counters (click to list devices), per-program coverage badges, rule actions, and the outdated-installation drilldown.
+- Verified: 10 backend tests (name normalisation, coverage split, uncatalogued never outdated, missing policy = unknown, explicit no policy, cross-customer 404), 99 frontend tests, 46/46 browser scenarios. Fixture data only.
+
 ## CMP-01 - 2026-11-15 - compliance baselines
 
 - New `compliance` app (migration `compliance.0001`): customer-owned baselines with up to 30 rules each — required software (optionally a minimum version), forbidden software, minimum OS version, antivirus healthy, firewall enabled, minimum disk free %, maximum days since seen, agent at approved minimum, no outdated catalogued software, no available Critical OS updates, patch policy assigned. Optional scope by device type, site or group; severity per rule.

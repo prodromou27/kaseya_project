@@ -3904,6 +3904,52 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/software/third-party/:
+    get:
+      operationId: customers_software_third_party_retrieve
+      description: 'Per program: outdated installs and whether the assigned VSA patch
+        policy has a rule for it.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/software/third-party/devices/:
+    get:
+      operationId: customers_software_third_party_devices_retrieve
+      description: Per device and program, filtered by program, coverage, version
+        state or search; paged.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/sync-runs/:
     get:
       operationId: customers_sync_runs_list

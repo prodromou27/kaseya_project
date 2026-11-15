@@ -144,6 +144,31 @@ describe("software versions", () => {
     expect(within(table).getByText("131.0")).toBeInTheDocument();
   });
 
+  it("splits outdated third-party installs by patch-policy rule coverage without claiming deployment", async () => {
+    routes({
+      [`GET ${base}/software/third-party/`]: { body: {
+        totals: { installs: 10, outdated: 4, outdated_covered: 1, outdated_not_covered: 2, outdated_no_policy: 1, outdated_unknown: 0 },
+        disclaimer: "Whether VSA X actually deployed an update is not available from the VSA X API, so it is never shown as done.",
+        programs: [{ program_key: "google chrome", program: "Google Chrome", publisher: "Google LLC", catalog_product: "Chrome",
+          reference_version: "131.0", installs: 6, outdated: 4, devices: 6,
+          coverage: { covered: 2, not_covered: 3, no_policy: 1, unknown: 0 }, outdated_coverage: { covered: 1, not_covered: 2, no_policy: 1, unknown: 0 },
+          rule_actions: ["INSTALL_AND_UPDATE"], versions: [], version_count: 2 }],
+      } },
+      [`GET ${base}/software/third-party/devices/`]: { body: { count: 1, page_size: 50, results: [{ asset_id: "a1", hostname: "PC-9", group_name: "HQ",
+        program: "Google Chrome", installed_version: "130.0", reference_version: "131.0", version_state: "outdated", coverage: "not_covered",
+        rule_action: "", policy_name: "Servers monthly" }] } },
+    });
+    renderApp("/software?view=third-party");
+    const table = await screen.findByRole("table", { name: "Third-party programs" });
+    expect(table).toHaveTextContent("No rule in policy: 2");
+    expect(table).toHaveTextContent("Install and update");
+    expect(screen.getByText(/never shown as done/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /No rule in patch policy/ }));
+    const devices = await screen.findByRole("table", { name: "Outdated third-party installations" });
+    expect(within(devices).getByText("PC-9")).toBeInTheDocument();
+    expect(devices).toHaveTextContent("Servers monthly");
+  });
+
   it("hides exception management without the capability", async () => {
     routes();
     renderApp("/software");

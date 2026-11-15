@@ -28,6 +28,7 @@ import {
 import { softwareColumns } from "../inventory/AssetDetailPage";
 import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { DataSources } from "../inventory/DataSources";
+import { ThirdPartyPatching } from "./ThirdPartyPatching";
 import { ExportButton } from "../reports/ExportButton";
 import { SelectCustomer } from "../../components/SelectCustomer";
 
@@ -268,6 +269,7 @@ function SoftwareView({ customer }: { customer: Customer }) {
     <div className="mt-4"><Tabs label="Software workspace" active={active} onChange={(view) => update({ view })} tabs={[
       { id: "overview", label: "Overview", content: <QueryBoundary query={summary} isEmpty={(s) => s.eligible_installations === 0} empty={<EmptyState title="No installed-software inventory in the current dataset.">Run a sync once a source mapping is approved.</EmptyState>}>{(s) => <Summary s={s} onDrill={(state, product) => update({ state, product, view: "installations" })} onShowInstalled={() => update({ view: "programs" })} />}</QueryBoundary> },
       { id: "programs", label: "Installed programs", content: <InstalledPrograms customer={customer} /> },
+      { id: "third-party", label: "Third-party patching", content: <ThirdPartyPatching customer={customer} /> },
       { id: "installations", label: "Installations", content: <Drilldown customer={customer} products={summary.data?.products ?? []} /> },
       { id: "exceptions", label: "Exceptions", content: <Exceptions customer={customer} products={summary.data?.products ?? []} /> },
     ]} /></div>

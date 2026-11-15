@@ -173,3 +173,11 @@ reason) or *unknown* (VSA X did not report the data a rule needs). The score is 
 compliant). Select a rule to list only the devices that fail it. Results always reflect the latest snapshot; nothing
 is changed in VSA X.
 
+## Third-party patching
+
+**Software → Third-party patching** lists programs with outdated installations (compared with the reviewed software
+catalog) and, for each, whether the device's VSA patch policy has a software rule for it. *No rule in policy* and
+*No patch policy* are the gaps to act on. *Rule in patch policy* only means the policy is configured to handle the
+program: the VSA X API does not report whether the update was actually deployed, so the portal never shows it as
+done. Programs without a catalog entry are not compared; add them under Settings → Software catalog.
+

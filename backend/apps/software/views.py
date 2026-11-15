@@ -71,6 +71,42 @@ class CustomerSoftwareViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewse
         return Response(queries.summary(self.get_customer().id))
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"], url_path="third-party")
+    def third_party(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """Per program: outdated installs and whether the assigned VSA patch policy has a rule for it."""
+        from . import thirdparty
+
+        return Response(
+            thirdparty.summary(
+                self.get_customer().id,
+                search=str(request.query_params.get("search", ""))[:100],
+                only_outdated=request.query_params.get("outdated") == "true",
+            )
+        )
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"], url_path="third-party/devices")
+    def third_party_devices(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """Per device and program, filtered by program, coverage, version state or search; paged."""
+        from . import thirdparty
+
+        data = thirdparty.filter_rows(thirdparty.rows(self.get_customer().id), request.query_params)
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+        except ValueError:
+            page = 1
+        size = 50
+        return Response(
+            {
+                "count": len(data),
+                "page": page,
+                "page_size": size,
+                "results": data[(page - 1) * size : page * size],
+                "disclaimer": thirdparty.DISCLAIMER,
+            }
+        )
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"])
     def installed(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         """Installed programs as reported by the source, grouped by name/publisher (no catalog needed)."""
