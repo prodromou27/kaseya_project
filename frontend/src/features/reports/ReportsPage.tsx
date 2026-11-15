@@ -155,7 +155,7 @@ function RunHistory({ customer }: { customer: Customer }) {
       <span className="flex gap-2">
         {row.original.download_available
           ? <a className="text-sky-800 underline" href={`/api/v1/reports/${row.original.id}/download/`}>Download</a>
-          : <span className="text-xs text-slate-400">{row.original.state === "completed" ? "Expired" : "—"}</span>}
+          : <span className="text-xs text-slate-500">{row.original.state === "completed" ? "Expired" : "—"}</span>}
         {row.original.state === "completed" && row.original.report_type !== "customer_audit_log" ? (
           <button type="button" className="text-xs text-sky-800 underline" onClick={() => regenerate.mutate(row.original.id)}
                   title="Re-create from the same pinned data snapshot">Regenerate</button>
@@ -260,7 +260,7 @@ function Inbox() {
           { header: "Format", cell: ({ row }) => row.original.format.toUpperCase() },
           { header: "File", cell: ({ row }) => row.original.download_available
               ? <a className="text-sky-800 underline" href={`/api/v1/reports/${row.original.id}/download/`}>Download</a>
-              : <span className="text-xs text-slate-400">{row.original.state}</span> },
+              : <span className="text-xs text-slate-500">{row.original.state}</span> },
         ]} />}
     </QueryBoundary>
   );

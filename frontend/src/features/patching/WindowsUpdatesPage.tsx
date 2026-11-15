@@ -78,7 +78,7 @@ function CommonUpdates({ s, onKb }: { s: OsUpdateSummary; onKb: (kb: string) => 
         columns={[
           { header: "KB", cell: ({ row }) => row.original.kb_article
               ? <button type="button" className="text-sky-800 underline" onClick={() => onKb(row.original.kb_article)}>KB{row.original.kb_article}</button>
-              : <span className="text-slate-400">no KB</span> },
+              : <span className="text-slate-500">no KB</span> },
           { header: "Title", accessorKey: "title" },
           { header: "Severity", accessorKey: "severity", cell: ({ getValue }) => String(getValue() || "not reported") },
           { header: "Devices", accessorKey: "devices" },

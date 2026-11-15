@@ -15,13 +15,13 @@ import { SelectCustomer } from "../../components/SelectCustomer";
 import { ExportButton } from "../reports/ExportButton";
 
 export function AdapterList({ adapters }: { adapters: Adapter[] }) {
-  if (adapters.length === 0) return <span className="text-xs text-slate-400">no adapters reported</span>;
+  if (adapters.length === 0) return <span className="text-xs text-slate-500">no adapters reported</span>;
   return (
     <ul className="space-y-1 text-xs">
       {adapters.map((a, i) => (
         <li key={`${a.mac}-${a.name}-${i}`}>
           <span className="font-medium">{a.name || "(unnamed adapter)"}</span>{" "}
-          {a.mac ? <code>{a.mac.match(/.{2}/g)?.join(":")}</code> : <span className="text-slate-400">no MAC</span>}
+          {a.mac ? <code>{a.mac.match(/.{2}/g)?.join(":")}</code> : <span className="text-slate-500">no MAC</span>}
           {a.mac_locally_administered ? <span className="ml-1"><Badge tone="info">locally administered</Badge></span> : null}
           {a.dhcp_enabled !== null ? <span className="ml-1 text-slate-500">DHCP {a.dhcp_enabled ? "on" : "off"}</span> : null}
           <div className="ml-3">
@@ -29,8 +29,8 @@ export function AdapterList({ adapters }: { adapters: Adapter[] }) {
               <div key={ip.raw}>
                 <code>{ip.raw}</code>{" "}
                 {ip.network_cidr ? <span className="text-slate-600">→ {ip.network_cidr}</span>
-                  : <span className="text-slate-400">({ip.cidr_status.replace(/_/g, " ")})</span>}{" "}
-                <span className="text-slate-400">{ip.kind}</span>
+                  : <span className="text-slate-500">({ip.cidr_status.replace(/_/g, " ")})</span>}{" "}
+                <span className="text-slate-500">{ip.kind}</span>
               </div>
             ))}
             {a.gateways.length ? <div className="text-slate-500">gateway {a.gateways.join(", ")}</div> : null}

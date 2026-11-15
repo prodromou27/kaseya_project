@@ -146,7 +146,7 @@ export function CatalogPanel() {
             { header: "Current reference", cell: ({ row }) => row.original.current_reference ? (
                 <span><code className="text-xs">{row.original.current_reference.reference_version}</code>{" "}
                   <a className="text-xs text-sky-800 underline" href={row.original.current_reference.vendor_url} target="_blank" rel="noopener noreferrer">evidence</a></span>)
-                : <span className="text-slate-400">none published</span> },
+                : <span className="text-slate-500">none published</span> },
           ]} />}
         </QueryBoundary>
       </section>

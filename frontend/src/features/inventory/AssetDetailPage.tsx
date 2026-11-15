@@ -30,14 +30,14 @@ export const softwareColumns: ColumnDef<SoftwareRow, unknown>[] = [
       <span>{row.original.name}<span className="block text-xs text-slate-500">{row.original.publisher}</span></span>) },
   { header: "Installed", accessorKey: "installed_version", cell: ({ getValue }) => <code className="text-xs">{String(getValue() || "—")}</code> },
   { header: "Reference", cell: ({ row }) => row.original.reference_version
-      ? <code className="text-xs">{row.original.reference_version}</code> : <span className="text-slate-400">—</span> },
+      ? <code className="text-xs">{row.original.reference_version}</code> : <span className="text-slate-500">—</span> },
   { header: "Classification", cell: ({ row }) => (
       <span><Badge tone={statusTone[row.original.state]}>{STATE_LABEL[row.original.state]}</Badge>
         <span className="block text-[11px] text-slate-500">{row.original.reason_code}</span></span>) },
   { header: "Catalog product", cell: ({ row }) => row.original.product
       ? <span>{row.original.product}{row.original.catalog_source_url ? (
           <a className="ml-1 text-xs text-sky-800 underline" href={row.original.catalog_source_url} target="_blank" rel="noopener noreferrer">evidence</a>) : null}</span>
-      : <span className="text-slate-400">not catalogued</span> },
+      : <span className="text-slate-500">not catalogued</span> },
 ];
 
 function Overview({ detail }: { detail: AssetDetail }) {
@@ -284,10 +284,10 @@ export function AssetDetailPage() {
           <PageHeader title={detail.asset?.hostname || detail.external_id}
                       subtitle={detail.active ? "Active in current inventory" : "Inactive (absent from latest complete inventory)"} />
           {detail.asset ? <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
-            {detail.customer ? <span><span className="text-slate-400">Customer</span> {detail.customer.code}</span> : null}
-            <span><span className="text-slate-400">Site / group</span> {detail.asset.site_name || detail.asset.site_external_id || "not reported"} / {detail.asset.group_name || "not reported"}</span>
-            <span><span className="text-slate-400">Source</span> {detail.asset.source} / <Badge tone="info">{detail.asset.data_basis}</Badge></span>
-            <span><span className="text-slate-400">Published</span> {formatUtc(detail.asset.as_of)}</span>
+            {detail.customer ? <span><span className="text-slate-500">Customer</span> {detail.customer.code}</span> : null}
+            <span><span className="text-slate-500">Site / group</span> {detail.asset.site_name || detail.asset.site_external_id || "not reported"} / {detail.asset.group_name || "not reported"}</span>
+            <span><span className="text-slate-500">Source</span> {detail.asset.source} / <Badge tone="info">{detail.asset.data_basis}</Badge></span>
+            <span><span className="text-slate-500">Published</span> {formatUtc(detail.asset.as_of)}</span>
           </div> : null}
           <Tabs label="Device sections" active={tab} onChange={(value) => update({ tab: value })} tabs={[
             { id: "overview", label: "Overview", content: <Overview detail={detail} /> },

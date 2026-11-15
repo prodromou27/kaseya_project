@@ -56,7 +56,7 @@ function InstalledPrograms({ customer }: { customer: Customer }) {
   });
   const columns: ColumnDef<InstalledProgram, unknown>[] = [
     { header: "Program", cell: ({ row }) => <span className="font-medium text-slate-900">{row.original.name}</span> },
-    { header: "Publisher", cell: ({ row }) => row.original.publisher || <span className="text-slate-400">Not reported</span> },
+    { header: "Publisher", cell: ({ row }) => row.original.publisher || <span className="text-slate-500">Not reported</span> },
     { header: "Devices", cell: ({ row }) => <span className="tabular-nums">{row.original.devices}</span> },
     { header: "Versions", cell: ({ row }) => (
       <span className="flex flex-wrap gap-1">

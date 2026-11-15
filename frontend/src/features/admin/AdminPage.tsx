@@ -41,7 +41,7 @@ function UsersPanel() {
       header: "Actions",
       cell: ({ row }) =>
         row.original.id === me.id ? (
-          <span className="text-xs text-slate-400">You</span>
+          <span className="text-xs text-slate-500">You</span>
         ) : (
           <button
             type="button"
@@ -127,7 +127,7 @@ function IntegrationsPanel() {
     { header: "Status", accessorKey: "status", cell: ({ getValue }) => <Badge tone={statusTone[String(getValue())]}>{String(getValue())}</Badge> },
     { header: "Last connection test", cell: ({ row }) => row.original.last_test_at
         ? <span className="text-xs"><Badge tone={row.original.last_test_outcome === "ok" ? "good" : "bad"}>{row.original.last_test_outcome}</Badge> {formatUtc(row.original.last_test_at)}</span>
-        : <span className="text-xs text-slate-400">never</span> },
+        : <span className="text-xs text-slate-500">never</span> },
     {
       header: "Actions",
       cell: ({ row }) => (
@@ -346,7 +346,7 @@ function MappingReviewPanel() {
               Revoke
             </button>
           );
-        return <span className="text-xs text-slate-400">—</span>;
+        return <span className="text-xs text-slate-500">—</span>;
       },
     },
   ];

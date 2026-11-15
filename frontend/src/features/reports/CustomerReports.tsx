@@ -34,7 +34,7 @@ const columns: ColumnDef<ReportRun, unknown>[] = [
           Download {row.original.format.toUpperCase()}
         </a>
       ) : (
-        <span className="text-xs text-slate-400">{row.original.state === "completed" ? "Expired" : "Not available"}</span>
+        <span className="text-xs text-slate-500">{row.original.state === "completed" ? "Expired" : "Not available"}</span>
       ),
   },
 ];

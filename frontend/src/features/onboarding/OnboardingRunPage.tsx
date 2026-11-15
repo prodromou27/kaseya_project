@@ -55,7 +55,7 @@ function ClassBadge({ value }: { value: Classification | "" }) {
 }
 
 function placement(p: ReconciliationResult["actual"]) {
-  if (!p.hostname && !p.source_id) return <span className="text-slate-400">—</span>;
+  if (!p.hostname && !p.source_id) return <span className="text-slate-500">—</span>;
   return (
     <span className="text-xs">
       <strong>{p.hostname}</strong> · {p.organization || p.organization_id} / {p.site || p.site_id || "?"} / {p.group || p.group_id || "no group"}

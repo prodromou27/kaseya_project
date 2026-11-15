@@ -24,7 +24,7 @@ function DeviceLink({ asset }: { asset: AssetRow }) {
 const columns: ColumnDef<AssetRow, unknown>[] = [
   { id: "hostname", header: "Device", cell: ({ row }) => <DeviceLink asset={row.original} /> },
   { header: "Site", accessorKey: "site_name" },
-  { header: "Group", accessorKey: "group_name", cell: ({ row }) => row.original.group_external_id ? <Link className="block max-w-56 truncate text-sky-800 hover:underline" title={row.original.group_name} to={`/groups/${row.original.group_external_id}${row.original.instance_id ? `?instance=${row.original.instance_id}` : ""}`}>{row.original.group_name || row.original.group_external_id}</Link> : <span className="text-slate-400">Not reported</span> },
+  { header: "Group", accessorKey: "group_name", cell: ({ row }) => row.original.group_external_id ? <Link className="block max-w-56 truncate text-sky-800 hover:underline" title={row.original.group_name} to={`/groups/${row.original.group_external_id}${row.original.instance_id ? `?instance=${row.original.instance_id}` : ""}`}>{row.original.group_name || row.original.group_external_id}</Link> : <span className="text-slate-500">Not reported</span> },
   { id: "os", header: "OS", cell: ({ row }) => <span className="block max-w-52 truncate" title={row.original.os_name}>{row.original.os_name || "Not reported"}</span> },
   { header: "Type", accessorKey: "device_type" },
   { id: "last_seen", header: "Last seen", cell: ({ row }) => <span className="whitespace-nowrap text-xs">{formatUtc(row.original.last_seen_online)} {row.original.last_seen_stale ? <Badge tone="warn">{row.original.last_seen_online ? "offline" : "never seen"}</Badge> : null}</span> },

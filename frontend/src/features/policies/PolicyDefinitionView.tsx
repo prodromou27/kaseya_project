@@ -47,7 +47,7 @@ export function PolicyDefinitionView({ definition }: { definition: PolicyDefinit
         <section aria-label={`OS rules of ${definition.name}`}>
           <h4 className="text-xs font-semibold uppercase text-slate-500">OS rules</h4>
           <ul className="text-xs">
-            {definition.os_rules.length === 0 ? <li className="text-slate-400">none</li> : null}
+            {definition.os_rules.length === 0 ? <li className="text-slate-500">none</li> : null}
             {definition.os_rules.map((r, i) => (
               <li key={i} title={raw(r)}>{[r.Field, r.Operator, r.Severity ?? r.Value].filter(Boolean).map(value).join(" ").toLowerCase().replace(/^./, (c) => c.toUpperCase())} → <span className="font-medium">{value(r.Action)}</span></li>
             ))}
@@ -56,7 +56,7 @@ export function PolicyDefinitionView({ definition }: { definition: PolicyDefinit
         <section aria-label={`Software rules of ${definition.name}`}>
           <h4 className="text-xs font-semibold uppercase text-slate-500">Software rules</h4>
           <ul className="text-xs">
-            {definition.software_rules.length === 0 ? <li className="text-slate-400">none</li> : null}
+            {definition.software_rules.length === 0 ? <li className="text-slate-500">none</li> : null}
             {definition.software_rules.map((r, i) => (
               <li key={`${r.ProductId}-${i}`} title={raw(r)}>{r.ProductName || r.ProductId} → <span className="font-medium">{value(r.Action)}</span></li>
             ))}

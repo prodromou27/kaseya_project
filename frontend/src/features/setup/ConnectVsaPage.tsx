@@ -123,7 +123,7 @@ export function ConnectVsaPage() {
                   <>
                     <label className="flex flex-1 items-center gap-2 text-sm">
                       <input type="checkbox" checked={o.external_org_id in picked} onChange={() => toggle(o.external_org_id)} />
-                      {o.name} <span className="text-xs text-slate-400">#{o.external_org_id}</span>
+                      {o.name} <span className="text-xs text-slate-500">#{o.external_org_id}</span>
                     </label>
                     {o.external_org_id in picked ? (
                       <select aria-label={`Customer for ${o.name}`} className="input text-sm" value={picked[o.external_org_id]}

@@ -57,7 +57,7 @@ export function MembersPanel({ customer }: { customer: Customer }) {
             Revoke
           </button>
         ) : (
-          <span className="text-xs text-slate-400">—</span>
+          <span className="text-xs text-slate-500">—</span>
         );
       },
     },

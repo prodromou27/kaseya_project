@@ -1,5 +1,12 @@
 # Changelog
 
+## UX-06 - 2026-11-15 - accessibility (WCAG 2.1 AA automated checks)
+
+- axe-core audit of 18 pages at desktop and 390 px widths found one class of issue: secondary text in `text-slate-400` (2.6:1 on white, below 4.5:1). It now uses `text-slate-500` (4.8:1); the dark sidebar, disabled controls and placeholders are unchanged.
+- New browser test `z-accessibility.spec.ts` runs the WCAG 2.1 A/AA rule set on the main pages at both widths and fails on any violation. `axe-core` 4.14.0 is now an explicit dev dependency (it was already installed through eslint-plugin-jsx-a11y).
+- Automated rules cover contrast, names, roles and labels only; keyboard and screen-reader review remain manual.
+- Verified: 96 frontend tests, 45/45 browser scenarios on a fresh fixture database.
+
 ## UX-05 - 2026-11-15 - readable patch policies, upload control, memory
 
 - Patch policies: general settings and rule actions read as words ("Reboot option: Do not reboot", "Create restore point: Yes"); object settings such as the schedule show their text parts ("Type: Schedule · Frequency interval: Weekly") instead of raw JSON. The exact reported value stays in the tooltip.

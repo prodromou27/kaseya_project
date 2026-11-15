@@ -55,7 +55,7 @@ function groupColumns(summary: LifecycleSummary, kind: Kind): ColumnDef<Lifecycl
       header: "Source",
       cell: ({ row }) => row.original.entry
         ? <span className="text-xs"><a href={row.original.entry.source_url} target="_blank" rel="noreferrer noopener" className="text-sky-800 underline">{row.original.entry.source_type.replace(/_/g, " ")}</a><span className="block text-slate-500">checked {row.original.entry.source_checked_at}</span></span>
-        : <span className="text-xs text-slate-400">no cited entry</span>,
+        : <span className="text-xs text-slate-500">no cited entry</span>,
     },
   ];
 }
