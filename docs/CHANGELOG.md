@@ -1,5 +1,13 @@
 # Changelog
 
+## CMP-01 - 2026-11-15 - compliance baselines
+
+- New `compliance` app (migration `compliance.0001`): customer-owned baselines with up to 30 rules each — required software (optionally a minimum version), forbidden software, minimum OS version, antivirus healthy, firewall enabled, minimum disk free %, maximum days since seen, agent at approved minimum, no outdated catalogued software, no available Critical OS updates, patch policy assigned. Optional scope by device type, site or group; severity per rule.
+- Evaluated live against the current snapshot (still-approved mappings only); every rule answers pass / fail / unknown with a reason. Missing source data is unknown, never a pass or failure. Score = compliant ÷ (compliant + not compliant).
+- API: `/customers/{id}/compliance-baselines/` (read: customer.read; create/edit/delete: customer.manage_exceptions, audited), `…/{id}/results/` (status, rule, site, group, search filters; paged; group breakdown), `…/overview/`. Rule parameters are allowlisted per kind.
+- UI: Compliance page (navigation under Overview) with score cards, per-rule failing counts that filter the device list, per-device findings with reasons, weakest groups, and a baseline editor for customer admins. Demo seed adds one illustrative baseline for DEMO-A.
+- Nothing is written to VSA X. Verified: 10 backend tests (evaluation, unknown handling, scoping/IDOR, permissions, validation, audit), 98 frontend tests, 46/46 browser scenarios (new end-to-end baseline flow; accessibility spec now covers /compliance). Fixture data only.
+
 ## UX-06 - 2026-11-15 - accessibility (WCAG 2.1 AA automated checks)
 
 - axe-core audit of 18 pages at desktop and 390 px widths found one class of issue: secondary text in `text-slate-400` (2.6:1 on white, below 4.5:1). It now uses `text-slate-500` (4.8:1); the dark sidebar, disabled controls and placeholders are unchanged.

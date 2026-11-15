@@ -9,7 +9,7 @@ import { useCustomers } from "../lib/customerContext";
 
 type NavItem = { to: string; label: string; adminOnly?: boolean };
 export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
-  { label: "Overview", items: [{ to: "/", label: "Dashboard" }] },
+  { label: "Overview", items: [{ to: "/", label: "Dashboard" }, { to: "/compliance", label: "Compliance" }] },
   { label: "VSA operations", items: [
     { to: "/assets", label: "Devices" }, { to: "/groups", label: "Groups & network" },
     { to: "/device-health", label: "Device health" }, { to: "/notifications", label: "Notifications" },

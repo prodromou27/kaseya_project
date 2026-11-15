@@ -28,6 +28,7 @@ const WindowsUpdatesPage = lazy(() => import("../features/patching/WindowsUpdate
 const SoftwarePage = lazy(() => import("../features/software/SoftwarePage").then((module) => ({ default: module.SoftwarePage })));
 const CustomerDetailPage = lazy(() => import("../features/customers/CustomerDetailPage").then((module) => ({ default: module.CustomerDetailPage })));
 const CustomersPage = lazy(() => import("../features/customers/CustomersPage").then((module) => ({ default: module.CustomersPage })));
+const CompliancePage = lazy(() => import("../features/compliance/CompliancePage").then((module) => ({ default: module.CompliancePage })));
 const LifecyclePage = lazy(() => import("../features/lifecycle/LifecyclePage").then((module) => ({ default: module.LifecyclePage })));
 const ConnectVsaPage = lazy(() => import("../features/setup/ConnectVsaPage").then((module) => ({ default: module.ConnectVsaPage })));
 const ReportsPage = lazy(() => import("../features/reports/ReportsPage").then((module) => ({ default: module.ReportsPage })));
@@ -75,6 +76,8 @@ export function AppRoutes() {
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="windows-updates" element={<WindowsUpdatesPage />} />
         <Route path="lifecycle" element={<LifecyclePage />} />
+        <Route path="compliance" element={<CompliancePage />} />
+        <Route path="compliance/:baselineId" element={<CompliancePage />} />
         <Route path="setup" element={<ConnectVsaPage />} />
         <Route path="itglue" element={<NotYetAvailablePage title="IT Glue" phase="P3" />} />
         <Route path="autotask" element={<NotYetAvailablePage title="Autotask PSA" phase="P4" />} />

@@ -162,3 +162,14 @@ Software opens Overview. Find a product or click a classification/product count 
 Windows updates starts with Update records. Search title, KB or device and refine by state/severity. Common updates shows frequent available KBs; click one to open matching records. Collection coverage shows one row per device, including unknown/failed/unsupported evidence. Find device searches hostname/source ID; filter the available-update collection state and page through the complete population. Export device coverage exports these device rows, while Export update records exports device-by-update rows. Summary tiles always describe the full current customer snapshot.
 
 Clicking a device opens its relevant investigation tab. Back to software or Back to Windows updates restores the originating search/page; reload also retains URL filters. Reported zero requires collected evidence; Unknown never means zero. This portal does not deploy patches or establish third-party missing-patch applicability.
+
+## Compliance baselines
+
+**Compliance** (under Overview) checks every device of the selected customer against your own standards. A customer
+administrator creates a baseline (for example "Workstation standard") and adds rules: required or forbidden software,
+minimum OS version, antivirus and firewall, disk space, days since last seen, agent version, outdated software,
+Critical OS updates and patch policy. Each device is *compliant*, *not compliant* (with the failing rules and the
+reason) or *unknown* (VSA X did not report the data a rule needs). The score is compliant ÷ (compliant + not
+compliant). Select a rule to list only the devices that fail it. Results always reflect the latest snapshot; nothing
+is changed in VSA X.
+

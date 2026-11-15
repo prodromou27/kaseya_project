@@ -104,8 +104,36 @@ class Command(BaseCommand):
             )
             self._seed_catalog(User.objects.get(email="demo.superadmin@demo.invalid"), reviewer)
             self._seed_lifecycle(User.objects.get(email="demo.superadmin@demo.invalid"), reviewer)
+            self._seed_compliance(customers["DEMO-A"], User.objects.get(email="demo.admin.a@demo.invalid"))
             record_event(action="system.demo_seeded", outcome="success", actor_label="system:seed_demo")
         self.stdout.write(self.style.SUCCESS("Demo data seeded (fixture-only; no vendor data)."))
+
+    def _seed_compliance(self, customer: Any, admin: User) -> None:
+        """One illustrative DEMO baseline (portal-owned rules; evaluated against fixture data only)."""
+        from apps.compliance.models import BaselineRule, ComplianceBaseline
+
+        baseline, created = ComplianceBaseline.objects.get_or_create(
+            customer=customer,
+            name="DEMO workstation standard",
+            defaults={"description": "Illustrative baseline for the fixture tenant.", "created_by": admin},
+        )
+        if not created:
+            return
+        rules = [
+            ("antivirus_healthy", {}, "high"),
+            ("firewall_enabled", {}, "high"),
+            ("disk_free_min", {"percent": 15}, "medium"),
+            ("max_days_offline", {"days": 14}, "medium"),
+            ("required_software", {"name": "Chrome", "min_version": "131"}, "medium"),
+            ("forbidden_software", {"name": "Beta"}, "low"),
+            ("no_critical_updates", {}, "high"),
+        ]
+        BaselineRule.objects.bulk_create(
+            [
+                BaselineRule(baseline=baseline, kind=k, params=p, severity=sv, position=i)
+                for i, (k, p, sv) in enumerate(rules)
+            ]
+        )
 
     def _seed_lifecycle(self, proposer: User, reviewer: User) -> None:
         """Illustrative DEMO lifecycle entries (VSA4-05). Dates are NOT vendor facts: the evidence URL is .invalid."""

@@ -967,6 +967,216 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/compliance-baselines/:
+    get:
+      operationId: customers_compliance_baselines_list
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBaselineList'
+          description: ''
+    post:
+      operationId: customers_compliance_baselines_create
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Baseline'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Baseline'
+          description: ''
+  /api/v1/customers/{customer_pk}/compliance-baselines/{id}/:
+    get:
+      operationId: customers_compliance_baselines_retrieve
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this compliance baseline.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Baseline'
+          description: ''
+    patch:
+      operationId: customers_compliance_baselines_partial_update
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this compliance baseline.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBaseline'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Baseline'
+          description: ''
+    delete:
+      operationId: customers_compliance_baselines_destroy
+      description: |-
+        Nested ``/customers/{customer_pk}/...`` views: resolve the customer from the DB and require a capability.
+
+        The customer always comes from the URL + database + policy, never from request bodies.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this compliance baseline.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/customers/{customer_pk}/compliance-baselines/{id}/results/:
+    get:
+      operationId: customers_compliance_baselines_results_retrieve
+      description: Per-device results for one baseline, with rule counts and a group
+        breakdown. Filterable and paged.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this compliance baseline.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/compliance-baselines/overview/:
+    get:
+      operationId: customers_compliance_baselines_overview_retrieve
+      description: Score and totals of every enabled baseline (facts loaded once),
+        plus the worst groups.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/custom-field-allowlist/:
     get:
       operationId: customers_custom_field_allowlist_list
@@ -4942,6 +5152,54 @@ components:
       description: |-
         * `local` - Local (bootstrap/dev only)
         * `oidc` - OIDC (Microsoft Entra ID)
+    Baseline:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
+        enabled:
+          type: boolean
+        scope_device_type:
+          type: string
+          description: e.g. windows; blank = all types
+          maxLength: 64
+        scope_site_external_id:
+          type: string
+          maxLength: 64
+        scope_group_external_id:
+          type: string
+          maxLength: 64
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rule'
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - name
+      - rules
+      - updated_at
     ConfidenceEnum:
       enum:
       - official
@@ -6240,6 +6498,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuditEvent'
+    PaginatedBaselineList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Baseline'
     PaginatedCustomerList:
       type: object
       required:
@@ -6792,6 +7073,47 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/User'
+    PatchedBaseline:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
+        enabled:
+          type: boolean
+        scope_device_type:
+          type: string
+          description: e.g. windows; blank = all types
+          maxLength: 64
+        scope_site_external_id:
+          type: string
+          maxLength: 64
+        scope_group_external_id:
+          type: string
+          maxLength: 64
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rule'
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedCustomer:
       type: object
       properties:
@@ -7971,6 +8293,51 @@ components:
       - capabilities
       - key
       - name
+    Rule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/RuleKindEnum'
+        params: {}
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        label:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - kind
+      - label
+    RuleKindEnum:
+      enum:
+      - required_software
+      - forbidden_software
+      - os_min_version
+      - antivirus_healthy
+      - firewall_enabled
+      - disk_free_min
+      - max_days_offline
+      - agent_current
+      - no_outdated_software
+      - no_critical_updates
+      - patch_policy_assigned
+      type: string
+      description: |-
+        * `required_software` - Required software is installed
+        * `forbidden_software` - Forbidden software is not installed
+        * `os_min_version` - Operating system version at least
+        * `antivirus_healthy` - Antivirus enabled and up to date
+        * `firewall_enabled` - Firewall enabled
+        * `disk_free_min` - System disk free space at least
+        * `max_days_offline` - Seen within a number of days
+        * `agent_current` - Agent at or above the approved minimum
+        * `no_outdated_software` - No outdated catalogued software
+        * `no_critical_updates` - No available Critical OS updates
+        * `patch_policy_assigned` - A patch policy is assigned
     SavedView:
       type: object
       properties:
@@ -8007,6 +8374,16 @@ components:
       - owner
       - updated_at
       - view_type
+    SeverityEnum:
+      enum:
+      - low
+      - medium
+      - high
+      type: string
+      description: |-
+        * `low` - Low
+        * `medium` - Medium
+        * `high` - High
     SoftwareStatusEnum:
       enum:
       - collected
