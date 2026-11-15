@@ -182,3 +182,32 @@ def search_results(qs: QuerySet[ComplianceResult], search: str) -> QuerySet[Comp
         | Q(installation__raw_version__icontains=term)
         | Q(installation__observation__hostname__icontains=term)
     )
+
+
+def installed_programs(customer_id: Any, search: str = "") -> list[dict[str, Any]]:
+    """Raw installed software in the current inventory, grouped by name + publisher. Catalog-independent: this is
+    what the source reported, with no version judgement. Used when a product is not (yet) catalogued."""
+    from .models import SoftwareInstallation
+
+    qs = SoftwareInstallation.objects.filter(customer_id=customer_id, generation__in=current_generations(customer_id))
+    if search:
+        qs = qs.filter(Q(raw_name__icontains=search) | Q(raw_publisher__icontains=search))
+    groups: dict[tuple[str, str], dict[str, Any]] = {}
+    for name, publisher, version, asset_id in qs.values_list("raw_name", "raw_publisher", "raw_version", "asset_id"):
+        g = groups.setdefault((name, publisher), {"devices": set(), "versions": defaultdict(set)})
+        g["devices"].add(asset_id)
+        g["versions"][version].add(asset_id)
+    rows = []
+    for (name, publisher), g in groups.items():
+        versions = sorted(g["versions"].items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        rows.append(
+            {
+                "name": name,
+                "publisher": publisher,
+                "devices": len(g["devices"]),
+                "version_count": len(versions),
+                "versions": [{"version": v or "", "devices": len(ids)} for v, ids in versions[:5]],
+            }
+        )
+    rows.sort(key=lambda r: (-r["devices"], r["name"].lower()))
+    return rows

@@ -1,5 +1,12 @@
 # Changelog
 
+## UX-03 - 2026-11-15 - software page works without a catalog
+
+- New read-only `GET /customers/{id}/software/installed/` (customer-scoped, current inventory only): installed programs grouped by name and publisher, with device counts and the top versions as reported. No catalog or version judgement needed.
+- Software page: new "Installed programs" tab. With no catalogued products the Overview now explains that versions are not compared yet, links to the installed programs and (super admin) to Settings → Software catalog, instead of the bare "No catalogued products".
+- Third-party patch status is a known VSA X API limit, not an error: shown as a one-line note instead of a yellow warning (wording kept; evidence in the tooltip).
+- Verified: 625 backend tests (new scoping/no-catalog test), 95 frontend tests, 43/43 browser scenarios, OpenAPI regenerated. Fixture data only; live VSA X software collection not re-validated.
+
 ## UX-02 - 2026-11-15 - lists, reports and settings clean-up
 
 - Tables: one header style (sentence case; sortable headers had escaped the uppercase rule), device links and release dates no longer break at hyphens.

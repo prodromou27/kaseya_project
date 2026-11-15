@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { Fragment, useState, type FormEvent } from "react";
 
@@ -11,6 +11,7 @@ import { DataTable } from "../../components/DataTable";
 import { EmptyState, QueryBoundary } from "../../components/States";
 import { Badge, Field, PageHeader, statusTone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
+import { useMe } from "../../lib/auth";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import {
@@ -42,7 +43,51 @@ function Metric({ label, value, hint }: { label: string; value: string; hint: st
   );
 }
 
-function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: ComplianceState | "", product: string) => void }) {
+type InstalledProgram = { name: string; publisher: string; devices: number; version_count: number; versions: { version: string; devices: number }[] };
+
+/** What the source reported as installed, grouped by name/publisher. Needs no catalog. */
+function InstalledPrograms({ customer }: { customer: Customer }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const term = useDebouncedValue(search, 300);
+  const query = useQuery({
+    queryKey: ["software", customer.id, "installed", term, page],
+    queryFn: ({ signal }) => api.get<Paginated<InstalledProgram>>(`/customers/${customer.id}/software/installed/`, { search: term, page }, signal),
+  });
+  const columns: ColumnDef<InstalledProgram, unknown>[] = [
+    { header: "Program", cell: ({ row }) => <span className="font-medium text-slate-900">{row.original.name}</span> },
+    { header: "Publisher", cell: ({ row }) => row.original.publisher || <span className="text-slate-400">Not reported</span> },
+    { header: "Devices", cell: ({ row }) => <span className="tabular-nums">{row.original.devices}</span> },
+    { header: "Versions", cell: ({ row }) => (
+      <span className="flex flex-wrap gap-1">
+        {row.original.versions.map((v) => <span key={v.version} className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700"><span className="nowrap">{v.version || "no version"}</span> · {v.devices}</span>)}
+        {row.original.version_count > row.original.versions.length ? <span className="text-xs text-slate-500">+{row.original.version_count - row.original.versions.length} more</span> : null}
+      </span>
+    ) },
+  ];
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-slate-600">Everything the source reported as installed. No catalog needed; versions are shown as reported, without judging them.</p>
+      <label className="list-label">Find a program<input className="input max-w-md" type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Name or publisher" /></label>
+      <QueryBoundary query={query}>
+        {(data) => <DataTable caption="Installed programs" columns={columns} rows={data.results} total={data.count} page={page} pageSize={50} onPageChange={setPage}
+          getRowId={(r) => `${r.name}|${r.publisher}`} emptyTitle={term ? "No programs match your search." : "No installed software reported in the current inventory."} />}
+      </QueryBoundary>
+    </div>
+  );
+}
+
+function NoCatalog({ onShowInstalled }: { onShowInstalled: () => void }) {
+  const me = useMe();
+  return (
+    <EmptyState title="No catalogued products yet, so versions are not compared.">
+      <span className="block">Installed software is still collected. <button type="button" className="font-medium text-sky-800 underline" onClick={onShowInstalled}>See installed programs</button>.</span>
+      {me.is_super_admin ? <span className="mt-1 block">To flag outdated versions, add products and their current version under <Link className="font-medium text-sky-800 underline" to="/admin?tab=catalog">Settings → Software catalog</Link>.</span> : null}
+    </EmptyState>
+  );
+}
+
+function Summary({ s, onDrill, onShowInstalled }: { s: SoftwareSummary; onDrill: (state: ComplianceState | "", product: string) => void; onShowInstalled: () => void }) {
   const [productSearch, setProductSearch] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const visibleProducts = s.products.filter((product) => `${product.label} ${product.channel}`.toLowerCase().includes(productSearch.toLowerCase()));
@@ -70,11 +115,7 @@ function Summary({ s, onDrill }: { s: SoftwareSummary; onDrill: (state: Complian
         comparator v{s.algorithm_version} · data basis {s.data_basis.join(", ") || "none"}
       </p>
       <label className="list-label mb-3">Find a product<input className="input max-w-md" type="search" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Product or channel" /></label>
-      {s.products.length === 0 ? (
-        <EmptyState title="No catalogued products found in this inventory.">
-          Installed software that is not in the reviewed catalog is reported as “Not catalogued”.
-        </EmptyState>
-      ) : visibleProducts.length === 0 ? <EmptyState title="No products match your search."><button type="button" className="underline text-sky-800" onClick={() => setProductSearch("")}>Clear product search</button></EmptyState> : (
+      {s.products.length === 0 ? <NoCatalog onShowInstalled={onShowInstalled} /> : visibleProducts.length === 0 ? <EmptyState title="No products match your search."><button type="button" className="underline text-sky-800" onClick={() => setProductSearch("")}>Clear product search</button></EmptyState> : (
         <div className="overflow-x-auto rounded border border-slate-200 bg-white">
           <table className="min-w-full text-sm">
             <caption className="sr-only">Catalogued products</caption>
@@ -225,7 +266,8 @@ function SoftwareView({ customer }: { customer: Customer }) {
     <p className="mb-2 text-xs text-slate-500">Version comparison against a reviewed catalog. Not evidence of missing third-party patches or vulnerabilities.</p>
     <ThirdPartyPatchNotice status={summary.data?.third_party_patch_status} />
     <div className="mt-4"><Tabs label="Software workspace" active={active} onChange={(view) => update({ view })} tabs={[
-      { id: "overview", label: "Overview", content: <QueryBoundary query={summary} isEmpty={(s) => s.eligible_installations === 0} empty={<EmptyState title="No installed-software inventory in the current dataset.">Run a sync once a source mapping is approved.</EmptyState>}>{(s) => <Summary s={s} onDrill={(state, product) => update({ state, product, view: "installations" })} />}</QueryBoundary> },
+      { id: "overview", label: "Overview", content: <QueryBoundary query={summary} isEmpty={(s) => s.eligible_installations === 0} empty={<EmptyState title="No installed-software inventory in the current dataset.">Run a sync once a source mapping is approved.</EmptyState>}>{(s) => <Summary s={s} onDrill={(state, product) => update({ state, product, view: "installations" })} onShowInstalled={() => update({ view: "programs" })} />}</QueryBoundary> },
+      { id: "programs", label: "Installed programs", content: <InstalledPrograms customer={customer} /> },
       { id: "installations", label: "Installations", content: <Drilldown customer={customer} products={summary.data?.products ?? []} /> },
       { id: "exceptions", label: "Exceptions", content: <Exceptions customer={customer} products={summary.data?.products ?? []} /> },
     ]} /></div>

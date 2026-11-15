@@ -129,6 +129,21 @@ describe("software versions", () => {
     expect(screen.getByRole("button", { name: /Unknown 2/ })).toBeInTheDocument();
   });
 
+  it("lists installed programs without a catalog and points to them when nothing is catalogued", async () => {
+    routes({
+      [`GET ${base}/software/summary/`]: { body: { ...summary, products: [] } },
+      [`GET ${base}/software/installed/`]: { body: page([
+        { name: "Google Chrome", publisher: "Google LLC", devices: 6, version_count: 2, versions: [{ version: "131.0", devices: 4 }, { version: "130.0", devices: 2 }] },
+      ]) },
+    });
+    renderApp("/software");
+    expect(await screen.findByText("No catalogued products yet, so versions are not compared.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "See installed programs" }));
+    const table = await screen.findByRole("table", { name: "Installed programs" });
+    expect(within(table).getByText("Google Chrome")).toBeInTheDocument();
+    expect(within(table).getByText("131.0")).toBeInTheDocument();
+  });
+
   it("hides exception management without the capability", async () => {
     routes();
     renderApp("/software");

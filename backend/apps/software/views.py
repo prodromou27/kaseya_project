@@ -70,6 +70,21 @@ class CustomerSoftwareViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewse
     def summary(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         return Response(queries.summary(self.get_customer().id))
 
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"])
+    def installed(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """Installed programs as reported by the source, grouped by name/publisher (no catalog needed)."""
+        search = str(request.query_params.get("search", ""))[:100].strip()
+        rows = queries.installed_programs(self.get_customer().id, search)
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+        except ValueError:
+            page = 1
+        size = 50
+        return Response(
+            {"count": len(rows), "page": page, "page_size": size, "results": rows[(page - 1) * size : page * size]}
+        )
+
 
 class ExceptionSerializer(serializers.ModelSerializer):
     approved_by = serializers.SlugRelatedField(slug_field="email", read_only=True)

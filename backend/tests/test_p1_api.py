@@ -517,3 +517,17 @@ def test_quarantined_records_absent_from_customer_views(world, synced):
     sync.execute(str(run.id), adapter_factory=lambda i: VsaXAdapter(i, transport=transport, sleeper=lambda s: 0))
     assets = world.client(world.engineer_a).get(f"/api/v1/customers/{world.customer_a.id}/assets/").json()
     assert all(not r["external_id"].startswith("leak") for r in assets["results"])
+
+
+def test_installed_programs_need_no_catalog_and_stay_scoped(world, synced):
+    url = f"/api/v1/customers/{world.customer_a.id}/software/installed/"
+    data = world.client(world.viewer_a).get(url).json()
+    assert not CatalogRevision.objects.exists()  # works before any catalog review
+    names = {r["name"]: r for r in data["results"]}
+    assert set(names) == {"Google Chrome", "Contoso Tool"} and data["count"] == 2
+    chrome = names["Google Chrome"]
+    assert chrome["devices"] == 6 and chrome["version_count"] == 2
+    assert sum(v["devices"] for v in chrome["versions"]) == 6
+    assert world.client(world.viewer_a).get(url, {"search": "contoso"}).json()["count"] == 1
+    # Customer B's user cannot read A's programs
+    assert world.client(world.engineer_b).get(url).status_code in (403, 404)
