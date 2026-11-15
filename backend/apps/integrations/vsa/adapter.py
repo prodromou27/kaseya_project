@@ -112,6 +112,21 @@ class VsaXAdapter:
             skip += len(page.records)
         raise PageInvalid("Page limit exceeded; refusing to paginate further.")
 
+    def sample_assets(self, organization_id: str, top: int = 5) -> Page:
+        """One small page with exactly the sync's ``include`` sections, for the read-only probe command."""
+        org = validate_org_id(organization_id)
+        result = self.client.get_json(
+            "/api/v3/assets",
+            {
+                "$top": str(max(1, min(top, 20))),
+                "$skip": "0",
+                "$filter": f"OrganizationId eq {org}",
+                "$orderby": "Identifier",
+                "include": ASSET_INCLUDE,
+            },
+        )
+        return parse_page(result.json)
+
     def get_installed_updates(self, identifier: str) -> Any:
         """``GET /api/v3/assets/:id?include=InstalledUpdates`` → raw body. Identifier is validated before use."""
         if not _DEVICE_ID.fullmatch(identifier or ""):

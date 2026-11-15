@@ -1,5 +1,11 @@
 # Changelog
 
+## OPS-01 - 2026-11-15 - read-only VSA X data probe
+
+- `manage.py vsa_probe`: one small asset page with the sync's exact `include`, plus the four per-device detail calls, through the same allowlisted read-only client. Prints section presence, item counts and field names only (no hostnames, software, versions, IPs or secrets); audited as `integration.probe`. Ends with plain findings such as "InstalledSoftware is missing on every sampled device".
+- Supports VSAP-04 (live field validation) once run on the live host; fixture output is not live evidence.
+- Verified: 3 new tests (sections without values, ambiguous integration/org refused, missing-section finding); full backend suite.
+
 ## UX-04 - 2026-11-15 - device health and Windows updates layout
 
 - Device health: summary cards first, then the device list (picking a cohort filters and scrolls to it), then "By group". Thresholds fold into a section whose summary always shows approved/defaults; it opens by itself when a change awaits approval.

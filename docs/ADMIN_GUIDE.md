@@ -176,6 +176,12 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
     sync_status` lists integrations, mappings, schedules, recent runs and the worker, and ends with findings. A run
     that stays *queued* more than 10 minutes without starting is re-sent automatically on the next Sync now or
     schedule tick.
+24. **Which data does VSA X return?** `... exec backend python manage.py vsa_probe` (optional `--integration NAME`,
+    `--org ID`, `--devices N`) makes about five read-only GET calls with the sync's own request and lists, for a few
+    devices, which sections came back (InstalledSoftware, AvailableUpdates, Disks, Security, …) with their field
+    names and item counts, plus the per-device detail calls. It never prints values or credentials and is audited
+    (`integration.probe`). An empty page in the portal plus "missing on every sampled device" here means VSA X did
+    not return that data (agent setting or token permission), not a portal fault.
 
 ## Onboarding agent groups and CIDR suggestions
 
