@@ -17,6 +17,14 @@ import { formatUtc } from "../../lib/format";
 import { PATCH_STATE_LABEL, STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
 import { PolicyDefinitionView } from "../policies/PolicyDefinitionView";
 
+/** VSA X does not document the memory unit, so the raw value stays primary; a large integer gets an
+ * explicitly conditional reading ("if bytes") rather than a silent conversion. */
+function memoryHint(raw: string): string {
+  if (!/^\d+$/.test(raw) || Number(raw) < 1e8) return raw;
+  const gib = Number(raw) / 1024 ** 3;
+  return `${raw} (≈ ${gib >= 10 ? Math.round(gib) : gib.toFixed(1)} GiB if bytes)`;
+}
+
 export const softwareColumns: ColumnDef<SoftwareRow, unknown>[] = [
   { header: "Installed software", cell: ({ row }) => (
       <span>{row.original.name}<span className="block text-xs text-slate-500">{row.original.publisher}</span></span>) },
@@ -76,7 +84,7 @@ function Overview({ detail }: { detail: AssetDetail }) {
               ["Antivirus", h.antivirus],
               ["Firewall", h.firewall],
               ["CPU", [h.hardware.cpu, h.hardware.cores && `${h.hardware.cores} cores`, h.hardware.logical_processors && `${h.hardware.logical_processors} logical`].filter(Boolean).join(" · ") || "not reported"],
-              ["Memory (raw, units undocumented)", h.hardware.memory_total_raw || "not reported"],
+              ["Memory (raw, units undocumented)", h.hardware.memory_total_raw ? memoryHint(String(h.hardware.memory_total_raw)) : "not reported"],
             ] as [string, string][]).map(([k, v]) => (
               <div key={k} className="contents"><dt className="text-slate-500">{k}</dt><dd>{v.replace(/_/g, " ")}</dd></div>
             ))}

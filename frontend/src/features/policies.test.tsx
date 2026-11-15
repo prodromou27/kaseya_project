@@ -20,7 +20,7 @@ const summary: PolicySummary = {
     different_policy: "A different policy is assigned", missing_policy: "Expected a policy; No Policy is explicitly configured",
     unexpected_policy: "Expected no policy; a policy is assigned",
   },
-  definitions: [{ policy_id: "301", status: "collected", name: "WS weekly", description: "Saturday", general_settings: { RebootOption: "DO_NOT_REBOOT" },
+  definitions: [{ policy_id: "301", status: "collected", name: "WS weekly", description: "Saturday", general_settings: { RebootOption: "DO_NOT_REBOOT", CreateRestorePoint: true, Schedule: { Id: -1, Type: { Id: 1, Text: "Schedule" }, FrequencyInterval: { Id: 2, Text: "Weekly" } } },
     os_rules: [{ Field: "SEVERITY", Operator: "CONTAINS", Severity: "CRITICAL", Action: "APPROVE_AND_INSTALL" }],
     software_rules: [{ ProductId: "7-zip-x64", ProductName: "7-Zip (64-bit)", Action: "INSTALL_AND_UPDATE" }], fetched_at: "2026-11-13T09:00:00Z", changed_since_previous: true }],
   scopes: { organizations: { "11": "Org A" }, sites: { "5": "HQ" }, groups: { "51": { name: "Workstations", site: "5" } } },
@@ -62,6 +62,11 @@ describe("patch policies", () => {
     expect(screen.getByText(/not what was deployed/)).toBeInTheDocument();
     expect(await screen.findByRole("table", { name: "Patch policy by device" })).toHaveTextContent("PC2");
     expect(screen.queryByRole("button", { name: "Propose expectation" })).not.toBeInTheDocument(); // read-only role
+    const settings = screen.getByRole("region", { name: "General settings of WS weekly" });
+    expect(settings).toHaveTextContent("Reboot optionDo not reboot");
+    expect(settings).toHaveTextContent("Create restore pointYes");
+    expect(settings).toHaveTextContent("Type: Schedule · Frequency interval: Weekly");
+    expect(settings).not.toHaveTextContent("{");
   });
 
   it("customer admin proposes an expectation and sees the separate-approver rule", async () => {

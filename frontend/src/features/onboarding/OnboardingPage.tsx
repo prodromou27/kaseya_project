@@ -107,7 +107,7 @@ function NewComparison({ customer }: { customer: Customer }) {
       </p>
       <Field label="Expected inventory file">
         {(id) => (
-          <input id={id} type="file" accept=".xlsx,.csv" className="max-w-full text-sm" disabled={send.isPending || start.isPending}
+          <input id={id} type="file" accept=".xlsx,.csv" className="max-w-full text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-sky-700 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-sky-800 disabled:opacity-50" disabled={send.isPending || start.isPending}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) send.mutate(f); }} />
         )}
       </Field>

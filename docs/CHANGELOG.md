@@ -1,5 +1,12 @@
 # Changelog
 
+## UX-05 - 2026-11-15 - readable patch policies, upload control, memory
+
+- Patch policies: general settings and rule actions read as words ("Reboot option: Do not reboot", "Create restore point: Yes"); object settings such as the schedule show their text parts ("Type: Schedule · Frequency interval: Weekly") instead of raw JSON. The exact reported value stays in the tooltip.
+- Onboarding check: styled file-upload button.
+- Device detail: memory keeps the raw value (unit undocumented) and adds an explicitly conditional "≈ 16 GiB if bytes".
+- Verified: 96 frontend tests (policy settings assertion added), 43/43 browser scenarios on a fresh fixture database. No backend change.
+
 ## OPS-02 - 2026-11-15 - system status (P5-05, in-portal part)
 
 - `GET /api/v1/system/status/` (super admin only, no vendor calls) and Settings → System status: worker/broker reachability (bounded ~2 s when Redis is down; skipped in eager mode), queue lag and runs stuck >15 min or running >2 h, 24 h sync outcomes and failure causes (incl. rate limiting), stale or never-synced sources, exports per user per hour, failed sign-ins. Each signal is a finding with level, code and plain message.
