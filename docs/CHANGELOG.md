@@ -1,5 +1,13 @@
 # Changelog
 
+## UX-02 - 2026-11-15 - lists, reports and settings clean-up
+
+- Tables: one header style (sentence case; sortable headers had escaped the uppercase rule), device links and release dates no longer break at hyphens.
+- Data-source strip on list pages is a single line (green dot, devices, as-of, Sync now); full detail stays on the dashboard.
+- Reports: readable filter labels (e.g. "Operating system", "Device IDs (comma separated)") in a collapsed "Filters (optional)" group.
+- Settings → Integrations: Connect VSA, then "Your integrations"; allowed hosts, manual add and provider list moved under "Manual setup".
+- Verified: typecheck, lint, 94 frontend tests, 43/43 browser scenarios on a freshly seeded fixture database. No backend change.
+
 ## UX-01 - 2026-11-15 - dashboard redesign
 
 - Overview tiles now carry an icon and a text status (Review / OK / No data, never colour alone); a one-line summary states how many checks need review. Two tiles per row on phones, three on desktop.

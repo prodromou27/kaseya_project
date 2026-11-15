@@ -65,15 +65,16 @@ export function DataSources({ customer, compact = false }: { customer: Customer;
     );
   }
   if (compact && !syncNow.isError && !syncNow.isSuccess && datasets.data.every((d) => d.status === "fresh" && d.last_run?.state === "completed" && !d.last_run.quarantined)) {
-    return <section aria-label="Data sources" className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">{datasets.data.map((d) => <div key={d.mapping_id} className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-medium text-slate-700">{d.integration.name}</span><Badge tone="good">fresh</Badge>{d.data_basis ? <Badge tone={statusTone[d.data_basis]}>{d.data_basis}</Badge> : null}
-          <span className="text-slate-500">as of {formatUtc(d.as_of)} / {d.row_count} devices</span>
-        </div>)}</div>
-        {canSync ? <button type="button" className="btn-secondary" disabled={syncNow.isPending} onClick={() => syncNow.mutate()}>{syncNow.isPending ? "Requesting..." : "Sync now (read-only)"}</button> : null}
-      </div>
-      {datasets.data.some((d) => d.data_basis === "fixture") ? <p className="mt-1 text-xs text-sky-800">Fixture data: synthetic demo records, not a live VSA X tenant.</p> : null}
+    const fixture = datasets.data.some((d) => d.data_basis === "fixture");
+    return <section aria-label="Data sources" className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">{datasets.data.map((d) => <span key={d.mapping_id} className="inline-flex flex-wrap items-center gap-1.5">
+        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-emerald-500" />
+        <span className="font-medium text-slate-800">{d.integration.name}</span>
+        <span>up to date · {d.row_count} devices · as of {formatUtc(d.as_of)}</span>
+        {d.data_basis === "fixture" ? <Badge tone={statusTone.fixture}>fixture</Badge> : null}
+      </span>)}</div>
+      {canSync ? <button type="button" className="btn-secondary" disabled={syncNow.isPending} onClick={() => syncNow.mutate()}>{syncNow.isPending ? "Requesting..." : "Sync now (read-only)"}</button> : null}
+      {fixture ? <p className="basis-full text-sky-800">Fixture data: synthetic demo records, not a live VSA X tenant.</p> : null}
     </section>;
   }
   return (

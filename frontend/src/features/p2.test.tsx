@@ -73,7 +73,7 @@ describe("reports", () => {
     const format = screen.getByLabelText("Format");
     expect(within(format).getAllByRole("option").map((o) => o.textContent)).toEqual(["CSV", "XLSX", "PDF"]);
     await userEvent.selectOptions(format, "pdf");
-    await userEvent.type(screen.getByLabelText("os"), "Windows 11");
+    await userEvent.type(screen.getByLabelText("Operating system"), "Windows 11");
     await userEvent.click(screen.getByRole("button", { name: "Generate" }));
     const post = calls.find((c) => c.method === "POST");
     expect(JSON.parse(String(post?.init?.body))).toEqual({ report_type: "asset_inventory", format: "pdf", filters: { os: "Windows 11" } });

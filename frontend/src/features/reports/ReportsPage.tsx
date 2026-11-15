@@ -31,14 +31,31 @@ function allowedTemplates(templates: ReportTemplate[], customer: Customer) {
   return templates.filter((t) => t.required_capabilities.every((c) => customer.my_capabilities.includes(c)));
 }
 
+/** Human labels for the backend's allowlisted filter keys (unknown keys fall back to a tidied key). */
+const FILTER_LABELS: Record<string, string> = {
+  search: "Search", group: "Group", group_id: "Group ID", os: "Operating system", device_type: "Device type", site: "Site",
+  organization: "Organisation", instance: "Integration", software_status: "Software status", offline: "Offline only",
+  offline_days: "Offline for at least (days)", stale_days: "Stale for at least (days)", only_stale: "Stale only",
+  ordering: "Sort by", asset_ids: "Device IDs (comma separated)", asset: "Device", available_status: "Availability",
+  severity: "Severity", kb: "KB article", product: "Product", state: "State", status: "Status", patch_state: "Patch state",
+  kind: "Kind", field: "Field", since: "From (date)", until: "To (date)", priority: "Priority", drift: "Drift",
+  title: "Title", outcome: "Outcome", action_prefix: "Action", requested_by: "Requested by",
+};
+const filterLabel = (name: string) => FILTER_LABELS[name] ?? name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " ");
+
 /** Renders inputs for a template's code-defined, allowlisted filters. */
 function FilterInputs({ template, value, onChange }: { template: ReportTemplate; value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
   const entries = Object.entries(template.filters);
   if (entries.length === 0) return <p className="text-xs text-slate-500">This report has no filters.</p>;
+  const active = entries.filter(([name]) => (value[name] ?? "") !== "").length;
   return (
-    <div className="flex flex-wrap gap-3">
+    <details className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
+      <summary className="cursor-pointer text-sm font-medium text-slate-700">
+        Filters <span className="font-normal text-slate-500">({active ? `${active} set` : "optional, all devices by default"})</span>
+      </summary>
+    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {entries.map(([name, f]) => (
-        <Field key={name} label={name.replace(/_/g, " ")}>
+        <Field key={name} label={filterLabel(name)}>
           {(id) => f.choices ? (
             <select id={id} className="input" value={value[name] ?? ""} onChange={(e) => onChange({ ...value, [name]: e.target.value })}>
               <option value="">Any</option>
@@ -49,13 +66,14 @@ function FilterInputs({ template, value, onChange }: { template: ReportTemplate;
               <option value="">Default</option><option value="true">Yes</option><option value="false">No</option>
             </select>
           ) : (
-            <input id={id} className="input w-44" maxLength={name === "asset_ids" ? 19000 : 100} value={value[name] ?? ""}
+            <input id={id} className="input w-full" maxLength={name === "asset_ids" ? 19000 : 100} value={value[name] ?? ""}
                    inputMode={f.type === "IntegerField" ? "numeric" : undefined}
                    onChange={(e) => onChange({ ...value, [name]: e.target.value })} />
           )}
         </Field>
       ))}
     </div>
+    </details>
   );
 }
 
@@ -85,7 +103,7 @@ function NewReport({ customer, templates }: { customer: Customer; templates: Rep
   if (!template) return <EmptyState title="No report templates are available to you for this customer." />;
   const submit = (e: FormEvent) => { e.preventDefault(); request.mutate(); };
   return (
-    <form onSubmit={submit} aria-label="New report" className="space-y-3 rounded border border-slate-200 bg-white p-3">
+    <form onSubmit={submit} aria-label="New report" className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Report">{(id) => (
           <select id={id} className="input w-72" value={key} onChange={(e) => { setKey(e.target.value); setFilters({}); }}>

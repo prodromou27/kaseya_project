@@ -163,91 +163,10 @@ function IntegrationsPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4">
         <div>
           <p className="font-medium text-slate-900">Connect a VSA X server</p>
-          <p className="text-sm text-slate-600">Address, API token, pick organisations: done. The steps below are for manual setup.</p>
+          <p className="text-sm text-slate-600">Enter the address and an API token, then pick the organisations to bring in.</p>
         </div>
         <Link to="/setup" className="btn-primary">Connect VSA</Link>
       </div>
-      <Notice title="How manual setup works">
-        All integrations are configured here. Connectors are read-only and TLS verification cannot be disabled.
-        Credentials (API keys, tokens, secrets) are stored encrypted and never shown again. Setup: 1) allow the API
-        hostname, 2) add the integration, 3) <em>Set credentials</em>, 4) <em>Test connection</em>, 5){" "}
-        <em>Discover orgs</em> and map them to customers, 6) <em>Enable</em>.
-      </Notice>
-      <section aria-label="Available integrations" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {(providers.data ?? []).map((p) => (
-          <div key={p.key} className="rounded border border-slate-200 bg-white p-3 text-sm">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold">{p.label}</span>
-              <Badge tone={p.implemented ? "good" : "neutral"}>{p.implemented ? "Available" : "Planned"}</Badge>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">{p.phase}</p>
-            <p className="mt-1 text-xs text-slate-600">Needs: {["Base URL", ...p.fields.map((f) => f.label)].join(", ")}</p>
-            {p.notes ? <p className="mt-1 text-xs text-slate-500">{p.notes}</p> : null}
-          </div>
-        ))}
-      </section>
-      <ConnectorHostsPanel />
-      <form onSubmit={submit} aria-label="Add integration" className="space-y-3 rounded border border-slate-200 bg-white p-3">
-        <h3 className="font-semibold">Add an integration</h3>
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Name">{(id) => <input id={id} className="input w-48" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. VSA production" />}</Field>
-          <Field label="Provider">
-            {(id) => (
-              <select id={id} className="input" value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
-                {(available.length ? available.map((p) => p.key as Provider) : (["vsa_x"] as Provider[])).map((p) => (
-                  <option key={p} value={p}>
-                    {PROVIDER_LABEL[p] ?? p}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-          <Field label="Base URL" hint={isFixture ? "Fixture URLs must end in .invalid" : providerSpec?.base_url_help ?? "https only, allowed host"}>
-            {(id, hint) => <input id={id} aria-describedby={hint} className="input w-72" required value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://" />}
-          </Field>
-          <label className="flex items-center gap-2 pb-1.5 text-sm">
-            <input type="checkbox" checked={isFixture} onChange={(e) => setIsFixture(e.target.checked)} />
-            Fixture (demo) instance
-          </label>
-          <button type="submit" className="btn-primary" disabled={create.isPending}>
-            Add
-          </button>
-        </div>
-        <details className="text-sm">
-          <summary className="cursor-pointer text-slate-700">Advanced: per-device API calls per sync</summary>
-          <p className="mt-1 text-xs text-slate-500">
-            How many per-device detail calls each sync may make, per data type. VSA X documents a limit of 3,600 requests
-            per hour per endpoint; devices not reached this sync are collected next time. 0 switches that data type off.
-          </p>
-          <div className="mt-2 flex flex-wrap items-end gap-3">
-          <Field label="Windows update details / sync" hint="Per-device InstalledUpdates calls (0 = off)">
-            {(id, hint) => (
-              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
-                     onChange={(e) => setBudget(e.target.value)} />
-            )}
-          </Field>
-          <Field label="Applied policies / sync" hint="Per-device policy calls (0 = off)">
-            {(id, hint) => (
-              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={policyBudget}
-                     onChange={(e) => setPolicyBudget(e.target.value)} />
-            )}
-          </Field>
-          <Field label="Notifications / sync" hint="Per-device notification calls (0 = off)">
-            {(id, hint) => (
-              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={notifBudget}
-                     onChange={(e) => setNotifBudget(e.target.value)} />
-            )}
-          </Field>
-          <Field label="Custom fields / sync" hint="Only for customers with approved field names">
-            {(id, hint) => (
-              <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={cfBudget}
-                     onChange={(e) => setCfBudget(e.target.value)} />
-            )}
-          </Field>
-          </div>
-        </details>
-        {create.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(create.error)}</p> : null}
-      </form>
       {toggle.isError ? <p role="alert" className="text-sm text-red-700">{describeError(toggle.error)}</p> : null}
       {testConn.isError ? <p role="alert" className="text-sm text-red-700">{describeError(testConn.error)}</p> : null}
       {removeToken.isError ? <p role="alert" className="text-sm text-red-700">{describeError(removeToken.error)}</p> : null}
@@ -258,9 +177,100 @@ function IntegrationsPanel() {
       {editing ? <EditIntegrationForm key={editing.id} integration={editing} onClose={() => setEditing(null)} /> : null}
       {testResult ? <ConnectionTestPanel name={testResult.name} result={testResult.result} onClose={() => setTestResult(null)} /> : null}
       {discoverId ? <DiscoveryResult id={discoverId} onClose={() => setDiscoverId(null)} /> : null}
-      <QueryBoundary query={query}>
-        {(data) => <DataTable caption="Integration instances" columns={columns} rows={data.results} total={data.count} getRowId={(i) => i.id} emptyTitle="No integrations configured." />}
-      </QueryBoundary>
+      <section aria-labelledby="integrations-h" className="space-y-2">
+        <h2 id="integrations-h" className="text-sm font-semibold text-slate-900">Your integrations</h2>
+        <QueryBoundary query={query}>
+          {(data) => <DataTable caption="Integration instances" columns={columns} rows={data.results} total={data.count} getRowId={(i) => i.id} emptyTitle="No integrations yet. Use Connect VSA above." />}
+        </QueryBoundary>
+      </section>
+      <details className="group rounded-xl border border-slate-200 bg-white">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-800 hover:text-sky-800">
+          Manual setup <span className="font-normal text-slate-500">· allowed hosts, add an integration, supported providers</span>
+        </summary>
+        <div className="space-y-3 border-t border-slate-100 p-4">
+          <Notice title="How manual setup works">
+            All integrations are configured here. Connectors are read-only and TLS verification cannot be disabled.
+            Credentials (API keys, tokens, secrets) are stored encrypted and never shown again. Setup: 1) allow the API
+            hostname, 2) add the integration, 3) <em>Set credentials</em>, 4) <em>Test connection</em>, 5){" "}
+            <em>Discover orgs</em> and map them to customers, 6) <em>Enable</em>.
+          </Notice>
+          <section aria-label="Available integrations" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {(providers.data ?? []).map((p) => (
+              <div key={p.key} className="rounded border border-slate-200 bg-white p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{p.label}</span>
+                  <Badge tone={p.implemented ? "good" : "neutral"}>{p.implemented ? "Available" : "Planned"}</Badge>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{p.phase}</p>
+                <p className="mt-1 text-xs text-slate-600">Needs: {["Base URL", ...p.fields.map((f) => f.label)].join(", ")}</p>
+                {p.notes ? <p className="mt-1 text-xs text-slate-500">{p.notes}</p> : null}
+              </div>
+            ))}
+          </section>
+          <ConnectorHostsPanel />
+          <form onSubmit={submit} aria-label="Add integration" className="space-y-3 rounded border border-slate-200 bg-white p-3">
+            <h3 className="font-semibold">Add an integration</h3>
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="Name">{(id) => <input id={id} className="input w-48" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. VSA production" />}</Field>
+              <Field label="Provider">
+                {(id) => (
+                  <select id={id} className="input" value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
+                    {(available.length ? available.map((p) => p.key as Provider) : (["vsa_x"] as Provider[])).map((p) => (
+                      <option key={p} value={p}>
+                        {PROVIDER_LABEL[p] ?? p}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+              <Field label="Base URL" hint={isFixture ? "Fixture URLs must end in .invalid" : providerSpec?.base_url_help ?? "https only, allowed host"}>
+                {(id, hint) => <input id={id} aria-describedby={hint} className="input w-72" required value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://" />}
+              </Field>
+              <label className="flex items-center gap-2 pb-1.5 text-sm">
+                <input type="checkbox" checked={isFixture} onChange={(e) => setIsFixture(e.target.checked)} />
+                Fixture (demo) instance
+              </label>
+              <button type="submit" className="btn-primary" disabled={create.isPending}>
+                Add
+              </button>
+            </div>
+            <details className="text-sm">
+              <summary className="cursor-pointer text-slate-700">Advanced: per-device API calls per sync</summary>
+              <p className="mt-1 text-xs text-slate-500">
+                How many per-device detail calls each sync may make, per data type. VSA X documents a limit of 3,600 requests
+                per hour per endpoint; devices not reached this sync are collected next time. 0 switches that data type off.
+              </p>
+              <div className="mt-2 flex flex-wrap items-end gap-3">
+              <Field label="Windows update details / sync" hint="Per-device InstalledUpdates calls (0 = off)">
+                {(id, hint) => (
+                  <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={budget}
+                         onChange={(e) => setBudget(e.target.value)} />
+                )}
+              </Field>
+              <Field label="Applied policies / sync" hint="Per-device policy calls (0 = off)">
+                {(id, hint) => (
+                  <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={policyBudget}
+                         onChange={(e) => setPolicyBudget(e.target.value)} />
+                )}
+              </Field>
+              <Field label="Notifications / sync" hint="Per-device notification calls (0 = off)">
+                {(id, hint) => (
+                  <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={notifBudget}
+                         onChange={(e) => setNotifBudget(e.target.value)} />
+                )}
+              </Field>
+              <Field label="Custom fields / sync" hint="Only for customers with approved field names">
+                {(id, hint) => (
+                  <input id={id} aria-describedby={hint} className="input w-24" type="number" min={0} max={3000} value={cfBudget}
+                         onChange={(e) => setCfBudget(e.target.value)} />
+                )}
+              </Field>
+              </div>
+            </details>
+            {create.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(create.error)}</p> : null}
+          </form>
+        </div>
+      </details>
     </div>
   );
 }

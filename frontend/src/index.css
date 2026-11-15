@@ -43,6 +43,8 @@
   .list-preset { @apply rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-sky-300 hover:text-sky-800; }
   .list-preset[aria-pressed="true"] { @apply border-sky-200 bg-sky-50 text-sky-800; }
   .filter-chip { @apply inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:border-red-200 hover:bg-red-50; overflow-wrap: anywhere; }
+  /* Identifiers (device links) and dates must not break at their hyphens. */
+  .data-table td a, .data-table td .nowrap { white-space: nowrap; }
   .data-table tbody tr:nth-child(even) {
     @apply bg-slate-50/50;
   }

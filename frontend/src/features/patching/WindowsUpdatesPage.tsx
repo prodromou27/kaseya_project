@@ -96,7 +96,7 @@ function UpdateRows({ customer, kb, state, severity, searchText }: { customer: C
         { header: "Device", cell: ({ row }) => <InvestigationDeviceLink assetId={row.original.asset_id} name={row.original.hostname} tab="os-updates" /> },
         { header: "State", cell: ({ row }) => <Badge tone={row.original.state === "available" ? "warn" : "good"}>{row.original.state}</Badge> },
         { header: "KB", cell: ({ row }) => row.original.kb_article ? `KB${row.original.kb_article}` : "Not reported" },
-        { header: "Title", accessorKey: "title" }, { header: "Severity", accessorKey: "severity" }, { header: "Released", accessorKey: "release_date" },
+        { header: "Title", accessorKey: "title" }, { header: "Severity", accessorKey: "severity" }, { header: "Released", cell: ({ row }) => <span className="nowrap">{row.original.release_date ?? "—"}</span> },
         { header: "Installed at (source timezone unspecified)", cell: ({ row }) => row.original.installed_at_raw || "Not reported" },
       ]} />}</QueryBoundary>
   </>;

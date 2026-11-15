@@ -107,7 +107,7 @@ export function DataTable<T>({
       <div className="max-h-[60vh] overflow-auto" role="region" aria-label={`${caption} table`} tabIndex={0}>
         <table className="min-w-full text-left text-sm">
           <caption className="sr-only">{caption}</caption>
-          <thead className="sticky top-0 z-10 bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
+          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs text-slate-600">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
                 {selectable ? <th scope="col" className="w-10 px-3 py-2">
@@ -116,7 +116,7 @@ export function DataTable<T>({
                     onChange={table.getToggleAllRowsSelectedHandler()} />
                 </th> : null}
                 {group.headers.map((header) => (
-                  <th key={header.id} scope="col" className="px-4 py-3 font-semibold" aria-sort={sortableColumns[header.column.id] && sorting.replace(/^-/, "") === sortableColumns[header.column.id] ? (sorting.startsWith("-") ? "descending" : "ascending") : undefined}>
+                  <th key={header.id} scope="col" className="px-4 py-2.5 align-bottom font-semibold" aria-sort={sortableColumns[header.column.id] && sorting.replace(/^-/, "") === sortableColumns[header.column.id] ? (sorting.startsWith("-") ? "descending" : "ascending") : undefined}>
                     {header.isPlaceholder ? null : sortableColumns[header.column.id] && onSort ? <button type="button" className="inline-flex items-center gap-2 text-left hover:text-sky-800" onClick={() => onSort(sortableColumns[header.column.id] ?? header.column.id)}>
                       {flexRender(header.column.columnDef.header, header.getContext())}<span aria-hidden="true">{sorting.replace(/^-/, "") === sortableColumns[header.column.id] ? sorting.startsWith("-") ? "↓" : "↑" : "↕"}</span>
                     </button> : flexRender(header.column.columnDef.header, header.getContext())}
