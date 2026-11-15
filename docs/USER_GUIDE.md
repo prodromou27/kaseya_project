@@ -207,3 +207,10 @@ schedules*. It lists the key measures for the customer - devices, health issues,
 software and patch-policy gaps, end-of-support systems, compliance scores and network findings - with the value
 about 30 days earlier where history exists, and states the date it compares with.
 
+## Cleanup
+
+**Cleanup** (VSA operations) lists housekeeping work for the selected customer: devices sharing a hostname, serial
+number or MAC address, agents not seen for a chosen number of days or never, devices in no group or still in an
+onboarding group, devices without an agent and devices without a usable serial. Select a category to narrow the
+list and download it as a CSV to-do list. Fix the items in VSA X; the list updates after the next sync.
+

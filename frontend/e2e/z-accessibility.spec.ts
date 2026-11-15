@@ -6,7 +6,7 @@ import { expect, test, type Page } from "@playwright/test";
 // only part of the issues (contrast, names, roles, labels); keyboard and screen-reader reviews stay manual.
 const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
 const PAGES = ["/", "/compliance", "/assets", "/device-health", "/windows-updates", "/software", "/patch-policies", "/lifecycle",
-  "/notifications", "/changes", "/groups", "/onboarding", "/reports", "/customers", "/admin", "/admin?tab=status"];
+  "/notifications", "/changes", "/cleanup", "/groups", "/onboarding", "/reports", "/customers", "/admin", "/admin?tab=status"];
 
 async function violations(page: Page): Promise<string[]> {
   await page.addScriptTag({ path: AXE });

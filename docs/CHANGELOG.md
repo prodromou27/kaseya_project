@@ -1,5 +1,10 @@
 # Changelog
 
+## OPS-03 - 2026-11-15 - cleanup centre
+
+- New **Cleanup** page (VSA operations) and `GET /customers/{id}/cleanup/?days=&category=` (customer.read): duplicate hostnames, serial numbers (case/space-insensitive; placeholder serials such as "To be filled by O.E.M." ignored) and MAC addresses (locally administered/virtual MACs ignored); agents not seen for more than N days (30-365) or never; devices in no group or still in an onboarding group; agent not installed; missing serial. Each finding names the other devices involved. Category chips with counts, findings table, **Download to-do list (CSV)** (formula-safe). Read-only: nothing is changed in VSA X.
+- Verified: 2 backend tests (all categories incl. placeholder exclusion and duplicate details; scoping and validation), backend suite 682 passed, 103 frontend tests, 50/50 browser scenarios (accessibility spec now covers /cleanup). Fixture data only.
+
 ## CIDR-03 - 2026-11-15 - destination plan and leading-letter naming (operator feedback)
 
 - Naming evidence now compares the **leading letters** of the hostname, so names without separators work (e.g. `DEPARTMENTUSERSX`). A destination "owns" a prefix (3-12 letters) shared by at least half of its devices; a device also matches when its name starts with the first 3+ letters of a group or site name word (e.g. `FIN…` → *Finance*). Generic names (DESKTOP-, LAPTOP-, …) and stopwords give no evidence. Within the naming rank a longer shared prefix ranks first. Network evidence still outranks naming.

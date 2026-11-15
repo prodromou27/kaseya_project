@@ -190,3 +190,35 @@ class CustomerSubnetViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
         if row is None:
             raise NotFound()
         return Response({"subnet": subnets.public(row), "results": subnets.devices(row)})
+
+
+class CustomerCleanupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
+    """``/customers/{id}/cleanup/?days=90`` - VSA housekeeping findings from the current snapshot (read-only)."""
+
+    customer_capability = Cap.CUSTOMER_READ
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        from . import cleanup
+
+        try:
+            days = int(request.query_params.get("days", 90))
+        except ValueError as exc:
+            raise ValidationError({"days": "Use a number of days."}) from exc
+        if not 7 <= days <= 730:
+            raise ValidationError({"days": "Use 7 to 730 days."})
+        items = cleanup.findings(self.get_customer().id, days)
+        counts = {k: 0 for k in cleanup.CATEGORIES}
+        for item in items:
+            counts[item["category"]] += 1
+        category = request.query_params.get("category", "")
+        shown = [i for i in items if i["category"] == category] if category in cleanup.CATEGORIES else items
+        return Response(
+            {
+                "days": days,
+                "categories": [{"key": k, "label": v, "count": counts[k]} for k, v in cleanup.CATEGORIES.items()],
+                "devices_with_findings": len({i["asset_id"] for i in items}),
+                "count": len(shown),
+                "results": shown,
+            }
+        )

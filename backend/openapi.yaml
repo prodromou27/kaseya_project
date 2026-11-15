@@ -967,6 +967,29 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/cleanup/:
+    get:
+      operationId: customers_cleanup_retrieve
+      description: '``/customers/{id}/cleanup/?days=90`` - VSA housekeeping findings
+        from the current snapshot (read-only).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/compliance-baselines/:
     get:
       operationId: customers_compliance_baselines_list
