@@ -190,3 +190,12 @@ to devices that may be in the wrong group. Customer administrators can propose t
 approved group with one click; once approved it improves onboarding destination suggestions. Subnets describe what
 endpoints report, not the physical network.
 
+## Custom reports
+
+**Reports → Custom report** builds your own report in four steps: pick the data (devices, health, software, Windows
+updates, compliance, third-party patching or subnets), tick the columns, add filters (for example *Disk is
+critical*, *Days since seen ≥ 14*, *Program contains Chrome*, *Version state is outdated*), and choose the sort and
+format (Excel, CSV or PDF). **Preview** shows the first 100 rows. **Generate report** creates the file (download it
+from History). **Save for reuse** keeps the definition so it can be generated again or scheduled under *Definitions
+& schedules*. Every file states its data source, snapshot time, filters and limitations.
+

@@ -38,6 +38,10 @@ class ReportType:
     limitations: str = ""
     description: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
+    # Report types whose columns/title/limitations depend on the (validated) filters, e.g. the custom builder.
+    columns_for: Callable[[dict[str, Any]], tuple[str, ...]] | None = None
+    title_for: Callable[[dict[str, Any]], str] | None = None
+    limitations_for: Callable[[dict[str, Any]], str] | None = None
 
 
 class ScopedAssetFilterMixin:
@@ -715,6 +719,52 @@ def _lifecycle_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]
             ]
 
 
+class CustomReportFilters(serializers.Serializer):
+    """Custom builder specification; fully re-validated by ``custom.clean_spec`` (allowlisted sources/fields/ops)."""
+
+    source = serializers.CharField(max_length=32)
+    columns = serializers.ListField(child=serializers.CharField(max_length=64), required=False, max_length=40)
+    conditions = serializers.ListField(child=serializers.DictField(), required=False, max_length=20)
+    match = serializers.CharField(max_length=3, required=False)
+    sort = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    descending = serializers.BooleanField(required=False)
+    title = serializers.CharField(max_length=120, required=False, allow_blank=True)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        from . import custom
+
+        return custom.clean_spec(attrs)
+
+
+def _custom_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    from . import custom
+
+    columns, rows = custom.execute(customer, filters, pins)
+    for r in rows:
+        yield [custom.cell(r.get(c)) for c in columns]
+
+
+def _custom_columns(filters: dict[str, Any]) -> tuple[str, ...]:
+    from . import custom
+
+    return custom.labels(filters)
+
+
+def _custom_title(filters: dict[str, Any]) -> str:
+    from . import custom
+
+    return filters.get("title") or f"Custom report: {custom.SOURCES[filters['source']].label}"
+
+
+def _custom_limitations(filters: dict[str, Any]) -> str:
+    from . import custom
+
+    note = custom.SOURCES[filters["source"]].note
+    return " ".join(x for x in (SNAPSHOT_NOTE_SHORT, note) if x)
+
+
+SNAPSHOT_NOTE_SHORT = "Inventory snapshot, not live monitoring. Missing source data is shown empty, never as zero."
+
 SNAPSHOT_NOTE = (
     "Inventory snapshot at the generation publish time, not live monitoring telemetry. 'unknown', 'not_reported' "
     "and 'not_collected' are neither healthy nor unhealthy. Thresholds are those approved at generation time "
@@ -726,6 +776,21 @@ SNAPSHOT_NOTE = (
 SNAPSHOT_CAPS = frozenset({Cap.CUSTOMER_EXPORT, Cap.CUSTOMER_READ})
 
 REPORT_TYPES: dict[str, ReportType] = {
+    "custom": ReportType(
+        key="custom",
+        title="Custom report",
+        description="Your own selection of data source, columns, filters and sort order.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=CustomReportFilters,
+        columns=(),
+        rows=_custom_rows,
+        pin=_pin_generations,
+        extra={"builder": True},
+        columns_for=_custom_columns,
+        title_for=_custom_title,
+        limitations_for=_custom_limitations,
+    ),
     "group_network": ReportType(
         key="group_network",
         title="Group network observations (R10)",

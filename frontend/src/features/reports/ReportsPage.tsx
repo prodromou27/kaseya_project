@@ -20,6 +20,7 @@ import {
 } from "../../lib/types";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { SelectCustomer } from "../../components/SelectCustomer";
+import { CustomReportBuilder } from "./CustomReportBuilder";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -28,7 +29,7 @@ function useTemplates() {
 }
 
 function allowedTemplates(templates: ReportTemplate[], customer: Customer) {
-  return templates.filter((t) => t.required_capabilities.every((c) => customer.my_capabilities.includes(c)));
+  return templates.filter((t) => !t.builder && t.required_capabilities.every((c) => customer.my_capabilities.includes(c)));
 }
 
 /** Human labels for the backend's allowlisted filter keys (unknown keys fall back to a tidied key). */
@@ -279,6 +280,9 @@ export function ReportsPage() {
         { id: "new", label: "New report", content: !selected ? <SelectCustomer>Reports are generated for exactly one customer.</SelectCustomer>
             : !canExport ? <EmptyState title="You do not have export permission for this customer." />
             : <QueryBoundary query={templates}>{(t) => <NewReport key={selected.id} customer={selected} templates={allowedTemplates(t, selected)} />}</QueryBoundary> },
+        { id: "custom", label: "Custom report", content: !selected ? <SelectCustomer>Reports are generated for exactly one customer.</SelectCustomer>
+            : !canExport ? <EmptyState title="You do not have export permission for this customer." />
+            : <CustomReportBuilder customer={selected} /> },
         { id: "history", label: "History", content: selected && canExport ? <RunHistory key={selected.id} customer={selected} /> : <EmptyState title="Select a customer you can export for." /> },
         { id: "scheduled", label: "Definitions & schedules", content: selected && canExport ? <Definitions key={selected.id} customer={selected} /> : <EmptyState title="Select a customer you can export for." /> },
         { id: "inbox", label: "Delivered to me", content: <Inbox /> },

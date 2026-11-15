@@ -126,3 +126,24 @@ Result: implementation 7a6df23; full backend suite 614 passed; final feature rer
 Plan/dependencies: reuse current approved source snapshots, existing group settings/subnet review and manual move proposal. Add a paginated customer/source/group-scoped read endpoint and group UI. Rank approved destination CIDRs, then valid subnets observed on existing destination peers, then explicit group/peer hostname naming tokens. Explain each basis and ambiguity; exclude current/inactive/onboarding/foreign destinations; reject stale or revoked evidence. No schema or vendor API change. Validate ranking, missing/malformed evidence, boundaries, paging, query count and UI/manual workflow. Historical Docker/live/production gates remain open.
 
 Result: implementation 32a8407; 624 full backend tests, final 22-case backend rerun, 94 frontend tests and 43/43 full browser scenarios passed. Final desktop/phone captures have no JavaScript errors or page overflow. Identically named destinations now show site/stable group ID. No migration required. Actual commands, corrected failures and screenshots: ONBOARDING_SUGGESTIONS.md. Fixture-only; production/live gates remain open. Next product work remains LIST-03.
+
+
+## Customer reporting and management (beyond VSA X) - 2026-11-15
+
+Scope (operator direction): the portal exists to report on and manage each customer better than VSA X alone. All
+modules below are read-only toward VSA X, customer-scoped, audited where they change portal-owned data, and
+fixture-verified only (no live VSA X validation).
+
+- [x] **OPS-01** `vsa_probe` read-only command: which VSA X sections return data (field names/counts only). Commit d8a955e.
+- [x] **OPS-02** System status page/API for super admins (worker, queue lag, sync failures, stale data, exports, failed sign-ins); dashboard banner. Commit aa47613. *Open: external alert delivery and audit forwarding (needs a target).*
+- [x] **CMP-01** Compliance baselines (11 rule kinds, pass/fail/unknown with reasons, score, rule and group breakdowns, admin editor). Commit 459e7a9.
+- [x] **TPP-01** Third-party patch exposure: catalog version state x patch-policy rule coverage; never shown as deployed. Commit 11dd83d.
+- [x] **NET-03** Subnet inventory with approved-subnet match, outside-scope review signal and one-click proposals (feeds CIDR-02 suggestions). Commit c0a4d27.
+- [x] **RPT-07** Custom report builder (7 sources, columns, typed filters, preview, generate, save, schedule). This commit.
+- [ ] **CRM-01** Customer workspace: one page per customer summarising health, compliance, patch gaps, subnets, open findings and recent reports, with links to each investigation.
+- [ ] **CRM-02** Monthly customer scorecard report (compliance score, risks, changes since last month), schedulable.
+- [ ] **CRM-03** Compliance and custom-source data in pinned snapshots (today compliance, third-party and subnet sources are evaluated at generation time; regeneration re-evaluates).
+- [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
+
+Still open from earlier phases (unchanged, external): VSA0-02/P0-02 host boot evidence, VSAP-01 Entra/vault, VSAP-02 backup/restore drill on the host, VSAP-04 live pilot, VSAP-05 acceptance, VSA3-06 mail delivery (DEC-09), VSA5 group-move execution (gated, disabled), P3/P4 IT Glue/Autotask (out of Phase 1 scope, DEC-05).
+

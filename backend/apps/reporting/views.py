@@ -63,6 +63,11 @@ class ReportRunSerializer(serializers.ModelSerializer):
 
     def get_title(self, obj: ReportRun) -> str:
         rt = REPORT_TYPES.get(obj.report_type)
+        if rt and rt.title_for and obj.filters:
+            try:
+                return rt.title_for(obj.filters)
+            except (KeyError, TypeError):
+                return rt.title
         return rt.title if rt else obj.report_type
 
     def get_download_available(self, obj: ReportRun) -> bool:
@@ -240,6 +245,7 @@ class ReportTemplatesView(APIView):
                     "columns": list(rt.columns),
                     "filters": fields,
                     "limitations": rt.limitations,
+                    "builder": bool(rt.extra.get("builder")),
                 }
             )
         return Response(out)
@@ -595,3 +601,47 @@ class CustomerTrendViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
         except ValueError as exc:
             raise ValidationError({"days": "Integer 1-730."}) from exc
         return Response(trend_points(self.get_customer().id, days))
+
+
+# ---------------------------------------------------------------------------------------------- custom builder
+
+
+class ReportSourcesView(APIView):
+    """``GET /report-sources/`` - data sources, fields and operators available to the custom report builder."""
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    def get(self, request: Request) -> Response:
+        from . import custom
+
+        return Response(custom.catalog())
+
+
+class CustomReportPreviewViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
+    """``POST /customers/{id}/custom-reports/preview/`` - first rows of a custom specification (nothing stored).
+
+    Part of exporting: requires the same export capability as generating the report."""
+
+    customer_capability = Cap.CUSTOMER_EXPORT
+    PREVIEW_ROWS = 100
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"])
+    def preview(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        from . import custom
+        from .registry import CustomReportFilters, _pin_generations
+
+        customer = self.get_customer()
+        serializer = CustomReportFilters(data=request.data if isinstance(request.data, dict) else {})
+        serializer.is_valid(raise_exception=True)
+        spec = serializer.validated_data
+        columns, rows = custom.execute(customer, spec, _pin_generations(customer, None))
+        source = custom.SOURCES[spec["source"]]
+        return Response(
+            {
+                "spec": spec,
+                "columns": [{"key": c, "label": source.fields[c].label} for c in columns],
+                "count": len(rows),
+                "rows": [[custom.cell(r.get(c)) for c in columns] for r in rows[: self.PREVIEW_ROWS]],
+                "note": source.note,
+            }
+        )

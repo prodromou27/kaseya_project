@@ -1,5 +1,13 @@
 # Changelog
 
+## RPT-07 - 2026-11-15 - custom report builder
+
+- New `custom` report type: choose a data source (devices, device health, installed software, Windows updates, compliance, third-party patching, subnets), columns in order, up to 20 filter conditions (text, number, enum, yes/no and date operators; match all or any), sort and title. Sources, fields, operators and value types are allowlisted (`apps/reporting/custom.py`); nothing user-supplied reaches SQL.
+- Generated through the existing pipeline: pinned snapshot, CSV/XLSX/PDF with provenance and limitations, history, regeneration, saved definitions and in-portal schedules (columns and title follow the specification).
+- `GET /report-sources/` (catalog) and `POST /customers/{id}/custom-reports/preview/` (first 100 rows + total; requires customer.export, nothing stored).
+- Reports → Custom report tab: data cards, column picker, filter rows with type-aware inputs, preview table, Generate and Save for reuse.
+- Verified: 13 backend tests (catalog, filters/sort/any-all, enum/number, 8 rejected specifications, CSV generation with chosen columns, scoping incl. viewer without export), IDOR sweep, 99 frontend tests, 48/48 browser scenarios (new builder flow). Fixture data only.
+
 ## NET-03 - 2026-11-15 - subnet identification
 
 - Customer-wide subnet inventory from addresses VSA X reported with a mask (`IpAddressObservation.network_cidr`, derived only; link-local/loopback excluded): devices, groups (with the dominant group and its share), sites, gateways, DHCP vs static, and the match against approved expected subnets: approved subnet / inside an approved range / not in any approved subnet. Devices whose address is in a subnet approved for another group or site are flagged *outside* (review signal; nothing is moved).

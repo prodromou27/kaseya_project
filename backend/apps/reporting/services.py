@@ -94,8 +94,11 @@ def request_report(
 
 def _render(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tuple[bytes, int]:
     rows = list(_limited(report_type.rows(run.customer, run.filters, pins)))
+    title = report_type.title_for(run.filters) if report_type.title_for else report_type.title
+    columns = report_type.columns_for(run.filters) if report_type.columns_for else report_type.columns
+    limitations = report_type.limitations_for(run.filters) if report_type.limitations_for else report_type.limitations
     provenance = {
-        "Report": report_type.title,
+        "Report": title,
         "Customer": f"{run.customer.name} ({run.customer.code})",
         "Generated": timezone.now().isoformat(),
         "Report run": str(run.id),
@@ -104,10 +107,10 @@ def _render(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tu
         **pins.get("provenance", {}),
         "Filters": json.dumps(run.filters, sort_keys=True) if run.filters else "none",
         "Records included": str(len(rows)),
-        "Limitations": report_type.limitations or "none",
+        "Limitations": limitations or "none",
     }
     renderer = RENDERERS[run.format]
-    return renderer(report_type.title, provenance, report_type.columns, rows), len(rows)
+    return renderer(title, provenance, columns, rows), len(rows)
 
 
 def _limited(rows: Any) -> Any:

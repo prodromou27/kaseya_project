@@ -1325,6 +1325,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomFieldAllowlist'
           description: ''
+  /api/v1/customers/{customer_pk}/custom-reports/preview/:
+    post:
+      operationId: customers_custom_reports_preview_create
+      description: '``POST /customers/{id}/custom-reports/preview/`` - first rows
+        of a custom specification (nothing stored).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/datasets/:
     get:
       operationId: customers_datasets_retrieve
@@ -4643,6 +4672,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SourceMapping'
+          description: ''
+  /api/v1/report-sources/:
+    get:
+      operationId: report_sources_retrieve
+      description: '``GET /report-sources/`` - data sources, fields and operators
+        available to the custom report builder.'
+      tags:
+      - report-sources
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/report-templates/:
     get:
@@ -8189,6 +8235,7 @@ components:
       enum:
       - agent_health
       - asset_inventory
+      - custom
       - customer_audit_log
       - device_notifications
       - disk_hardware
@@ -8206,6 +8253,7 @@ components:
       description: |-
         * `agent_health` - agent_health
         * `asset_inventory` - asset_inventory
+        * `custom` - custom
         * `customer_audit_log` - customer_audit_log
         * `device_notifications` - device_notifications
         * `disk_hardware` - disk_hardware

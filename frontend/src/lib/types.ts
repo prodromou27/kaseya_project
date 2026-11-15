@@ -410,6 +410,7 @@ export type ReportTemplate = {
   columns: string[];
   filters: Record<string, { type: string; required: boolean; choices?: string[] }>;
   limitations: string;
+  builder?: boolean;
 };
 
 export type ReportDefinitionRow = { id: string; name: string; report_type: string; format: string; filters: Record<string, unknown>; owner: string };
