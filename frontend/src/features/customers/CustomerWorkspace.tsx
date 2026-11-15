@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { Badge } from "../../components/ui";
-import { api } from "../../lib/api";
+import { api, describeError } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import { CAP, type Customer, type DatasetStatus, type HealthSummary, type OsUpdateSummary, type Paginated, type ReportRun } from "../../lib/types";
@@ -52,7 +52,13 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
   const thirdParty = useQuery({ queryKey: ["software", id, "third-party", "", true], queryFn: ({ signal }) => api.get<ThirdParty>(`/customers/${id}/software/third-party/`, { outdated: "true" }, signal) });
   const subnets = useQuery({ queryKey: ["subnets", id, "", false, false, ""], queryFn: ({ signal }) => api.get<Subnets>(`/customers/${id}/subnets/`, undefined, signal) });
   const datasets = useQuery({ queryKey: ["datasets", id], queryFn: ({ signal }) => api.get<DatasetStatus[]>(`/customers/${id}/datasets/`, undefined, signal) });
-  const reports = useQuery({ queryKey: ["reports", id, 1], queryFn: ({ signal }) => api.get<Paginated<ReportRun>>(`/customers/${id}/reports/`, { page: 1 }, signal), enabled: canExport });
+  const qc = useQueryClient();
+  const scorecard = useMutation({
+    mutationFn: () => api.post<ReportRun>(`/customers/${id}/reports/`, { report_type: "customer_scorecard", format: "pdf", filters: {} }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["reports", id] }),
+  });
+  const reports = useQuery({ queryKey: ["reports", id, 1], queryFn: ({ signal }) => api.get<Paginated<ReportRun>>(`/customers/${id}/reports/`, { page: 1 }, signal), enabled: canExport,
+    refetchInterval: (q) => (q.state.data?.results.some((r) => r.state === "queued" || r.state === "running") ? 2000 : false) });
 
   const h = health.data;
   const offline = sum(h?.dimensions.connectivity, ["offline", "stale", "never_seen"]);
@@ -63,6 +69,13 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
   const sn = subnets.data;
   return (
     <div className="space-y-4">
+      {canExport ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" className="btn-primary" disabled={scorecard.isPending} onClick={() => scorecard.mutate()}>Monthly scorecard (PDF)</button>
+          {scorecard.isSuccess ? <span role="status" className="text-sm text-emerald-800">Scorecard requested; it appears under Recent reports when ready. Schedule it monthly under Reports → Definitions &amp; schedules.</span> : null}
+          {scorecard.isError ? <span role="alert" className="text-sm text-red-700">{describeError(scorecard.error)}</span> : null}
+        </div>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card title="Device health" footer={<Go customer={customer} to="/device-health">Open device health</Go>}>
           <Line pending={health.isPending} customer={customer} label="Devices" value={h?.devices ?? null} to="/assets" />
@@ -100,7 +113,7 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
           <Card title="Recent reports" footer={<span className="flex gap-3"><Go customer={customer} to="/reports?tab=custom">Build a custom report</Go><Go customer={customer} to="/reports?tab=history">All reports</Go></span>}>
             {reports.data?.results.length ? reports.data.results.slice(0, 5).map((r) => (
               <div key={r.id} className="flex items-baseline justify-between gap-3">
-                <span className="truncate">{r.title ?? r.report_type}</span>
+                {r.state === "completed" ? <a className="truncate text-sky-800 hover:underline" href={`/api/v1/reports/${r.id}/download/`}>{r.title ?? r.report_type}</a> : <span className="truncate">{r.title ?? r.report_type}</span>}
                 <span className="shrink-0 text-xs text-slate-500">{formatUtc(r.created_at)} · {r.state}</span>
               </div>
             )) : <p className="text-slate-500">No reports yet.</p>}

@@ -29,5 +29,6 @@ describe("customer workspace", () => {
     const patching = screen.getByRole("region", { name: "Patching" });
     expect(await within(patching).findByRole("link", { name: "10" })).toBeInTheDocument(); // 9 no rule + 1 no policy
     expect(await within(screen.getByRole("region", { name: "Network" })).findByRole("link", { name: "3" })).toHaveAttribute("href", "/groups?view=subnets");
+    expect(screen.getByRole("button", { name: "Monthly scorecard (PDF)" })).toBeInTheDocument();
   });
 });

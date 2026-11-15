@@ -199,3 +199,11 @@ format (Excel, CSV or PDF). **Preview** shows the first 100 rows. **Generate rep
 from History). **Save for reuse** keeps the definition so it can be generated again or scheduled under *Definitions
 & schedules*. Every file states its data source, snapshot time, filters and limitations.
 
+## Monthly customer scorecard
+
+Open the customer and select **Monthly scorecard (PDF)** on the Summary tab, or choose *Customer scorecard
+(monthly)* under Reports → New report (also in Excel or CSV) and schedule it monthly under *Definitions &
+schedules*. It lists the key measures for the customer - devices, health issues, Critical updates, outdated
+software and patch-policy gaps, end-of-support systems, compliance scores and network findings - with the value
+about 30 days earlier where history exists, and states the date it compares with.
+

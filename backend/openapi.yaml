@@ -1328,8 +1328,10 @@ paths:
   /api/v1/customers/{customer_pk}/custom-reports/preview/:
     post:
       operationId: customers_custom_reports_preview_create
-      description: '``POST /customers/{id}/custom-reports/preview/`` - first rows
-        of a custom specification (nothing stored).'
+      description: |-
+        ``POST /customers/{id}/custom-reports/preview/`` - first rows of a custom specification (nothing stored).
+
+        Part of exporting: requires the same export capability as generating the report.
       parameters:
       - in: path
         name: customer_pk
@@ -8237,6 +8239,7 @@ components:
       - asset_inventory
       - custom
       - customer_audit_log
+      - customer_scorecard
       - device_notifications
       - disk_hardware
       - group_network
@@ -8255,6 +8258,7 @@ components:
         * `asset_inventory` - asset_inventory
         * `custom` - custom
         * `customer_audit_log` - customer_audit_log
+        * `customer_scorecard` - customer_scorecard
         * `device_notifications` - device_notifications
         * `disk_hardware` - disk_hardware
         * `group_network` - group_network

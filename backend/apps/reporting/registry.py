@@ -763,6 +763,16 @@ def _custom_limitations(filters: dict[str, Any]) -> str:
     return " ".join(x for x in (SNAPSHOT_NOTE_SHORT, note) if x)
 
 
+class ScorecardFilters(serializers.Serializer):
+    """The scorecard has no filters: it always covers the whole customer."""
+
+
+def _scorecard_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    from . import scorecard
+
+    yield from scorecard.rows(customer)
+
+
 SNAPSHOT_NOTE_SHORT = "Inventory snapshot, not live monitoring. Missing source data is shown empty, never as zero."
 
 SNAPSHOT_NOTE = (
@@ -776,6 +786,21 @@ SNAPSHOT_NOTE = (
 SNAPSHOT_CAPS = frozenset({Cap.CUSTOMER_EXPORT, Cap.CUSTOMER_READ})
 
 REPORT_TYPES: dict[str, ReportType] = {
+    "customer_scorecard": ReportType(
+        key="customer_scorecard",
+        title="Customer scorecard (monthly)",
+        description="One page per customer: health, patching, software, lifecycle, compliance and network measures, "
+        "with the value about 30 days earlier where history exists.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=ScorecardFilters,
+        columns=("section", "measure", "value", "previous_value", "previous_as_of", "change", "notes"),
+        rows=_scorecard_rows,
+        pin=_pin_generations,
+        limitations="Snapshot observations, not live monitoring. Comparisons use retained published snapshots "
+        "(latest on or before 30 days ago) and are only shown for measures with history. Compliance, third-party "
+        "and network measures are evaluated when the report is generated. Unknown is never counted as compliant.",
+    ),
     "custom": ReportType(
         key="custom",
         title="Custom report",

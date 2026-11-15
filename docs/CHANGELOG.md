@@ -1,5 +1,12 @@
 # Changelog
 
+## CRM-02 - 2026-11-15 - monthly customer scorecard
+
+- New report type `customer_scorecard` (CSV/XLSX/PDF): one row per measure - inventory, health (offline, disk, antivirus, firewall), patching (Critical OS updates, outdated third-party and policy gaps), software (outdated devices, version compliance), lifecycle (end-of-support OS/software), compliance (score per enabled baseline) and network (unapproved subnets, devices outside scope).
+- "30 days ago" comes from retained published snapshots (latest on or before 30 days ago, else the oldest in a 45-day window), with the date stated; measures without history show no comparison. Changes are written as words ("up 2", "down 3", "no change") so spreadsheets do not treat them as formulas.
+- Customer → Summary: **Monthly scorecard (PDF)** button; recent reports link to their download and refresh while generating. Scheduling uses the existing Definitions & schedules.
+- Verified: 3 backend tests (all areas, honest history comparison, scoping/export permission/no filters), full backend suite 674 passed, 101 frontend tests, 50/50 browser scenarios (new scorecard flow). Fixture data only.
+
 ## UX-07 - 2026-11-15 - catalog quick-add and stale-suggestion guidance (operator feedback)
 
 - Software → Installed programs: super admins can **Add to catalog** from any row. Vendor, product, an exact-name alias and the newest version seen in the estate are pre-filled; the current version and an https evidence link must be confirmed (same import + approval path and audit as Settings → Software catalog; with a second approver required the entry waits for approval). The empty-catalog message now points to this.
