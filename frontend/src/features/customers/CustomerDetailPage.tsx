@@ -10,6 +10,7 @@ import { useMe } from "../../lib/auth";
 import { CAP, type Customer, type CustomerStatus } from "../../lib/types";
 import { CustomerReports } from "../reports/CustomerReports";
 import { AuditTable } from "./AuditTable";
+import { CustomerWorkspace } from "./CustomerWorkspace";
 import { CustomFieldsPanel } from "./CustomFieldsPanel";
 import { MappingsPanel } from "./MappingsPanel";
 import { MembersPanel } from "./MembersPanel";
@@ -89,7 +90,7 @@ function OverviewPanel({ customer }: { customer: Customer }) {
 
 export function CustomerDetailPage() {
   const { customerId = "" } = useParams();
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState("summary");
   const query = useQuery({
     queryKey: ["customer", customerId],
     queryFn: ({ signal }) => api.get<Customer>(`/customers/${customerId}/`, undefined, signal),
@@ -99,7 +100,10 @@ export function CustomerDetailPage() {
     <QueryBoundary query={query}>
       {(customer) => {
         const caps = new Set(customer.my_capabilities);
-        const tabs: TabDef[] = [{ id: "overview", label: "Overview", content: <OverviewPanel customer={customer} /> }];
+        const tabs: TabDef[] = [
+          { id: "summary", label: "Summary", content: <CustomerWorkspace customer={customer} /> },
+          { id: "overview", label: "Details", content: <OverviewPanel customer={customer} /> },
+        ];
         if (caps.has(CAP.manageMembers)) tabs.push({ id: "members", label: "Members", content: <MembersPanel customer={customer} /> });
         if (caps.has(CAP.proposeMappings)) tabs.push({ id: "mappings", label: "Source mappings", content: <MappingsPanel customer={customer} /> });
         if (caps.has(CAP.auditRead))

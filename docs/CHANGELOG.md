@@ -1,5 +1,10 @@
 # Changelog
 
+## CRM-01 - 2026-11-15 - customer workspace
+
+- Customer page opens on a new **Summary** tab: device health issues, compliance scores per baseline, Critical OS updates and third-party patch gaps, subnet issues, data-source freshness and the five most recent reports. Every number links to the matching filtered investigation and selects that customer first. Values show "…" while loading and "—" only when there is no data. The former Overview tab is now **Details**.
+- Frontend only; uses existing customer-scoped endpoints (reports card only with export permission). Verified: 100 frontend tests (new workspace test), 48/48 browser scenarios. Fixture data only.
+
 ## RPT-07 - 2026-11-15 - custom report builder
 
 - New `custom` report type: choose a data source (devices, device health, installed software, Windows updates, compliance, third-party patching, subnets), columns in order, up to 20 filter conditions (text, number, enum, yes/no and date operators; match all or any), sort and title. Sources, fields, operators and value types are allowlisted (`apps/reporting/custom.py`); nothing user-supplied reaches SQL.

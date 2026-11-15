@@ -102,7 +102,7 @@ describe("customer detail", () => {
     renderApp(`/customers/${customerA.id}`);
     const tablist = await screen.findByRole("tablist", { name: "Customer sections" });
     const tabs = within(tablist).getAllByRole("tab").map((t) => t.textContent);
-    expect(tabs).toEqual(["Overview", "Reports"]);
+    expect(tabs).toEqual(["Summary", "Details", "Reports"]);
   });
 
   it("renders a not-found error for a customer the server refuses", async () => {

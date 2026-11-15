@@ -139,8 +139,8 @@ fixture-verified only (no live VSA X validation).
 - [x] **CMP-01** Compliance baselines (11 rule kinds, pass/fail/unknown with reasons, score, rule and group breakdowns, admin editor). Commit 459e7a9.
 - [x] **TPP-01** Third-party patch exposure: catalog version state x patch-policy rule coverage; never shown as deployed. Commit 11dd83d.
 - [x] **NET-03** Subnet inventory with approved-subnet match, outside-scope review signal and one-click proposals (feeds CIDR-02 suggestions). Commit c0a4d27.
-- [x] **RPT-07** Custom report builder (7 sources, columns, typed filters, preview, generate, save, schedule). This commit.
-- [ ] **CRM-01** Customer workspace: one page per customer summarising health, compliance, patch gaps, subnets, open findings and recent reports, with links to each investigation.
+- [x] **RPT-07** Custom report builder (7 sources, columns, typed filters, preview, generate, save, schedule). Commit bde71fb.
+- [x] **CRM-01** Customer workspace: Summary tab per customer (health, compliance, patching gaps, subnets, sources, recent reports), each number linked to its investigation.
 - [ ] **CRM-02** Monthly customer scorecard report (compliance score, risks, changes since last month), schedulable.
 - [ ] **CRM-03** Compliance and custom-source data in pinned snapshots (today compliance, third-party and subnet sources are evaluated at generation time; regeneration re-evaluates).
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
