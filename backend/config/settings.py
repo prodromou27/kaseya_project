@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "apps.patching",
     "apps.onboarding",
     "apps.compliance",
+    "apps.alerts",
 ]
 
 MIDDLEWARE = [

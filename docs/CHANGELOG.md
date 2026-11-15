@@ -1,5 +1,12 @@
 # Changelog
 
+## OPS-04 - 2026-11-15 - alerts & watchlists
+
+- New `alerts` app (migration `alerts.0001`): per-user watches per customer - new device appears, device not seen for more than N days, system disk becomes critical, a program (name contains) appears, compliance score below a threshold. Evaluated after every successful sync in the worker (best-effort; never affects the published inventory). Only *newly* matching devices raise an alert, one summarised alert per watch per sync; a new or edited watch is primed with the current state, so it never floods. Access is re-checked at evaluation and when listing; users who lost access receive and see nothing. Identical duplicate watches are refused.
+- API (own rows only): `/alert-subscriptions/` (create/pause/resume/delete, audited on create) and `/alerts/` (`unread`, `unread-count/`, `{id}/read/`, `read-all/`).
+- UI: bell with unread count in the header; **Alerts** page with the alert list (open the related page for that customer, mark read, mark all read) and **My watches**. In-portal only; email remains disabled (DEC-09).
+- Verified: 4 backend tests (one alert per sync and only once, forbidden software, scoping/validation/lost access, pause/resume/duplicate), backend suite 686 passed, 103 frontend tests, 51/51 browser scenarios (new watches flow; accessibility now covers /alerts). Fixture data only.
+
 ## OPS-03 - 2026-11-15 - cleanup centre
 
 - New **Cleanup** page (VSA operations) and `GET /customers/{id}/cleanup/?days=&category=` (customer.read): duplicate hostnames, serial numbers (case/space-insensitive; placeholder serials such as "To be filled by O.E.M." ignored) and MAC addresses (locally administered/virtual MACs ignored); agents not seen for more than N days (30-365) or never; devices in no group or still in an onboarding group; agent not installed; missing serial. Each finding names the other devices involved. Category chips with counts, findings table, **Download to-do list (CSV)** (formula-safe). Read-only: nothing is changed in VSA X.

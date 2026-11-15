@@ -3,6 +3,186 @@ info:
   title: Odyssey Kaseya Analytics & Reporting Portal API
   version: 0.3.0
 paths:
+  /api/v1/alert-subscriptions/:
+    get:
+      operationId: alert_subscriptions_list
+      tags:
+      - alert-subscriptions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subscription'
+          description: ''
+    post:
+      operationId: alert_subscriptions_create
+      tags:
+      - alert-subscriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+  /api/v1/alert-subscriptions/{id}/:
+    get:
+      operationId: alert_subscriptions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this alert subscription.
+        required: true
+      tags:
+      - alert-subscriptions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+    patch:
+      operationId: alert_subscriptions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this alert subscription.
+        required: true
+      tags:
+      - alert-subscriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubscription'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+    delete:
+      operationId: alert_subscriptions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this alert subscription.
+        required: true
+      tags:
+      - alert-subscriptions
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/alerts/:
+    get:
+      operationId: alerts_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - alerts
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAlertList'
+          description: ''
+  /api/v1/alerts/{id}/read/:
+    post:
+      operationId: alerts_read_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this alert.
+        required: true
+      tags:
+      - alerts
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/alerts/read-all/:
+    post:
+      operationId: alerts_read_all_create
+      tags:
+      - alerts
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/alerts/unread-count/:
+    get:
+      operationId: alerts_unread_count_retrieve
+      tags:
+      - alerts
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/assets/{id}/:
     get:
       operationId: assets_retrieve
@@ -5132,6 +5312,52 @@ paths:
           description: ''
 components:
   schemas:
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        customer:
+          type: string
+          format: uuid
+          readOnly: true
+        customer_code:
+          type: string
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        link:
+          type: string
+          readOnly: true
+          description: Portal path, e.g. /device-health?disk=critical
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        read_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - body
+      - created_at
+      - customer
+      - customer_code
+      - id
+      - kind
+      - link
+      - read_at
+      - title
     Alias:
       type: object
       properties:
@@ -6628,6 +6854,29 @@ components:
         * `success` - Success
         * `denied` - Denied
         * `failure` - Failure
+    PaginatedAlertList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
     PaginatedAliasList:
       type: object
       required:
@@ -7645,6 +7894,31 @@ components:
           format: date-time
           readOnly: true
         updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedSubscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        customer:
+          type: string
+          format: uuid
+        customer_code:
+          type: string
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/SubscriptionKindEnum'
+        params: {}
+        enabled:
+          type: boolean
+        label:
+          type: string
+          readOnly: true
+        created_at:
           type: string
           format: date-time
           readOnly: true
@@ -8674,6 +8948,52 @@ components:
         * `vendor_lifecycle_page` - vendor_lifecycle_page
         * `vendor_announcement` - vendor_announcement
         * `manual_verification` - manual_verification
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        customer:
+          type: string
+          format: uuid
+        customer_code:
+          type: string
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/SubscriptionKindEnum'
+        params: {}
+        enabled:
+          type: boolean
+        label:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - customer
+      - customer_code
+      - id
+      - kind
+      - label
+    SubscriptionKindEnum:
+      enum:
+      - new_device
+      - offline
+      - disk_critical
+      - forbidden_software
+      - compliance_below
+      type: string
+      description: |-
+        * `new_device` - New device appears
+        * `offline` - Device not seen for more than N days
+        * `disk_critical` - System disk becomes critical
+        * `forbidden_software` - Program appears on a device
+        * `compliance_below` - Compliance score falls below a threshold
     SyncQuarantine:
       type: object
       properties:

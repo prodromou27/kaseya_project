@@ -620,6 +620,12 @@ def _finalize(run: SyncRun, generation: DatasetGeneration) -> None:
         evaluate_generation(generation)
     except Exception:  # published data stays valid; classification can be re-run
         logger.exception("compliance_evaluation_failed", extra={"generation_id": str(generation.id)})
+    from apps.alerts.engine import evaluate_customer
+
+    try:
+        evaluate_customer(run.customer_id)
+    except Exception:  # alerts are best-effort; the published inventory is unaffected
+        logger.exception("alert_evaluation_failed", extra={"generation_id": str(generation.id)})
 
 
 def _details_incomplete(run: SyncRun, kind: str) -> None:

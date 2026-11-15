@@ -6,6 +6,7 @@ import { LoadingState } from "../components/States";
 import { api, describeError } from "../lib/api";
 import { useMe } from "../lib/auth";
 import { useCustomers } from "../lib/customerContext";
+import { AlertBell } from "../features/alerts/AlertsPage";
 
 type NavItem = { to: string; label: string; adminOnly?: boolean };
 export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
@@ -59,6 +60,7 @@ function AccountStatus() {
         <span className="block font-medium text-slate-800">{me.display_name || me.email}</span>
         <span className="text-xs text-slate-500">{me.is_super_admin ? "Super admin" : "Engineer portal"} · {me.auth_source === "oidc" ? "SSO" : "Local account"}</span>
       </span>
+      <AlertBell />
       <button type="button" className="btn-secondary whitespace-nowrap" disabled={logout.isPending} onClick={() => logout.mutate()}>Sign out</button>
       {logout.isError ? <span role="alert" className="max-w-52 text-xs text-red-700">Sign out failed. {describeError(logout.error)}</span> : null}
     </div>

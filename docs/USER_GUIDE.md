@@ -214,3 +214,11 @@ number or MAC address, agents not seen for a chosen number of days or never, dev
 onboarding group, devices without an agent and devices without a usable serial. Select a category to narrow the
 list and download it as a CSV to-do list. Fix the items in VSA X; the list updates after the next sync.
 
+## Alerts
+
+Open **Alerts** with the bell in the top bar. Under **My watches**, choose a customer and what you want to hear
+about: a new device, a device not seen for a number of days, a disk turning critical, a program appearing (for
+example remote-access tools) or a compliance score dropping below a percentage. After each sync you get one alert per
+watch listing only what is new since the last check. Pause or remove a watch at any time. Alerts stay in the portal;
+email is not enabled.
+

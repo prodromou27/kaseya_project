@@ -145,8 +145,8 @@ fixture-verified only (no live VSA X validation).
 - [x] **CRM-03** Live-evaluated report figures (compliance, third-party, subnets, scorecard) are kept with the run; regeneration reproduces them. Commit 3125ec2.
 - [x] **UX-07** Catalog quick-add from Installed programs; stale onboarding suggestions explained with Sync now (operator feedback). Commit e8e0385.
 - [x] **CIDR-03** Destination plan (devices grouped by target group/site, ties and no-evidence lists, CSV move list) and leading-letter naming evidence. Operator feedback 2026-11-15.
-- [x] **OPS-03** Cleanup centre (duplicates, stale/never seen, no group, onboarding leftovers, no agent, missing serial; CSV to-do list).
-- [ ] **OPS-04** Alerts & watchlists: per-user in-portal notifications and daily digest for new devices, long-offline devices, critical disks, forbidden software and compliance score drops.
+- [x] **OPS-03** Cleanup centre (duplicates, stale/never seen, no group, onboarding leftovers, no agent, missing serial; CSV to-do list). Commit bbb95a2.
+- [x] **OPS-04** Alerts & watchlists: per-user watches (new device, offline > N days, disk critical, program appears, compliance below), in-portal bell and Alerts page. *Open: email digest (DEC-09).*
 - [ ] **CRM-05** All-customers overview for managers: customers side by side with drill-down and export.
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
 
