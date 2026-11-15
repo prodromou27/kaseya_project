@@ -12,6 +12,7 @@ import type { Customer, GroupTreeNode, HierarchyResponse, NodeCounts } from "../
 import { DataSources } from "../inventory/DataSources";
 import { SelectCustomer } from "../../components/SelectCustomer";
 import { Tabs } from "../../components/Tabs";
+import { SubnetInventory } from "./SubnetInventory";
 
 function Counts({ c }: { c: NodeCounts }) {
   return (
@@ -106,6 +107,7 @@ function Workspace({ customer }: { customer: Customer }) {
     <Tabs label="Group navigation" active={filters.view} onChange={(view) => update({ view })} tabs={[
       { id: "list", label: "Group list", content: <Directory h={h} /> },
       { id: "hierarchy", label: "Hierarchy", content: <Hierarchy h={h} /> },
+      { id: "subnets", label: "Subnets", content: <SubnetInventory customer={customer} /> },
     ]} />
     {h.unassigned.devices ? <Notice tone="warn">{h.unassigned.devices} device(s) are outside the listed groups. <Link className="underline" to="/assets">Open device inventory</Link>.</Notice> : null}
     {h.devices_without_asset ? <p className="text-xs text-slate-500">{h.devices_without_asset} source device-list entries have no inventory record and are not included in device totals.</p> : null}

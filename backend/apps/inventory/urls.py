@@ -20,6 +20,7 @@ nested.register(
 )
 nested.register("changes", changes_views.CustomerChangesViewSet, basename="customer-changes")
 nested.register("expected-subnets", network_views.ExpectedSubnetViewSet, basename="customer-expected-subnet")
+nested.register("subnets", network_views.CustomerSubnetViewSet, basename="customer-subnet")
 nested.register("group-moves", move_views.GroupMoveViewSet, basename="customer-group-move")
 
 urlpatterns = [

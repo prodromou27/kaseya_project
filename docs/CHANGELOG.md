@@ -1,5 +1,12 @@
 # Changelog
 
+## NET-03 - 2026-11-15 - subnet identification
+
+- Customer-wide subnet inventory from addresses VSA X reported with a mask (`IpAddressObservation.network_cidr`, derived only; link-local/loopback excluded): devices, groups (with the dominant group and its share), sites, gateways, DHCP vs static, and the match against approved expected subnets: approved subnet / inside an approved range / not in any approved subnet. Devices whose address is in a subnet approved for another group or site are flagged *outside* (review signal; nothing is moved).
+- API (customer.read): `GET /customers/{id}/subnets/` (`status`, `mixed`, `outside`, `search`) and `…/subnets/devices/?cidr=`. Pending proposals are shown per subnet.
+- Groups & network → Subnets tab; customer admins can propose the dominant group as the expected subnet in one click (existing expected-subnet proposal + approval workflow and audit). Approved subnets drive the onboarding destination suggestions (CIDR-02).
+- Verified: 5 backend tests (spread, assigned/contained/unassigned, outside devices, retired ignored, pending proposals, scoping), 99 frontend tests, 47 browser scenarios (new subnet flow). Fixture data only; not network topology.
+
 ## TPP-01 - 2026-11-15 - third-party patch exposure report
 
 - VSA X exposes no third-party patch deployment state. The new report states what the collected evidence supports: for each installed program on each device, the catalog version state (outdated/current/…) and whether the device's assigned VSA patch policy contains a SoftwareRule for that program (normalised name match). Coverage: rule in policy / no rule in policy / no patch policy / policy not collected.

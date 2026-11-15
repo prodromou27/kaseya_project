@@ -3950,6 +3950,52 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/subnets/:
+    get:
+      operationId: customers_subnets_retrieve
+      description: '``/customers/{id}/subnets/`` - every observed subnet with groups,
+        sites, gateways and approved-subnet match.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/subnets/devices/:
+    get:
+      operationId: customers_subnets_devices_retrieve
+      description: Devices of one subnet (``?cidr=``), those outside the approved
+        group/site first.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/sync-runs/:
     get:
       operationId: customers_sync_runs_list

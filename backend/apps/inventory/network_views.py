@@ -13,6 +13,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.decorators import action
@@ -163,3 +164,29 @@ class ExpectedSubnetViewSet(
     @action(detail=True, methods=["post"])
     def retire(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         return self._transition({"approved"}, "retired", "retired")
+
+
+class CustomerSubnetViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
+    """``/customers/{id}/subnets/`` - every observed subnet with groups, sites, gateways and approved-subnet match."""
+
+    customer_capability = Cap.CUSTOMER_READ
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        from . import subnets
+
+        rows = subnets.collect(self.get_customer().id)
+        shown = subnets.filter_rows(rows, request.query_params)
+        return Response({**subnets.summary(rows), "results": [subnets.public(r) for r in shown], "count": len(shown)})
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"])
+    def devices(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """Devices of one subnet (``?cidr=``), those outside the approved group/site first."""
+        from . import subnets
+
+        cidr = str(request.query_params.get("cidr", ""))[:49]
+        row = next((r for r in subnets.collect(self.get_customer().id) if r["cidr"] == cidr), None)
+        if row is None:
+            raise NotFound()
+        return Response({"subnet": subnets.public(row), "results": subnets.devices(row)})

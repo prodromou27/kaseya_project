@@ -181,3 +181,12 @@ catalog) and, for each, whether the device's VSA patch policy has a software rul
 program: the VSA X API does not report whether the update was actually deployed, so the portal never shows it as
 done. Programs without a catalog entry are not compared; add them under Settings → Software catalog.
 
+## Subnets
+
+**Groups & network → Subnets** lists every subnet seen on the customer's devices (from addresses reported with a
+subnet mask): how many devices, which groups and sites they are in, gateway and DHCP use, and whether the subnet is
+approved for a site or group. A subnet that spans several groups or has devices *outside* its approved group points
+to devices that may be in the wrong group. Customer administrators can propose the main group as the subnet's
+approved group with one click; once approved it improves onboarding destination suggestions. Subnets describe what
+endpoints report, not the physical network.
+
