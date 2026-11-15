@@ -42,6 +42,9 @@ class ReportType:
     columns_for: Callable[[dict[str, Any]], tuple[str, ...]] | None = None
     title_for: Callable[[dict[str, Any]], str] | None = None
     limitations_for: Callable[[dict[str, Any]], str] | None = None
+    # True when rows are evaluated at generation time rather than read from pinned snapshot tables; such rows are
+    # frozen with the run so regeneration reproduces them (CRM-03).
+    evaluated_live: Callable[[dict[str, Any]], bool] | None = None
 
 
 class ScopedAssetFilterMixin:
@@ -797,9 +800,11 @@ REPORT_TYPES: dict[str, ReportType] = {
         columns=("section", "measure", "value", "previous_value", "previous_as_of", "change", "notes"),
         rows=_scorecard_rows,
         pin=_pin_generations,
+        evaluated_live=lambda f: True,
         limitations="Snapshot observations, not live monitoring. Comparisons use retained published snapshots "
         "(latest on or before 30 days ago) and are only shown for measures with history. Compliance, third-party "
-        "and network measures are evaluated when the report is generated. Unknown is never counted as compliant.",
+        "and network measures are evaluated when the report is generated and kept with the run, so a regeneration "
+        "reproduces them. Unknown is never counted as compliant.",
     ),
     "custom": ReportType(
         key="custom",
@@ -815,6 +820,7 @@ REPORT_TYPES: dict[str, ReportType] = {
         columns_for=_custom_columns,
         title_for=_custom_title,
         limitations_for=_custom_limitations,
+        evaluated_live=lambda f: f.get("source") in ("compliance", "third_party", "subnets"),
     ),
     "group_network": ReportType(
         key="group_network",

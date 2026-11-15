@@ -278,7 +278,10 @@ def _load_subnets(customer: Any, pins: dict[str, Any]) -> list[dict[str, Any]]:
 # ------------------------------------------------------------------------------------------------ catalog
 
 STATE_VALUES = ("current", "outdated", "newer", "unknown", "unsupported", "excluded")
-LIVE_NOTE = "Evaluated against the snapshot current when the report is generated (re-evaluated on regeneration)."
+LIVE_NOTE = (
+    "Evaluated against the snapshot current when the report is generated; the figures are kept with the run so a "
+    "regeneration reproduces them."
+)
 
 SOURCES: dict[str, Source] = {
     "devices": Source(

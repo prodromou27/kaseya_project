@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Q
 
@@ -75,6 +76,22 @@ class ReportArtifact(models.Model):
 
     def __str__(self) -> str:
         return self.storage_key
+
+
+class FrozenReportRows(models.Model):
+    """Rows of a report whose figures are evaluated at generation time (compliance, third-party coverage, subnets,
+    scorecard). Stored once per original run so a regeneration reproduces the same figures instead of re-evaluating
+    against newer data. Customer-scoped through the run; deleted with it."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    report_run = models.OneToOneField(ReportRun, on_delete=models.CASCADE, related_name="frozen_rows")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    columns = models.JSONField(default=list)
+    rows = models.JSONField(default=list, encoder=DjangoJSONEncoder)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"frozen rows of {self.report_run_id}"
 
 
 class SavedView(models.Model):

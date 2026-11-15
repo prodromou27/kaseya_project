@@ -141,8 +141,8 @@ fixture-verified only (no live VSA X validation).
 - [x] **NET-03** Subnet inventory with approved-subnet match, outside-scope review signal and one-click proposals (feeds CIDR-02 suggestions). Commit c0a4d27.
 - [x] **RPT-07** Custom report builder (7 sources, columns, typed filters, preview, generate, save, schedule). Commit bde71fb.
 - [x] **CRM-01** Customer workspace: Summary tab per customer (health, compliance, patching gaps, subnets, sources, recent reports), each number linked to its investigation.
-- [x] **CRM-02** Monthly customer scorecard (all areas, 30-day comparison from retained snapshots), PDF from the customer Summary, schedulable.
-- [ ] **CRM-03** Compliance and custom-source data in pinned snapshots (today compliance, third-party and subnet sources are evaluated at generation time; regeneration re-evaluates).
+- [x] **CRM-02** Monthly customer scorecard (all areas, 30-day comparison from retained snapshots), PDF from the customer Summary, schedulable. Commit b93c48b.
+- [x] **CRM-03** Live-evaluated report figures (compliance, third-party, subnets, scorecard) are kept with the run; regeneration reproduces them.
 - [x] **UX-07** Catalog quick-add from Installed programs; stale onboarding suggestions explained with Sync now (operator feedback). Commit e8e0385.
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
 

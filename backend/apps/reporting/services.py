@@ -92,8 +92,45 @@ def request_report(
     return run
 
 
-def _render(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tuple[bytes, int]:
+FREEZE_MAX_ROWS = 50_000
+
+
+def _source_frozen(run: ReportRun) -> Any:
+    """The frozen rows of the original run this one regenerates (following the regeneration chain)."""
+    from .models import FrozenReportRows
+
+    seen, current = set(), run.regenerated_from
+    while current is not None and current.pk not in seen:
+        frozen = FrozenReportRows.objects.filter(report_run=current, customer=run.customer).first()
+        if frozen is not None:
+            return frozen
+        seen.add(current.pk)
+        current = current.regenerated_from
+    return None
+
+
+def _rows_for(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tuple[list[Any], str]:
+    """Rows plus a provenance note. Live-evaluated reports reuse the original run's frozen rows on regeneration."""
+    from .models import FrozenReportRows
+
+    live = bool(report_type.evaluated_live and report_type.evaluated_live(run.filters))
+    if live and run.regenerated_from_id:
+        frozen = _source_frozen(run)
+        if frozen is not None:
+            return frozen.rows, f"Reproduced from the figures evaluated for run {frozen.report_run_id}"
     rows = list(_limited(report_type.rows(run.customer, run.filters, pins)))
+    if not live:
+        return rows, ""
+    if len(rows) > FREEZE_MAX_ROWS:
+        return rows, "Evaluated at generation time (too many rows to keep for exact regeneration)"
+    FrozenReportRows.objects.update_or_create(
+        report_run=run, defaults={"customer": run.customer, "rows": rows, "columns": []}
+    )
+    return rows, "Evaluated at generation time and kept with this run for exact regeneration"
+
+
+def _render(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tuple[bytes, int]:
+    rows, evaluation_note = _rows_for(report_type, run, pins)
     title = report_type.title_for(run.filters) if report_type.title_for else report_type.title
     columns = report_type.columns_for(run.filters) if report_type.columns_for else report_type.columns
     limitations = report_type.limitations_for(run.filters) if report_type.limitations_for else report_type.limitations
@@ -106,6 +143,7 @@ def _render(report_type: ReportType, run: ReportRun, pins: dict[str, Any]) -> tu
         "Data basis": run.data_basis,
         **pins.get("provenance", {}),
         "Filters": json.dumps(run.filters, sort_keys=True) if run.filters else "none",
+        **({"Evaluation": evaluation_note} if evaluation_note else {}),
         "Records included": str(len(rows)),
         "Limitations": limitations or "none",
     }

@@ -1,5 +1,11 @@
 # Changelog
 
+## CRM-03 - 2026-11-15 - reproducible live-evaluated reports
+
+- Reports whose figures are evaluated at generation time (custom reports on compliance, third-party patching or subnets, and the customer scorecard) now keep their rows with the run (`reporting.FrozenReportRows`, migration `reporting.0004`, customer-scoped, deleted with the run). Regenerating such a report re-renders the kept figures, following the regeneration chain, instead of re-evaluating against newer data; the file's provenance says "Reproduced from the figures evaluated for run …". New reports still evaluate the current data. Snapshot-table reports are unchanged (they already re-pin their generations).
+- Above 50,000 rows nothing is kept and the provenance says so.
+- Verified: 2 new backend tests (baseline changed after generation: regeneration identical, fresh report differs; snapshot reports not frozen; scorecard frozen), full backend suite 676 passed, migration check clean, 8 report browser scenarios. Fixture data only.
+
 ## CRM-02 - 2026-11-15 - monthly customer scorecard
 
 - New report type `customer_scorecard` (CSV/XLSX/PDF): one row per measure - inventory, health (offline, disk, antivirus, firewall), patching (Critical OS updates, outdated third-party and policy gaps), software (outdated devices, version compliance), lifecycle (end-of-support OS/software), compliance (score per enabled baseline) and network (unapproved subnets, devices outside scope).
