@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from types import SimpleNamespace
 from typing import Any
 
 from apps.inventory.models import GroupNode, OrganizationNode, SiteNode
@@ -20,9 +21,12 @@ NOTE = (
 def device_rows(customer_id: Any) -> list[dict[str, Any]]:
     """One row per device in the current generation(s); devices without a policy row are ``unknown``."""
     gens = list(current_generations(customer_id))
+    # Plain value rows, not model instances: building 100k ORM objects dominated this page (P5-06).
     pol = {
-        p.observation_id: p
-        for p in AppliedPolicyObservation.objects.filter(customer_id=customer_id, generation__in=gens)
+        p["observation_id"]: SimpleNamespace(**p)
+        for p in AppliedPolicyObservation.objects.filter(customer_id=customer_id, generation__in=gens).values(
+            "observation_id", "patch_state", "status", "patch_policy_id", "patch_policy_name", "collected_at"
+        )
     }
     groups = {
         (g.generation_id, g.external_id): g.name
@@ -30,8 +34,23 @@ def device_rows(customer_id: Any) -> list[dict[str, Any]]:
     }
     baselines = approved_baselines(customer_id)
     rows = []
-    for o in current_observations(customer_id).order_by("hostname", "asset_id"):
-        p = pol.get(o.pk)
+    observations = (
+        current_observations(customer_id)
+        .select_related(None)
+        .values(
+            "id",
+            "asset_id",
+            "generation_id",
+            "hostname",
+            "organization_external_id",
+            "site_external_id",
+            "site_name",
+            "group_external_id",
+        )
+    )
+    for values in observations.order_by("hostname", "asset_id"):
+        o = SimpleNamespace(**values)
+        p = pol.get(o.id)
         state = p.patch_state if p else PatchPolicyState.UNKNOWN
         status = p.status if p else "not_collected"
         policy_id = p.patch_policy_id if p else ""

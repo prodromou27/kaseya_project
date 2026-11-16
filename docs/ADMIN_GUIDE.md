@@ -6,7 +6,7 @@ The internal group-move workflow adds `customer.group_move.propose` (engineer/ad
 
 Apply additive inventory migrations `0009_group_move_proposals` and `0010_guard_group_moves` with the API/worker release. The preferred application rollback retains these tables to preserve proposal/audit history. Review [deployment and rollback](CODEX_DEPLOYMENT_AND_ROLLBACK.md), [security gates](CODEX_SECURITY_REVIEW.md) and [actual verification](CODEX_VERIFICATION.md) before an approved staging rollout.
 
-`benchmark_inventory` is a development-only synthetic tool, restricted to a new `bench_*` database and explicit acknowledgement. Never run it against the application database. The QA-only login throttle override used in browser tests is not a production recommendation.
+`benchmark_inventory` (add `--related` for software/patch/server data, see `CODEX_PERFORMANCE.md`) is a development-only synthetic tool, restricted to a new `bench_*` database and explicit acknowledgement. Never run it against the application database. The QA-only login throttle override used in browser tests is not a production recommendation.
 
 **Status:** Functional specification for the portal administration UI and runbooks. Screen labels/routes are targets until implemented. Do not use this as a claim of deployed functionality.
 

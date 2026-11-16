@@ -141,12 +141,21 @@ def entry_dict(e: LifecycleEntry | None) -> dict[str, Any] | None:
 
 
 def os_rows(
-    customer_id: Any, on: dt.date, *, generation_ids: list[str] | None = None, entry_ids: list[str] | None = None
+    customer_id: Any,
+    on: dt.date,
+    *,
+    generation_ids: list[str] | None = None,
+    entry_ids: list[str] | None = None,
+    asset_ids: list[Any] | None = None,
 ) -> list[dict[str, Any]]:
+    """``asset_ids`` limits the evaluation to those devices (e.g. the server list) instead of every device."""
     os_entries, _ = approved_entries(entry_ids)
-    observations = current_observations(customer_id)
+    observations = current_observations(customer_id).select_related(None)
     if generation_ids is not None:
         observations = AssetObservation.objects.filter(customer_id=customer_id, generation_id__in=generation_ids)
+    if asset_ids is not None:
+        observations = observations.filter(asset_id__in=asset_ids)
+    observations = observations.only("asset_id", "hostname", "os_name", "os_version")
     rows = []
     for obs in observations.order_by("hostname", "id"):
         if not obs.os_name:

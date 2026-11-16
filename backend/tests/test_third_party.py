@@ -119,3 +119,31 @@ def test_other_customers_cannot_read_third_party_data(world, synced):  # noqa: F
     assert world.client(world.engineer_b).get(url).status_code == 404
     assert world.client(world.engineer_b).get(url + "devices/").status_code == 404
     assert AssetObservation.objects.exists()
+
+
+def test_outdated_only_path_matches_the_full_evaluation(
+    world,
+    synced,  # noqa: F811
+    reviewer,  # noqa: F811
+    django_capture_on_commit_callbacks,
+):
+    """P5-06: the scorecard's outdated-only path gives exactly the totals of the full per-program evaluation."""
+    from apps.software import thirdparty
+
+    approve_chrome(world, reviewer, django_capture_on_commit_callbacks)
+    attach_policies(world, with_rule_for={0, 1, 2})
+    AppliedPolicyObservation.objects.filter(
+        observation=sorted(current_observations(world.customer_a.id), key=lambda o: o.hostname)[-1]
+    ).update(patch_state="explicit_none", patch_policy_id="")
+    full = thirdparty.summary(world.customer_a.id)["totals"]
+    fast = thirdparty.outdated_totals(world.customer_a.id)
+    assert full["outdated"] == 3
+    assert {k: v for k, v in fast.items() if k != "installs"} == {k: v for k, v in full.items() if k != "installs"}
+    outdated_rows = thirdparty.rows(world.customer_a.id, outdated_only=True)
+    assert len(outdated_rows) == 3 and {r["version_state"] for r in outdated_rows} == {"outdated"}
+    full_outdated = [r for r in thirdparty.rows(world.customer_a.id) if r["version_state"] == "outdated"]
+
+    def key(r):
+        return (r["asset_id"], r["program"], r["installed_version"])
+
+    assert sorted(outdated_rows, key=key) == sorted(full_outdated, key=key)  # row order is not part of the contract

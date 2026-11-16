@@ -1,5 +1,11 @@
 # Changelog
 
+## P5-06 - 2026-11-16 - performance at 100k devices with related data
+
+- `benchmark_inventory --related` now also generates installed software, OS update rows, patch status, applied patch policy and a server population (100k devices → 2.3 M observation rows) and measures the Servers page, patch-policy, software and OS-update summaries, the scorecard and large report exports (`--skip-reports` for API paths only). Development-only, `bench_*` databases only, as before.
+- Faster at 100k devices (same results): **Servers & owners** list 49.6 s → 1.9 s (database pre-filter, needed columns only, lifecycle check for servers only); **patch-policy summary** 39.5 s → 4.0 s (value rows instead of full objects); **monthly scorecard** 141 s → 14 s (third-party exposure evaluates only outdated installations for the scorecard, cached name normalisation and memoised rule coverage); server-owner report 26 s → 2.5 s.
+- Verified: new equivalence test (outdated-only third-party totals equal the full evaluation); backend suite passed. Measurements, proposed SLOs and limits: `CODEX_PERFORMANCE.md`. Synthetic fixture on a workstation; not a concurrency or target-host result.
+
 ## SRV-02 - 2026-11-16 - server owner follow-ups
 
 - **Monthly report per owner:** on **Servers & owners → Owner groups**, *Schedule monthly* creates a "Server patching - <group>" PDF definition and a monthly schedule (day 1, 07:00 in the user's time zone, in-portal delivery, DEC-09); groups already scheduled show "Monthly on day N". Uses the existing definitions/schedules API, so the owner group is validated against the customer and changes/stops happen under Reports → Definitions & schedules.

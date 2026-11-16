@@ -11,6 +11,7 @@ import datetime as dt
 from collections import Counter
 from typing import Any
 
+from django.db.models import Q
 from django.utils import timezone
 
 NOT_SEEN_DAYS = 30
@@ -35,7 +36,7 @@ def rows(
 ) -> list[dict[str, Any]]:
     """One row per server (or per device with ``include_all``) with owner and patch/upgrade evidence."""
     from apps.inventory.models import AssetObservation
-    from apps.inventory.queries import current_observations
+    from apps.inventory.queries import current_generations
     from apps.patching.models import AppliedPolicyObservation, DeviceOsUpdate, PatchObservation
     from apps.software import lifecycle
     from apps.software.models import ComplianceResult
@@ -43,15 +44,28 @@ def rows(
     from .models import ServerDesignation
 
     if generation_ids is None:
-        observations = current_observations(customer_id)
-        gens = list({str(g) for g in observations.values_list("generation_id", flat=True)})
+        gens = [str(g) for g in current_generations(customer_id).values_list("id", flat=True)]
     else:
         gens = list(generation_ids)
-        observations = AssetObservation.objects.filter(customer_id=customer_id, generation_id__in=gens)
+    observations = AssetObservation.objects.filter(customer_id=customer_id, generation_id__in=gens)
     designations = {
         str(d.asset_id): d
         for d in ServerDesignation.objects.filter(customer_id=customer_id).select_related("owner_group")
     }
+    if not include_all:
+        # Pre-filter in the database (P5-06): detected by name, or marked. ``server_source`` below decides.
+        marked = [d.asset_id for d in designations.values() if d.is_server]
+        observations = observations.filter(Q(os_name__icontains="server") | Q(asset_id__in=marked))
+    observations = observations.only(
+        "asset_id",
+        "hostname",
+        "os_name",
+        "os_version",
+        "site_name",
+        "site_external_id",
+        "group_name",
+        "last_seen_online",
+    )
     selected = []
     for obs in observations.order_by("hostname", "id"):
         d = designations.get(str(obs.asset_id))
@@ -60,23 +74,25 @@ def rows(
             selected.append((obs, d, source))
     if not selected:
         return []
-    asset_ids = [o.asset_id for o, _, _ in selected]
+    # Every device of the snapshot needs no ID list (a 100k-entry IN clause is slower than none).
+    asset_ids = None if include_all else [o.asset_id for o, _, _ in selected]
+    scoped = {} if asset_ids is None else {"asset_id__in": asset_ids}
 
     patch = {
         str(a): (status, count)
         for a, status, count in PatchObservation.objects.filter(
-            customer_id=customer_id, generation_id__in=gens, asset_id__in=asset_ids
+            customer_id=customer_id, generation_id__in=gens, **scoped
         ).values_list("asset_id", "available_status", "available_count")
     }
     severity: dict[str, Counter[str]] = {}
     for a, sev in DeviceOsUpdate.objects.filter(
-        customer_id=customer_id, generation_id__in=gens, asset_id__in=asset_ids, state=DeviceOsUpdate.State.AVAILABLE
+        customer_id=customer_id, generation_id__in=gens, **scoped, state=DeviceOsUpdate.State.AVAILABLE
     ).values_list("asset_id", "severity"):
         severity.setdefault(str(a), Counter())[(sev or "Unspecified").capitalize()] += 1
     policies = {
         str(a): (state, name)
         for a, state, name in AppliedPolicyObservation.objects.filter(
-            customer_id=customer_id, generation_id__in=gens, asset_id__in=asset_ids
+            customer_id=customer_id, generation_id__in=gens, **scoped
         ).values_list("asset_id", "patch_state", "patch_policy_name")
     }
     outdated = Counter(
@@ -85,12 +101,12 @@ def rows(
             customer_id=customer_id,
             evaluation__is_current=True,
             evaluation__generation_id__in=gens,
-            asset_id__in=asset_ids,
+            **scoped,
             state="outdated",
         ).values_list("asset_id", flat=True)
     )
     today = timezone.now().date()
-    life = {r["asset_id"]: r for r in lifecycle.os_rows(customer_id, today, generation_ids=gens)}
+    life = {r["asset_id"]: r for r in lifecycle.os_rows(customer_id, today, generation_ids=gens, asset_ids=asset_ids)}
     now = timezone.now()
 
     out = []

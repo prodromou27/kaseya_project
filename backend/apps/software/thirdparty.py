@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from functools import lru_cache
 from typing import Any
 
 from apps.inventory.queries import current_generations
@@ -34,6 +35,7 @@ _NON_ALNUM = re.compile(r"[^0-9a-z]+")
 COVERAGE = ("covered", "not_covered", "no_policy", "unknown")
 
 
+@lru_cache(maxsize=65536)
 def normalise(name: str) -> str:
     """'7-Zip 24.08 (x64)' and '7-Zip (64-bit)' -> '7 zip'."""
     text = _PAREN.sub(" ", name.casefold())
@@ -96,18 +98,27 @@ def _global_rules(customer_id: Any) -> dict[str, list[tuple[str, str]]]:
     }
 
 
-def rows(customer_id: Any) -> list[dict[str, Any]]:
-    """One row per installed program per device in the current snapshot."""
+def rows(customer_id: Any, *, outdated_only: bool = False) -> list[dict[str, Any]]:
+    """One row per installed program per device in the current snapshot.
+
+    ``outdated_only`` returns just the installations the catalog comparison marked outdated (the scorecard needs
+    only those). Names and rule coverage repeat across devices, so both are memoised per call (P5-06).
+    """
     from apps.software.models import ComplianceResult, SoftwareInstallation
 
     gens = list(current_generations(customer_id))
     devices, definitions = _device_policies(customer_id, gens)
     global_rules = _global_rules(customer_id)
+    results = ComplianceResult.objects.filter(
+        customer_id=customer_id, evaluation__is_current=True, evaluation__generation__in=gens
+    )
+    if outdated_only:
+        results = results.filter(state="outdated")
     state_by_install = {
         inst: (state, product, ref)
-        for inst, state, product, ref in ComplianceResult.objects.filter(
-            customer_id=customer_id, evaluation__is_current=True, evaluation__generation__in=gens
-        ).values_list("installation_id", "state", "product__product", "catalog_revision__reference_version")
+        for inst, state, product, ref in results.values_list(
+            "installation_id", "state", "product__product", "catalog_revision__reference_version"
+        )
     }
     from apps.inventory.queries import current_observations
 
@@ -117,29 +128,29 @@ def rows(customer_id: Any) -> list[dict[str, Any]]:
             "asset_id", "hostname", "group_external_id", "group_name"
         )
     }
+    installs = SoftwareInstallation.objects.filter(customer_id=customer_id, generation__in=gens)
+    if outdated_only:
+        installs = installs.filter(id__in=results.values("installation_id"))
+    asset_keys: dict[Any, str] = {}
+    memo: dict[tuple[Any, ...], tuple[str, str, str]] = {}
     out = []
-    for inst_id, asset_id, gen_id, name, publisher, version in (
-        SoftwareInstallation.objects.filter(customer_id=customer_id, generation__in=gens)
-        .values_list("id", "asset_id", "generation_id", "raw_name", "raw_publisher", "raw_version")
-        .iterator()
-    ):
-        aid = str(asset_id)
+    for inst_id, asset_id, gen_id, name, publisher, version in installs.values_list(
+        "id", "asset_id", "generation_id", "raw_name", "raw_publisher", "raw_version"
+    ).iterator():
+        aid = asset_keys.get(asset_id)
+        if aid is None:
+            aid = asset_keys[asset_id] = str(asset_id)
         state, product, reference = state_by_install.get(inst_id, ("unsupported", None, None))
         patch_state, policy_id = devices.get(aid, ("unknown", ""))
         norm = normalise(name)
-        coverage, action, policy_name = "unknown", "", ""
-        if patch_state in ("explicit_none", "not_reported"):
-            coverage = "no_policy"
-        elif patch_state == "assigned" and policy_id:
-            definition = definitions.get((gen_id, policy_id))
-            if definition and definition["status"] == "collected":
-                policy_name = definition["name"]
-                match = next((a for r, a in definition["rules"] if _rule_matches(r, norm)), None)
-                coverage, action = ("covered", match) if match is not None else ("not_covered", "")
-            if coverage != "covered":
-                g = next((a for r, a in global_rules.get(aid, []) if _rule_matches(r, norm)), None)
-                if g is not None:
-                    coverage, action, policy_name = "covered", g, "Global rule"
+        device_globals = global_rules.get(aid, ())
+        key = (patch_state, policy_id, gen_id, id(device_globals), norm)
+        cached = memo.get(key)
+        if cached is None:
+            cached = memo[key] = _coverage(
+                patch_state, policy_id, definitions.get((gen_id, policy_id)), device_globals, norm
+            )
+        coverage, action, policy_name = cached
         host, gid, gname = hosts.get(aid, ("", "", ""))
         out.append(
             {
@@ -162,8 +173,34 @@ def rows(customer_id: Any) -> list[dict[str, Any]]:
     return out
 
 
-def summary(customer_id: Any, search: str = "", only_outdated: bool = False) -> dict[str, Any]:
-    data = rows(customer_id)
+def _coverage(
+    patch_state: str, policy_id: str, definition: dict | None, device_globals: Any, norm: str
+) -> tuple[str, str, str]:
+    """(coverage, rule action, policy name) for one program on a device with this policy state."""
+    coverage, action, policy_name = "unknown", "", ""
+    if patch_state in ("explicit_none", "not_reported"):
+        return "no_policy", "", ""
+    if patch_state == "assigned" and policy_id:
+        if definition and definition["status"] == "collected":
+            policy_name = definition["name"]
+            match = next((a for r, a in definition["rules"] if _rule_matches(r, norm)), None)
+            coverage, action = ("covered", match) if match is not None else ("not_covered", "")
+        if coverage != "covered":
+            g = next((a for r, a in device_globals if _rule_matches(r, norm)), None)
+            if g is not None:
+                coverage, action, policy_name = "covered", g, "Global rule"
+    return coverage, action, policy_name
+
+
+def outdated_totals(customer_id: Any) -> dict[str, int]:
+    """The outdated-installation totals of :func:`summary` without evaluating every installed program."""
+    return summary(customer_id, _rows=rows(customer_id, outdated_only=True))["totals"]
+
+
+def summary(
+    customer_id: Any, search: str = "", only_outdated: bool = False, *, _rows: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    data = rows(customer_id) if _rows is None else _rows
     programs: dict[str, dict[str, Any]] = {}
     totals = {
         "installs": 0,

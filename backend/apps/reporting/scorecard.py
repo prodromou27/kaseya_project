@@ -95,7 +95,7 @@ def rows(customer: Any) -> list[list[Any]]:
         prev["os_updates"]["devices_with_critical"] if prev else None,
         f"of {reporting} devices reporting updates; {os['devices_total'] - reporting} without update data",
     )
-    tp = thirdparty.summary(customer.id)["totals"]
+    tp = thirdparty.outdated_totals(customer.id)
     add("Patching", "Outdated third-party installations", tp["outdated"])
     add(
         "Patching",
