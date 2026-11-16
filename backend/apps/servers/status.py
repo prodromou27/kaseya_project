@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 from collections import Counter
+from types import SimpleNamespace
 from typing import Any
 
 from django.db.models import Q
@@ -56,7 +57,7 @@ def rows(
         # Pre-filter in the database (P5-06): detected by name, or marked. ``server_source`` below decides.
         marked = [d.asset_id for d in designations.values() if d.is_server]
         observations = observations.filter(Q(os_name__icontains="server") | Q(asset_id__in=marked))
-    observations = observations.only(
+    observations = observations.values(
         "asset_id",
         "hostname",
         "os_name",
@@ -67,7 +68,8 @@ def rows(
         "last_seen_online",
     )
     selected = []
-    for obs in observations.order_by("hostname", "id"):
+    for values in observations.order_by("hostname", "id"):
+        obs = SimpleNamespace(**values)
         d = designations.get(str(obs.asset_id))
         source = server_source(obs.os_name, d.is_server if d else None)
         if include_all or source in ("marked", "detected"):

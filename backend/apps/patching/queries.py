@@ -40,22 +40,18 @@ def summary(customer_id: Any) -> dict[str, Any]:
         by_installed[row["installed_status"]] = row["n"]
     collected = pos.filter(available_status=UpdateStatus.COLLECTED)
     available_rows = current_device_updates(customer_id).filter(state=DeviceOsUpdate.State.AVAILABLE)
-    devices_any = available_rows.values("asset_id").distinct().count()
-    by_severity = {
-        sev: available_rows.filter(severity__iexact=sev).values("asset_id").distinct().count() for sev in SEVERITIES
-    }
-    other_severity = (
-        available_rows.exclude(
-            Q(severity__iexact="Critical")
-            | Q(severity__iexact="Important")
-            | Q(severity__iexact="Moderate")
-            | Q(severity__iexact="Low")
-            | Q(severity__iexact="Unspecified")
-        )
-        .values("asset_id")
-        .distinct()
-        .count()
+    # One pass over the available-update rows for all device counts (was six scans; P5-06).
+    known = Q()
+    for sev in SEVERITIES:
+        known |= Q(severity__iexact=sev)
+    counts = available_rows.aggregate(
+        any=Count("asset_id", distinct=True),
+        other=Count("asset_id", distinct=True, filter=~known),
+        **{f"sev_{sev}": Count("asset_id", distinct=True, filter=Q(severity__iexact=sev)) for sev in SEVERITIES},
     )
+    devices_any = counts["any"]
+    by_severity = {sev: counts[f"sev_{sev}"] for sev in SEVERITIES}
+    other_severity = counts["other"]
     top = list(
         available_rows.values("os_update_id", "os_update__kb_article", "os_update__title", "os_update__severity")
         .annotate(devices=Count("asset_id", distinct=True))

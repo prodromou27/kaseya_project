@@ -155,23 +155,30 @@ def os_rows(
         observations = AssetObservation.objects.filter(customer_id=customer_id, generation_id__in=generation_ids)
     if asset_ids is not None:
         observations = observations.filter(asset_id__in=asset_ids)
-    observations = observations.only("asset_id", "hostname", "os_name", "os_version")
+    # Value rows, and one verdict per distinct (OS name, version): a 100k-device estate has few of those (P5-06).
+    verdicts: dict[tuple[str, str], tuple[str, str, dict[str, Any] | None]] = {}
     rows = []
-    for obs in observations.order_by("hostname", "id"):
-        if not obs.os_name:
-            verdict = Verdict("unknown", "os_not_reported")
-        else:
-            parts = version_parts(obs.os_version)
-            verdict = classify(os_candidates(os_entries, obs.os_name), parts, parts is not None, on)
+    for asset_id, hostname, os_name, os_version in observations.order_by("hostname", "id").values_list(
+        "asset_id", "hostname", "os_name", "os_version"
+    ):
+        cached = verdicts.get((os_name, os_version))
+        if cached is None:
+            if not os_name:
+                verdict = Verdict("unknown", "os_not_reported")
+            else:
+                parts = version_parts(os_version)
+                verdict = classify(os_candidates(os_entries, os_name), parts, parts is not None, on)
+            cached = verdicts[(os_name, os_version)] = (verdict.status, verdict.reason, entry_dict(verdict.entry))
+        status, reason, entry = cached
         rows.append(
             {
-                "asset_id": str(obs.asset_id),
-                "hostname": obs.hostname,
-                "os_name": obs.os_name,
-                "os_version": obs.os_version,
-                "status": verdict.status,
-                "reason": verdict.reason,
-                "entry": entry_dict(verdict.entry),
+                "asset_id": str(asset_id),
+                "hostname": hostname,
+                "os_name": os_name,
+                "os_version": os_version,
+                "status": status,
+                "reason": reason,
+                "entry": None if entry is None else dict(entry),
             }
         )
     return rows
