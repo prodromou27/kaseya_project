@@ -79,6 +79,18 @@ def _matches(sub: AlertSubscription, cache: dict[str, Any]) -> tuple[dict[str, s
             raw_name__icontains=sub.params["name"],
         ).values_list("asset_id", flat=True)
         return {str(a): hosts.get(str(a), str(a)) for a in found}, "/software?view=programs"
+    if sub.kind == Kind.WORKFLOW_FAILED:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.automation.models import WorkflowExecution
+
+        hosts = {r["asset_id"]: r["hostname"] for r in rows}
+        failed = WorkflowExecution.objects.filter(
+            customer_id=customer_id, status="Failed", created_at__gte=timezone.now() - timedelta(days=7)
+        ).values_list("external_id", "asset_id", "integration_instance_id")
+        return {f"{i}:{x}": hosts.get(str(a), "device") for x, a, i in failed}, "/automation"
     if sub.kind == Kind.COMPLIANCE_BELOW:
         from apps.compliance import engine
         from apps.compliance.models import ComplianceBaseline

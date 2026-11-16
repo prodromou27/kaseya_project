@@ -30,6 +30,7 @@ const CustomerDetailPage = lazy(() => import("../features/customers/CustomerDeta
 const CustomersPage = lazy(() => import("../features/customers/CustomersPage").then((module) => ({ default: module.CustomersPage })));
 const AllCustomersPage = lazy(() => import("../features/customers/AllCustomersPage").then((module) => ({ default: module.AllCustomersPage })));
 const AlertsPage = lazy(() => import("../features/alerts/AlertsPage").then((module) => ({ default: module.AlertsPage })));
+const AutomationPage = lazy(() => import("../features/automation/AutomationPage").then((module) => ({ default: module.AutomationPage })));
 const CleanupPage = lazy(() => import("../features/cleanup/CleanupPage").then((module) => ({ default: module.CleanupPage })));
 const CompliancePage = lazy(() => import("../features/compliance/CompliancePage").then((module) => ({ default: module.CompliancePage })));
 const LifecyclePage = lazy(() => import("../features/lifecycle/LifecyclePage").then((module) => ({ default: module.LifecyclePage })));
@@ -81,6 +82,7 @@ export function AppRoutes() {
         <Route path="lifecycle" element={<LifecyclePage />} />
         <Route path="compliance" element={<CompliancePage />} />
         <Route path="cleanup" element={<CleanupPage />} />
+        <Route path="automation" element={<AutomationPage />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="all-customers" element={<AllCustomersPage />} />
         <Route path="compliance/:baselineId" element={<CompliancePage />} />

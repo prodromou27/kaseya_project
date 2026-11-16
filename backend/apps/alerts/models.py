@@ -15,6 +15,7 @@ class AlertSubscription(models.Model):
         DISK_CRITICAL = "disk_critical", "System disk becomes critical"
         FORBIDDEN_SOFTWARE = "forbidden_software", "Program appears on a device"
         COMPLIANCE_BELOW = "compliance_below", "Compliance score falls below a threshold"
+        WORKFLOW_FAILED = "workflow_failed", "An automation workflow fails on a device"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alert_subscriptions")

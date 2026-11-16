@@ -198,6 +198,7 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
                 _details_incomplete(run, exc.kind)
         collect_hierarchy(run, generation, adapter)
         _finalize(run, generation)
+        _collect_tenant_context(run, adapter)
     except VendorAuthError:
         return _fail(run, "auth_failed", instance_status=IntegrationInstance.Status.FAILED)
     except (VendorRateLimited, VendorUnavailable) as exc:
@@ -213,6 +214,22 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
         logger.exception("sync_internal_error", extra={"sync_run_id": str(run.id)})
         return _fail(run, "internal_error")
     return run
+
+
+def _collect_tenant_context(run: SyncRun, adapter: VsaXAdapter) -> None:
+    """Tenant-wide read-only context (automation results), throttled per integration; never affects the sync."""
+    from apps.automation.collector import collect, collect_script_values
+
+    try:
+        collect(run.integration_instance, adapter)
+    except Exception:
+        logger.exception("tenant_context_collection_failed", extra={"sync_run_id": str(run.id)})
+    try:
+        calls = collect_script_values(run, adapter, int(getattr(settings, "SCRIPT_RESULTS_BUDGET", 200)))
+        if calls:
+            SyncRun.objects.filter(pk=run.pk).update(api_requests=F("api_requests") + calls)
+    except Exception:
+        logger.exception("script_value_collection_failed", extra={"sync_run_id": str(run.id)})
 
 
 def _begin(run_id: str) -> SyncRun:

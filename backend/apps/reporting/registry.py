@@ -820,7 +820,7 @@ REPORT_TYPES: dict[str, ReportType] = {
         columns_for=_custom_columns,
         title_for=_custom_title,
         limitations_for=_custom_limitations,
-        evaluated_live=lambda f: f.get("source") in ("compliance", "third_party", "subnets"),
+        evaluated_live=lambda f: f.get("source") in ("compliance", "third_party", "subnets", "script_values"),
     ),
     "group_network": ReportType(
         key="group_network",

@@ -80,6 +80,7 @@ class FixtureVsaTransport:
         patch_policies: dict[str, dict[str, Any]] | None = None,
         scripted: list[FakeResponse | Exception] | None = None,
         on_request: Callable[[str, Mapping[str, str]], None] | None = None,
+        automation: dict[str, Any] | None = None,
     ):
         self.assets = assets
         self.organizations = organizations or []
@@ -92,6 +93,8 @@ class FixtureVsaTransport:
         self.patch_policies = patch_policies or {}
         self.scripted = list(scripted or [])  # responses returned (in order) before normal behaviour
         self.on_request = on_request
+        # AUT-01: tenant-wide workflows/tasks/executions (synthetic, documented shapes); empty unless provided.
+        self.automation = automation or {}
         self.calls: list[tuple[str, dict[str, str]]] = []
 
     @classmethod
@@ -99,7 +102,12 @@ class FixtureVsaTransport:
         from .demo_data import demo_tenant
 
         tenant = demo_tenant()
-        return cls(tenant["assets"], tenant["organizations"], patch_policies=tenant.get("patch_policies"))
+        return cls(
+            tenant["assets"],
+            tenant["organizations"],
+            patch_policies=tenant.get("patch_policies"),
+            automation=tenant.get("automation"),
+        )
 
     def _list(self, rows: list[dict[str, Any]], skip: int, top: int, total: bool = True) -> FakeResponse:
         meta: dict[str, Any] = {"ResponseCode": 200}
@@ -144,6 +152,39 @@ class FixtureVsaTransport:
             return FakeResponse(400)
         if top < 1 or skip < 0:
             return FakeResponse(400)
+        run = re.fullmatch(
+            r"/api/v3/automation/scripts/([A-Za-z0-9-]+)/device/([A-Za-z0-9-]+)/executions(?:/([A-Za-z0-9-]+))?", path
+        )
+        if run:
+            runs = self.automation.get("script_runs", {}).get(f"{run.group(1)}:{run.group(2)}")
+            if runs is None:
+                return self._list([], skip, min(top, 100))
+            if run.group(3):
+                found = runs["details"].get(run.group(3))
+                return FakeResponse(200, {"Data": found, "Meta": {"ResponseCode": 200}}) if found else FakeResponse(404)
+            if params.get("$orderby") != "StartTime desc":
+                return FakeResponse(400)
+            rows = list(runs["list"])
+            if params.get("$filter") == "State eq 'Successful'":
+                rows = [r for r in rows if r.get("State") == "Successful"]
+            return self._list(rows, skip, min(top, 100))
+        if path == "/api/v3/automation/scripts":
+            return self._list(list(self.automation.get("scripts", [])), skip, min(top, 100))
+        execution = re.fullmatch(r"/api/v3/automation/workflows/executions/([0-9]+)", path)
+        if execution:
+            found = self.automation.get("execution_details", {}).get(execution.group(1))
+            return FakeResponse(200, {"Data": found, "Meta": {"ResponseCode": 200}}) if found else FakeResponse(404)
+        if path in (
+            "/api/v3/automation/workflows",
+            "/api/v3/automation/tasks",
+            "/api/v3/automation/workflows/executions",
+        ):
+            key = {"/api/v3/automation/workflows": "workflows", "/api/v3/automation/tasks": "tasks"}.get(
+                path, "executions"
+            )
+            if key == "executions" and params.get("$orderby") != "CreatedAt desc":
+                return FakeResponse(400)
+            return self._list(list(self.automation.get(key, [])), skip, min(top, 100))
         detail = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)/(notifications|customfields)", path)
         if detail:
             dev = next((a for a in self.assets if str(a.get("Identifier")) == detail.group(1)), None)

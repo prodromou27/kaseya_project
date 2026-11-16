@@ -35,6 +35,18 @@ ALLOWED_PATHS = [
     # /api/v3/notifications route is deliberately NOT allowed: it cannot be filtered by organisation.
     re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/notifications"),
     re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/customfields"),
+    # AUT-01 (docs-verified 2026-11-16, https://api.vsax.net/): read-only automation inventory and workflow results.
+    # The run/cancel routes are POST and stay off the allowlist (the client has no write method anyway).
+    re.compile(r"/api/v3/automation/workflows"),
+    re.compile(r"/api/v3/automation/workflows/executions"),
+    re.compile(r"/api/v3/automation/workflows/executions/[0-9]{1,18}"),
+    re.compile(r"/api/v3/automation/tasks"),
+    # SCR-01 (docs-verified 2026-11-16): script catalog and per-device script results (VariableOutputs).
+    re.compile(r"/api/v3/automation/scripts"),
+    re.compile(r"/api/v3/automation/scripts/[A-Za-z0-9-]{1,64}/device/[A-Za-z0-9-]{1,64}/executions"),
+    re.compile(
+        r"/api/v3/automation/scripts/[A-Za-z0-9-]{1,64}/device/[A-Za-z0-9-]{1,64}/executions/[A-Za-z0-9-]{1,64}"
+    ),
 ]
 _DEVICE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
@@ -168,6 +180,67 @@ class VsaXAdapter:
         ):
             rows.extend(page.records)
         return rows
+
+    # ------------------------------------------------------------------------------------------ automation (AUT-01)
+
+    def list_workflows(self) -> list[dict[str, Any]]:
+        """``GET /api/v3/automation/workflows`` - tenant-wide workflow definitions (names, trigger, enabled)."""
+        rows: list[dict[str, Any]] = []
+        for page in self._paged("/api/v3/automation/workflows", {}, 100, max_pages=50):
+            rows.extend(page.records)
+        return rows
+
+    def list_tasks(self) -> list[dict[str, Any]]:
+        """``GET /api/v3/automation/tasks`` - tenant-wide tasks (enabled, scheduled, scope, state)."""
+        rows: list[dict[str, Any]] = []
+        for page in self._paged("/api/v3/automation/tasks", {}, 100, max_pages=50):
+            rows.extend(page.records)
+        return rows
+
+    def iter_workflow_executions(self, max_pages: int = 20) -> Iterator[list[dict[str, Any]]]:
+        """``GET /api/v3/automation/workflows/executions`` newest first; the caller stops at its time window."""
+        for page in self._paged(
+            "/api/v3/automation/workflows/executions", {"$orderby": "CreatedAt desc"}, 100, max_pages=max_pages
+        ):
+            yield page.records
+
+    def get_workflow_execution(self, execution_id: str) -> Any:
+        """``GET /api/v3/automation/workflows/executions/:id`` - one execution with its step outcomes."""
+        if not re.fullmatch(r"[0-9]{1,18}", execution_id or ""):
+            raise ValueError("Unsafe execution identifier.")
+        return self.client.get_json(
+            f"/api/v3/automation/workflows/executions/{execution_id}", {}, max_retries=DETAIL_RETRIES
+        ).json
+
+    def list_scripts(self) -> list[dict[str, Any]]:
+        """``GET /api/v3/automation/scripts`` - tenant-wide script catalog (names only; bodies are not requested)."""
+        rows: list[dict[str, Any]] = []
+        for page in self._paged("/api/v3/automation/scripts", {}, 100, max_pages=50):
+            rows.extend(page.records)
+        return rows
+
+    def latest_script_run(self, script_id: str, device_id: str) -> dict[str, Any] | None:
+        """Newest *successful* execution of a script on a device, or None. Documented filter/sort on State/StartTime."""
+        if not _DEVICE_ID.fullmatch(script_id or "") or not _DEVICE_ID.fullmatch(device_id or ""):
+            raise ValueError("Unsafe identifier.")
+        result = self.client.get_json(
+            f"/api/v3/automation/scripts/{script_id}/device/{device_id}/executions",
+            {"$orderby": "StartTime desc", "$filter": "State eq 'Successful'", "$top": "1", "$skip": "0"},
+            max_retries=DETAIL_RETRIES,
+        )
+        records = parse_page(result.json).records
+        return records[0] if records else None
+
+    def get_script_run(self, script_id: str, device_id: str, execution_id: str) -> Any:
+        """``GET .../executions/:executionId`` - includes ExitCode and VariableOutputs (Output is never stored)."""
+        for value in (script_id, device_id, execution_id):
+            if not _DEVICE_ID.fullmatch(value or ""):
+                raise ValueError("Unsafe identifier.")
+        return self.client.get_json(
+            f"/api/v3/automation/scripts/{script_id}/device/{device_id}/executions/{execution_id}",
+            {},
+            max_retries=DETAIL_RETRIES,
+        ).json
 
     def get_rate_limits(self) -> Any:
         """``GET /api/v3/ratelimits`` -> raw body. Used only by the administrator connection test."""

@@ -20,6 +20,7 @@ const KINDS: { kind: string; label: string; param?: { key: string; label: string
   { kind: "disk_critical", label: "System disk becomes critical" },
   { kind: "forbidden_software", label: "Program appears on a device", param: { key: "name", label: "Program name contains", type: "text", placeholder: "e.g. TeamViewer" } },
   { kind: "compliance_below", label: "Compliance score falls below", param: { key: "percent", label: "Percent", type: "number", placeholder: "80" } },
+  { kind: "workflow_failed", label: "An automation workflow fails on a device" },
 ];
 
 export function useUnreadAlerts() {

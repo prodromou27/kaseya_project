@@ -80,7 +80,7 @@
     },
     "GET /api/v3/patchmanagement/policies/:id": {
       "status": "docs-verified 2026-11-13; implemented VSA3-04 (fixture-tested); LIVE_VALIDATION_PENDING",
-      "fields": "Id, Name, Description, GeneralSettings, OsRules[], SoftwareRules[{ProductId, ProductName, Action}] \u2014 configuration, NOT deployment state",
+      "fields": "Id, Name, Description, GeneralSettings, OsRules[], SoftwareRules[{ProductId, ProductName, Action}] — configuration, NOT deployment state",
       "stored": "Name, Description, documented GeneralSettings keys (NotificationSettings dropped), OsRules, SoftwareRules{ProductId,ProductName,Action}"
     },
     "GET /api/v3/ratelimits/": {
@@ -88,11 +88,59 @@
       "fields": "FailedRequestRateLimits[], EndpointRateLimits[{EndpointName, Rules[{Limit, Remaining, PeriodInSeconds, ResetInSeconds}]}]"
     },
     "PUT /api/v3/devices/:deviceId/move": {
-      "status": "docs-verified WRITE route; NOT on the allowlist; disabled (VSA5, BLOCKED_APPROVAL)"
+      "status": "docs-verified WRITE route; NOT on the allowlist; disabled (VSA5, BLOCKED_APPROVAL)",
+      "response": "DeviceIdentifier, GroupId, GroupName (docs 2026-11-16)"
+    },
+    "GET /api/v3/automation/workflows": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; used AUT-01",
+      "response": "Id, Name, Description, IsEnabled, TriggerType, TriggerSubType, UpdatedAt, ContextType, ContextItemId, FolderPath"
+    },
+    "GET /api/v3/automation/workflows/executions": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; used AUT-01 ($orderby=CreatedAt desc, stop at 30-day window)",
+      "response": "Id, WorkflowId, TargetType (Device|Server), TargetId, TriggerType, TriggerId, Status (Pending|Running|Success|Failed|Canceling|Canceled), CreatedAt, CompletedAt, ConstantVariableOverrides"
+    },
+    "GET /api/v3/automation/workflows/executions/:executionId": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; used AUT-01 (failed-step Outcome only; OutputItems never stored)",
+      "response": "... ExecutionSteps[WorkflowStepId, Status, Outcome, OutputItems]"
+    },
+    "GET /api/v3/automation/tasks": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; used AUT-01 (catalog)",
+      "response": "Id, Name, Description, IsEnabled, ScopeId, ScopeName, UpdatedAt, IsScheduled, TotalScripts, IsBuiltIn, ContinueOnError, ExecutionState, FolderPath"
+    },
+    "GET /api/v3/automation/tasks/executions/:executionId(/devices(/:deviceId/scripts(/:scriptId)))": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; NOT usable read-only: no route lists task executions, IDs come only from POST run",
+      "response": "Id, TaskId, DeviceCount, SuccessfulDeviceCount, FailedDeviceCount, StartTime, EndTime, Duration, State; devices: Identifier, Name, GroupName, ExecutionStatus; script output: ScriptId, ScriptName, ExitCode, Output"
+    },
+    "GET /api/v3/automation/scripts": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned SCR-01",
+      "response": "Id, Name, Description, CategoryId, CategoryName, Platforms, CreatedBy, IsBuiltIn, FolderPath"
+    },
+    "GET /api/v3/automation/scripts/:scriptId/device/:deviceId/executions(/:executionId)": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned SCR-01 (VariableOutputs only)",
+      "response": "list: Id, StartTime, DurationInSeconds, State; detail: + Endtime, Output, ExitCode, VariableOutputs[Id, Name, Value, DataType]"
+    },
+    "GET /api/v3/organizations|sites|groups/:id/customfields": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned CF-02",
+      "response": "Id, Name, Value (string), Type (Text|Number|Date|Boolean)"
+    },
+    "GET /api/v3/patchmanagement/globalrules": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned GR-01",
+      "response": "OsRules[], SoftwareRules[]"
+    },
+    "GET /api/v3/scopes, /scopes/:id, /scopes/:id/usage": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned GR-01",
+      "response": "Id, Name, Description, UpdatedAt, Criteria[Type, Identifier, CustomField*], TotalDevices; usage: UsageContextType (Workflow|Task), ContextItemId"
+    },
+    "GET /api/v3/environment": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; not used",
+      "response": "ProductVersion, CustomerId, CustomerName, ServerType, Language, License"
+    },
+    "GET /api/v3/auditlogs": {
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; not used (customer attribution unverified)"
     }
   },
   "asset_fields_used": {
-    "Identifier": "string, always included \u2014 primary source key",
+    "Identifier": "string, always included — primary source key",
     "Name": "string, always included",
     "GroupName": "string 'Org - Site - Group', always included",
     "Description": "string, always included",
@@ -100,7 +148,7 @@
     "ClientVersion": "string, always included",
     "LastSeenOnline": "ISO-8601 string, always included",
     "ComputerId": "int, always included",
-    "OrganizationId": "int, always included \u2014 mapped via approved CustomerSourceMapping",
+    "OrganizationId": "int, always included — mapped via approved CustomerSourceMapping",
     "SiteId": "int, always included",
     "Tags": "array of string (section Tags)",
     "AssetInfo[System].Manufacturer/Model/Type/Domain": "section AssetInfo",
@@ -110,7 +158,7 @@
     "IpAddresses[].Name/MAC/IPs[].IP/V6": "section IpAddresses (per adapter addresses)",
     "LocalIpAddresses[].Name/PhysicalAddress/DhcpEnabled/Gateways/DnsServers/SubnetMask/IpV4/IpV6": "section LocalIpAddresses",
     "PublicIpAddress": "always included",
-    "Disks[].Name/System/FreePercentage/TotalValue": "section Disks (TotalValue units NOT documented \u2014 stored raw)",
+    "Disks[].Name/System/FreePercentage/TotalValue": "section Disks (TotalValue units NOT documented — stored raw)",
     "Security[].Type/Name/Enabled/UpToDate": "section Security (reported observations, tri-state)",
     "MemoryTotal": "int, always included (units NOT documented) -- stored raw (VSA4-02)",
     "FirewallEnabled/UacEnabled": "boolean aggregates, always included -- tri-state, non-boolean -> unknown (VSA4-02)",
@@ -134,7 +182,7 @@
       "X-RateLimit-Remaining",
       "X-RateLimit-Reset"
     ],
-    "failed_requests_per_ip": "100/minute and 2000/hour count failed (non-2xx except 503) requests \u2014 auth failures must stop immediately"
+    "failed_requests_per_ip": "100/minute and 2000/hour count failed (non-2xx except 503) requests — auth failures must stop immediately"
   },
   "errors": {
     "documented_status_codes": [
@@ -164,8 +212,8 @@
     "verified_on": "2026-11-12",
     "basis": "documented example responses (no per-field table is published for these sections)",
     "Updates": "object of integer counts by severity; example keys Critical, Important, Unspecified (section Updates)",
-    "AvailableUpdates[]": "UpdateId, RevisionNumber, Title, Description, KbArticle, Severity, CvssScore, CveCodes, Category, ReleaseDate \u2014 'List of available OS updates' (section AvailableUpdates)",
-    "InstalledUpdates[]": "UpdateId, RevisionNumber, Title, Description, Severity, ReleaseDate, InstalledAt, InstalledByAgent \u2014 only on GET /api/v3/assets/:id with include=InstalledUpdates",
+    "AvailableUpdates[]": "UpdateId, RevisionNumber, Title, Description, KbArticle, Severity, CvssScore, CveCodes, Category, ReleaseDate — 'List of available OS updates' (section AvailableUpdates)",
+    "InstalledUpdates[]": "UpdateId, RevisionNumber, Title, Description, Severity, ReleaseDate, InstalledAt, InstalledByAgent — only on GET /api/v3/assets/:id with include=InstalledUpdates",
     "InstalledAt": "example value '2024-01-07T00:00:00' has NO timezone; stored as raw text, never assumed UTC",
     "KbArticle on InstalledUpdates": "not shown in the documented example; treated as optional"
   },

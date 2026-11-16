@@ -16,6 +16,7 @@ import { ProposeGroupMove } from "../groups/GroupMovesPage";
 import { formatUtc } from "../../lib/format";
 import { PATCH_STATE_LABEL, STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
 import { PolicyDefinitionView } from "../policies/PolicyDefinitionView";
+import { DeviceScriptData } from "./DeviceScriptData";
 
 /** VSA X does not document the memory unit, so the raw value stays primary; a large integer gets an
  * explicitly conditional reading ("if bytes") rather than a silent conversion. */
@@ -304,6 +305,7 @@ export function AssetDetailPage() {
             { id: "onboarding", label: "Onboarding", content: <Reconciliation detail={detail} /> },
             { id: "notifications", label: "Notifications", content: <DeviceNotifications detail={detail} /> },
             { id: "hardware", label: "Hardware & security", content: <HardwareSecurity detail={detail} /> },
+            ...(detail.customer ? [{ id: "scripts", label: "Script data", content: <DeviceScriptData customerId={detail.customer.id} assetId={detail.id} /> }] : []),
             { id: "history", label: "Observation history", content: (
               <DataTable caption="Observation history" getRowId={(h) => h.generation_id} rows={detail.history} columns={[
                 { header: "Dataset published", cell: ({ row }) => formatUtc(row.original.published_at) },

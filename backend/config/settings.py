@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.onboarding",
     "apps.compliance",
     "apps.alerts",
+    "apps.automation",
 ]
 
 MIDDLEWARE = [
@@ -233,6 +234,8 @@ SYNC_DEFAULT_INTERVAL_HOURS = env_int("SYNC_DEFAULT_INTERVAL_HOURS", 24)
 # A run still queued (never started) after this long is re-sent to the worker on the next request or schedule tick.
 SYNC_REQUEUE_AFTER_MINUTES = env_int("SYNC_REQUEUE_AFTER_MINUTES", 10)
 DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
+# SCR-01: device x script-collector pairs read per sync (2 GET calls each); oldest values first.
+SCRIPT_RESULTS_BUDGET = env_int("SCRIPT_RESULTS_BUDGET", 200)
 # Two-person approval for catalog, lifecycle, thresholds, subnets, patch baselines and custom fields. Off by default
 # so a single administrator can approve their own changes (always audited). Set REQUIRE_SECOND_APPROVER=true to require
 # a different approver. CATALOG_REQUIRE_SEPARATE_REVIEWER is the older name and is still honoured.

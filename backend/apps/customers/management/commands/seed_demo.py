@@ -105,6 +105,18 @@ class Command(BaseCommand):
             self._seed_catalog(User.objects.get(email="demo.superadmin@demo.invalid"), reviewer)
             self._seed_lifecycle(User.objects.get(email="demo.superadmin@demo.invalid"), reviewer)
             self._seed_compliance(customers["DEMO-A"], User.objects.get(email="demo.admin.a@demo.invalid"))
+            from apps.automation.models import ScriptCollector
+
+            # SCR-01: illustrative collector for the synthetic BitLocker script (values appear after the first sync).
+            ScriptCollector.objects.get_or_create(
+                integration_instance=vsa,
+                script_external_id="5c0e0b8e-0000-4000-8000-00000000b17c",
+                defaults={
+                    "label": "DEMO BitLocker",
+                    "allowed_variables": ["BitLockerProtection"],
+                    "created_by": User.objects.get(email="demo.superadmin@demo.invalid"),
+                },
+            )
             record_event(action="system.demo_seeded", outcome="success", actor_label="system:seed_demo")
         self.stdout.write(self.style.SUCCESS("Demo data seeded (fixture-only; no vendor data)."))
 

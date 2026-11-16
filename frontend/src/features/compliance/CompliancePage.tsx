@@ -49,15 +49,42 @@ const EMPTY: Omit<Baseline, "id" | "created_by" | "created_at" | "updated_at"> =
   name: "", description: "", enabled: true, scope_device_type: "", scope_site_external_id: "", scope_group_external_id: "", rules: [],
 };
 
-function RuleEditor({ rule, kinds, onChange, onRemove }: {
-  rule: BaselineRule; kinds: { kind: RuleKind; label: string }[]; onChange: (r: BaselineRule) => void; onRemove: () => void;
+type CollectorOption = { id: string; label: string; allowed_variables: string[] };
+
+/** Script value rule: collector, variable, comparison and value (collectors come from the customer's sources). */
+function ScriptValueParams({ rule, collectors, onChange }: { rule: BaselineRule; collectors: CollectorOption[]; onChange: (r: BaselineRule) => void }) {
+  const set = (key: string, value: string) => onChange({ ...rule, params: { ...rule.params, [key]: value } });
+  const picked = collectors.find((c) => c.id === rule.params.collector);
+  if (!collectors.length) return <p className="pb-2 text-xs text-slate-500">No script collectors for this customer yet (Settings → Script collectors).</p>;
+  return (
+    <>
+      <Field label="Collector">{(id) => (
+        <select id={id} className="input w-48" required value={String(rule.params.collector ?? "")} onChange={(e) => onChange({ ...rule, params: { ...rule.params, collector: e.target.value, variable: "" } })}>
+          <option value="">Choose…</option>{collectors.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>)}</Field>
+      <Field label="Variable">{(id) => (
+        <select id={id} className="input w-48" required value={String(rule.params.variable ?? "")} onChange={(e) => set("variable", e.target.value)}>
+          <option value="">Choose…</option>{(picked?.allowed_variables ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+        </select>)}</Field>
+      <Field label="Comparison">{(id) => (
+        <select id={id} className="input" value={String(rule.params.op ?? "equals")} onChange={(e) => set("op", e.target.value)}>
+          <option value="equals">is</option><option value="not_equals">is not</option><option value="contains">contains</option><option value="at_least">is at least</option>
+        </select>)}</Field>
+      <Field label="Value">{(id) => <input id={id} className="input w-40" required value={String(rule.params.value ?? "")} onChange={(e) => set("value", e.target.value)} />}</Field>
+    </>
+  );
+}
+
+function RuleEditor({ rule, kinds, collectors, onChange, onRemove }: {
+  rule: BaselineRule; kinds: { kind: RuleKind; label: string }[]; collectors: CollectorOption[]; onChange: (r: BaselineRule) => void; onRemove: () => void;
 }) {
   return (
     <li className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
       <Field label="Rule">{(id) => (
-        <select id={id} className="input w-72" value={rule.kind} onChange={(e) => onChange({ ...rule, kind: e.target.value as RuleKind, params: {} })}>
+        <select id={id} className="input w-72" value={rule.kind} onChange={(e) => onChange({ ...rule, kind: e.target.value as RuleKind, params: e.target.value === "script_value" ? { op: "equals" } : {} })}>
           {kinds.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
         </select>)}</Field>
+      {rule.kind === "script_value" ? <ScriptValueParams rule={rule} collectors={collectors} onChange={onChange} /> : null}
       {(RULE_PARAMS[rule.kind] ?? []).map((p) => (
         <Field key={p.key} label={p.label}>{(id) => (
           <input id={id} className="input w-48" type={p.type} required={!p.optional} placeholder={p.placeholder}
@@ -78,6 +105,7 @@ function BaselineForm({ customer, initial, kinds, onDone }: {
   customer: Customer; initial?: Baseline; kinds: { kind: RuleKind; label: string }[]; onDone: (id?: string) => void;
 }) {
   const qc = useQueryClient();
+  const collectors = useQuery({ queryKey: ["script-collectors", customer.id], queryFn: ({ signal }) => api.get<CollectorOption[]>(`/customers/${customer.id}/script-collectors/`, undefined, signal) });
   const [form, setForm] = useState(initial ? { ...initial } : { ...EMPTY, rules: [{ kind: "antivirus_healthy" as RuleKind, params: {}, severity: "high" as Severity }] });
   const save = useMutation({
     mutationFn: () => {
@@ -106,7 +134,7 @@ function BaselineForm({ customer, initial, kinds, onDone }: {
       <section aria-label="Rules" className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-900">Rules</h3>
         <ul className="space-y-2">
-          {form.rules.map((r, i) => <RuleEditor key={i} rule={r} kinds={kinds} onChange={(x) => setRule(i, x)} onRemove={() => setForm({ ...form, rules: form.rules.filter((_, j) => j !== i) })} />)}
+          {form.rules.map((r, i) => <RuleEditor key={i} rule={r} kinds={kinds} collectors={collectors.data ?? []} onChange={(x) => setRule(i, x)} onRemove={() => setForm({ ...form, rules: form.rules.filter((_, j) => j !== i) })} />)}
         </ul>
         <button type="button" className="btn-secondary" onClick={() => setForm({ ...form, rules: [...form.rules, { kind: "required_software", params: {}, severity: "medium" }] })}>Add rule</button>
       </section>

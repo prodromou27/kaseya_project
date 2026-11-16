@@ -1,7 +1,7 @@
 export type RuleKind =
   | "required_software" | "forbidden_software" | "os_min_version" | "antivirus_healthy" | "firewall_enabled"
   | "disk_free_min" | "max_days_offline" | "agent_current" | "no_outdated_software" | "no_critical_updates"
-  | "patch_policy_assigned";
+  | "patch_policy_assigned" | "script_value";
 export type Severity = "low" | "medium" | "high";
 export type RuleState = "pass" | "fail" | "unknown";
 

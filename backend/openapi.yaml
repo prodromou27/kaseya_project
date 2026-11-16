@@ -328,6 +328,40 @@ paths:
       responses:
         '302':
           description: No response body
+  /api/v1/automation/catalog/:
+    get:
+      operationId: automation_catalog_retrieve
+      description: '``GET /automation/catalog/`` - tenant-wide workflows and tasks
+        (super admin). Definitions only.'
+      tags:
+      - automation
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/automation/scripts/:
+    get:
+      operationId: automation_scripts_retrieve
+      description: '``GET /automation/scripts/`` - collected script catalog for picking
+        collectors (super admin).'
+      tags:
+      - automation
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/catalog/aliases/:
     get:
       operationId: catalog_aliases_list
@@ -1038,6 +1072,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedAuditEventList'
+          description: ''
+  /api/v1/customers/{customer_pk}/automation/:
+    get:
+      operationId: customers_automation_retrieve
+      description: '``/customers/{id}/automation/?days=7&status=Failed&workflow=``
+        - workflow runs on this customer''s devices.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/customers/{customer_pk}/changes/:
     get:
@@ -4006,6 +4063,53 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/customers/{customer_pk}/script-collectors/:
+    get:
+      operationId: customers_script_collectors_retrieve
+      description: |-
+        ``GET /customers/{id}/script-collectors/`` - enabled collectors of this customer's sources (label + allowed
+        variable names only), for building compliance rules and reports.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/script-values/:
+    get:
+      operationId: customers_script_values_retrieve
+      description: '``/customers/{id}/script-values/?collector=&asset=`` - collected
+        values for this customer''s devices.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/software/:
     get:
       operationId: customers_software_list
@@ -5081,6 +5185,106 @@ paths:
                 items:
                   $ref: '#/components/schemas/Role'
           description: ''
+  /api/v1/script-collectors/:
+    get:
+      operationId: script_collectors_list
+      tags:
+      - script-collectors
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Collector'
+          description: ''
+    post:
+      operationId: script_collectors_create
+      tags:
+      - script-collectors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Collector'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collector'
+          description: ''
+  /api/v1/script-collectors/{id}/:
+    get:
+      operationId: script_collectors_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this script collector.
+        required: true
+      tags:
+      - script-collectors
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collector'
+          description: ''
+    patch:
+      operationId: script_collectors_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this script collector.
+        required: true
+      tags:
+      - script-collectors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCollector'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collector'
+          description: ''
+    delete:
+      operationId: script_collectors_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this script collector.
+        required: true
+      tags:
+      - script-collectors
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/sync-quarantine/:
     get:
       operationId: sync_quarantine_list
@@ -5642,6 +5846,44 @@ components:
       - name
       - rules
       - updated_at
+    Collector:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        integration_instance:
+          type: string
+          format: uuid
+        script_external_id:
+          type: string
+          maxLength: 64
+        script_name:
+          type: string
+          readOnly: true
+        label:
+          type: string
+          maxLength: 120
+        allowed_variables: {}
+        enabled:
+          type: boolean
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - integration_instance
+      - label
+      - script_external_id
+      - script_name
     ConfidenceEnum:
       enum:
       - official
@@ -7579,6 +7821,36 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedCollector:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        integration_instance:
+          type: string
+          format: uuid
+        script_external_id:
+          type: string
+          maxLength: 64
+        script_name:
+          type: string
+          readOnly: true
+        label:
+          type: string
+          maxLength: 120
+        allowed_variables: {}
+        enabled:
+          type: boolean
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedCustomer:
       type: object
       properties:
@@ -8819,6 +9091,7 @@ components:
       - no_outdated_software
       - no_critical_updates
       - patch_policy_assigned
+      - script_value
       type: string
       description: |-
         * `required_software` - Required software is installed
@@ -8832,6 +9105,7 @@ components:
         * `no_outdated_software` - No outdated catalogued software
         * `no_critical_updates` - No available Critical OS updates
         * `patch_policy_assigned` - A patch policy is assigned
+        * `script_value` - A value collected by a VSA script matches
     SavedView:
       type: object
       properties:
@@ -9004,6 +9278,7 @@ components:
       - disk_critical
       - forbidden_software
       - compliance_below
+      - workflow_failed
       type: string
       description: |-
         * `new_device` - New device appears
@@ -9011,6 +9286,7 @@ components:
         * `disk_critical` - System disk becomes critical
         * `forbidden_software` - Program appears on a device
         * `compliance_below` - Compliance score falls below a threshold
+        * `workflow_failed` - An automation workflow fails on a device
     SyncQuarantine:
       type: object
       properties:

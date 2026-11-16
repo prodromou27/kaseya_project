@@ -251,6 +251,31 @@ def _load_third_party(customer: Any, pins: dict[str, Any]) -> list[dict[str, Any
     ]
 
 
+def _load_script_values(customer: Any, pins: dict[str, Any]) -> list[dict[str, Any]]:
+    from apps.automation.models import DeviceScriptValue
+
+    hosts = _hosts(customer, pins)
+    out = []
+    for v in DeviceScriptValue.objects.filter(customer=customer, collector__enabled=True).select_related("collector"):
+        host, group = hosts.get(str(v.asset_id), ("", ""))
+        if not host:
+            continue  # device not in the pinned snapshot
+        allowed = set(v.collector.allowed_variables)
+        base = {
+            "hostname": host,
+            "group": group,
+            "collector": v.collector.label,
+            "state": v.state,
+            "executed_at": v.executed_at,
+        }
+        if not v.values:
+            out.append({**base, "variable": "", "value": ""})
+        for name, item in v.values.items():
+            if name in allowed:
+                out.append({**base, "variable": name, "value": item.get("value", "")})
+    return out
+
+
 def _load_subnets(customer: Any, pins: dict[str, Any]) -> list[dict[str, Any]]:
     from apps.inventory import subnets
 
@@ -425,6 +450,22 @@ SOURCES: dict[str, Source] = {
         ("hostname", "program", "installed_version", "reference_version", "version_state", "coverage", "policy"),
         _load_third_party,
         LIVE_NOTE + " Coverage is policy configuration, never deployment state.",
+    ),
+    "script_values": Source(
+        "Script results",
+        "One row per device and collected script variable (VSA script collectors).",
+        {
+            "hostname": F("Device"),
+            "group": F("Group"),
+            "collector": F("Collector"),
+            "variable": F("Variable"),
+            "value": F("Value"),
+            "executed_at": F("Script ran", "date"),
+            "state": F("State", "enum", ("collected", "never_run", "failed")),
+        },
+        ("hostname", "collector", "variable", "value", "executed_at"),
+        _load_script_values,
+        LIVE_NOTE + " Only administrator-allowlisted script variables are included.",
     ),
     "subnets": Source(
         "Subnets",

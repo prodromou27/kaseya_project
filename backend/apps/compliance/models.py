@@ -48,6 +48,7 @@ class BaselineRule(models.Model):
         NO_OUTDATED_SOFTWARE = "no_outdated_software", "No outdated catalogued software"
         NO_CRITICAL_UPDATES = "no_critical_updates", "No available Critical OS updates"
         PATCH_POLICY_ASSIGNED = "patch_policy_assigned", "A patch policy is assigned"
+        SCRIPT_VALUE = "script_value", "A value collected by a VSA script matches"
 
     class Severity(models.TextChoices):
         LOW = "low", "Low"

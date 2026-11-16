@@ -324,7 +324,186 @@ def _build() -> dict[str, Any]:
         ),
         "302": _patch_policy(302, "Servers - monthly (fixture)", "First Sunday (fixture)", ["CRITICAL"]),
     }
-    return {"assets": assets, "organizations": organizations, "patch_policies": patch_policies}
+    return {
+        "assets": assets,
+        "organizations": organizations,
+        "patch_policies": patch_policies,
+        "automation": _automation(rng, assets),
+    }
+
+
+def _automation(rng: random.Random, assets: list[dict[str, Any]]) -> dict[str, Any]:
+    """Synthetic AUT-01 data shaped like the documented automation examples (fixture only, not live)."""
+    from datetime import UTC, datetime, timedelta
+
+    workflows = [
+        {
+            "Id": 501,
+            "Name": "DEMO Clean temp files (fixture)",
+            "Description": "",
+            "IsEnabled": True,
+            "TriggerType": "Ad-hoc and Scheduled",
+            "TriggerSubType": "Scheduled",
+            "UpdatedAt": "2026-10-01T08:00:00Z",
+            "ContextType": "Scope",
+            "ContextItemId": "71",
+            "FolderPath": "DEMO/Maintenance",
+        },
+        {
+            "Id": 502,
+            "Name": "DEMO Restart print spooler on alert (fixture)",
+            "Description": "",
+            "IsEnabled": True,
+            "TriggerType": "Notification",
+            "TriggerSubType": "SERVICE_STOPPED",
+            "UpdatedAt": "2026-10-05T08:00:00Z",
+            "ContextType": "Organization",
+            "ContextItemId": "1001",
+            "FolderPath": "DEMO/Remediation",
+        },
+        {
+            "Id": 503,
+            "Name": "DEMO Disabled workflow (fixture)",
+            "Description": "",
+            "IsEnabled": False,
+            "TriggerType": "Ad-hoc and Scheduled",
+            "TriggerSubType": "Manual",
+            "UpdatedAt": "2026-09-01T08:00:00Z",
+            "ContextType": "Device",
+            "ContextItemId": "",
+            "FolderPath": "DEMO",
+        },
+    ]
+    tasks = [
+        {
+            "Id": 601,
+            "Name": "DEMO Weekly maintenance (fixture)",
+            "Description": "",
+            "IsEnabled": True,
+            "ScopeId": 71,
+            "ScopeName": "DEMO All workstations",
+            "UpdatedAt": "2026-10-02T08:00:00Z",
+            "IsScheduled": True,
+            "TotalScripts": 3,
+            "IsBuiltIn": False,
+            "ContinueOnError": True,
+            "ExecutionState": "Idle",
+            "FolderPath": "DEMO/Maintenance",
+        },
+        {
+            "Id": 602,
+            "Name": "DEMO Inventory refresh (fixture)",
+            "Description": "",
+            "IsEnabled": False,
+            "ScopeId": 72,
+            "ScopeName": "DEMO Servers",
+            "UpdatedAt": "2026-08-02T08:00:00Z",
+            "IsScheduled": False,
+            "TotalScripts": 1,
+            "IsBuiltIn": False,
+            "ContinueOnError": False,
+            "ExecutionState": "Idle",
+            "FolderPath": "DEMO",
+        },
+    ]
+    now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    executions, details = [], {}
+    demo_a = [a["Identifier"] for a in assets if a["OrganizationId"] == 1001][:40]
+    for n, ident in enumerate(demo_a):
+        wf = 501 if n % 4 else 502
+        failed = n % 7 == 3
+        created = now - timedelta(hours=6 * n + 1)
+        row = {
+            "Id": 9000 + n,
+            "WorkflowId": wf,
+            "TargetType": "Device",
+            "TargetId": ident,
+            "TriggerType": "Ad-hoc and Scheduled" if wf == 501 else "Notification",
+            "TriggerId": str(wf),
+            "Status": "Failed" if failed else "Success",
+            "CreatedAt": created.isoformat().replace("+00:00", "Z"),
+            "CompletedAt": (created + timedelta(minutes=3)).isoformat().replace("+00:00", "Z"),
+            "FolderPath": "DEMO",
+        }
+        executions.append(row)
+        details[str(row["Id"])] = {
+            **row,
+            "ExecutionSteps": [
+                {"WorkflowStepId": 1, "Status": "Success", "Outcome": "Completed", "OutputItems": []},
+                {
+                    "WorkflowStepId": 2,
+                    "Status": "Failed" if failed else "Success",
+                    "Outcome": "Script exited with code 1 (fixture)" if failed else "Completed",
+                    "OutputItems": [],
+                },
+            ],
+        }
+    executions.append(
+        {
+            "Id": 8999,
+            "WorkflowId": 501,
+            "TargetType": "Server",
+            "TargetId": "",
+            "TriggerType": "Ad-hoc and Scheduled",
+            "TriggerId": "501",
+            "Status": "Success",
+            "CreatedAt": (now - timedelta(hours=2)).isoformat().replace("+00:00", "Z"),
+            "CompletedAt": (now - timedelta(hours=2)).isoformat().replace("+00:00", "Z"),
+            "FolderPath": "DEMO",
+        }
+    )
+    executions.sort(key=lambda e: e["CreatedAt"], reverse=True)
+    script_id = "5c0e0b8e-0000-4000-8000-00000000b17c"
+    scripts = [
+        {
+            "Id": script_id,
+            "Name": "DEMO BitLocker status (fixture)",
+            "Description": "",
+            "CategoryId": 1,
+            "CategoryName": "Reporting",
+            "Platforms": ["Windows"],
+            "CreatedBy": "fixture",
+            "IsBuiltIn": False,
+            "FolderPath": "DEMO/Reporting",
+        },
+    ]
+    script_runs = {}
+    for n, ident in enumerate(demo_a):
+        if n % 5 == 4:
+            continue  # never ran on this device
+        eid = f"00000000-0000-4000-8000-{n:012d}"
+        started = (now - timedelta(days=1, hours=n)).isoformat().replace("+00:00", "Z")
+        script_runs[f"{script_id}:{ident}"] = {
+            "list": [{"Id": eid, "StartTime": started, "DurationInSeconds": 4.2, "State": "Successful"}],
+            "details": {
+                eid: {
+                    "Id": eid,
+                    "StartTime": started,
+                    "DurationInSeconds": 4.2,
+                    "State": "Successful",
+                    "Endtime": started,
+                    "Output": "free text is never stored (fixture)",
+                    "ExitCode": "0",
+                    "VariableOutputs": [
+                        {
+                            "Id": 1,
+                            "Name": "BitLockerProtection",
+                            "Value": "Off" if n % 6 == 1 else "On",
+                            "DataType": "Text",
+                        },
+                        {"Id": 2, "Name": "RecoveryKey", "Value": "123456-SECRET-FIXTURE", "DataType": "Text"},
+                    ],
+                }
+            },
+        }
+    return {
+        "workflows": workflows,
+        "tasks": tasks,
+        "executions": executions,
+        "execution_details": details,
+        "scripts": scripts,
+        "script_runs": script_runs,
+    }
 
 
 def demo_tenant() -> dict[str, Any]:

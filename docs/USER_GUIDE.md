@@ -228,3 +228,18 @@ email is not enabled.
 disks, antivirus issues, Critical updates, outdated software, the lowest compliance score and whether the data is
 up to date. Click a column to sort, download the table as CSV, or select a customer to open its Summary.
 
+## Automation
+
+**Automation** (VSA operations) shows how VSA X workflows ran on the selected customer's devices: runs, failures and
+success rate per workflow, and each failed run with the device and the step that failed. Pick a workflow to see only
+its runs. Super administrators also see the catalog of tasks and workflows. VSA X does not report scheduled *task*
+results through its API, so those are not shown. Add the alert "An automation workflow fails on a device" under
+Alerts → My watches to be told about new failures.
+
+## Script data
+
+VSA scripts can report values the inventory does not have (for example BitLocker state or local administrators). A
+super administrator selects such scripts under **Settings → Script collectors** and lists which output variables to
+keep. The values appear on the device page (**Script data**), can be used in compliance baselines ("A value collected
+by a VSA script matches") and in custom reports ("Script results").
+

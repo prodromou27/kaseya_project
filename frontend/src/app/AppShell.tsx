@@ -14,7 +14,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "VSA operations", items: [
     { to: "/assets", label: "Devices" }, { to: "/groups", label: "Groups & network" },
     { to: "/device-health", label: "Device health" }, { to: "/notifications", label: "Notifications" },
-    { to: "/changes", label: "Inventory changes" }, { to: "/cleanup", label: "Cleanup" },
+    { to: "/changes", label: "Inventory changes" }, { to: "/cleanup", label: "Cleanup" }, { to: "/automation", label: "Automation" },
   ] },
   { label: "Software & patching", items: [
     { to: "/software", label: "Software" }, { to: "/windows-updates", label: "Windows updates" },

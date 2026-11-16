@@ -248,7 +248,8 @@ def test_unsafe_identifier_never_reaches_url(world, vsa):
     transport = FixtureVsaTransport([bad])
     r = run(mapping, world.engineer_a, transport)
     assert r.state == "completed"
-    assert all("automation" not in p for p, _ in transport.calls)
+    # The hostile identifier never reaches a URL: no traversal, no run route (read-only automation GETs are fine).
+    assert all(".." not in p and not p.endswith("/run") for p, _ in transport.calls)
     assert PatchObservation.objects.get().installed_status == "failed"
 
 

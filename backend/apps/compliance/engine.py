@@ -64,6 +64,29 @@ def clean_params(kind: str, params: Any) -> dict[str, Any]:
         return {"percent": _number(params, "percent", 1, 99)}
     if kind == Kind.MAX_DAYS_OFFLINE:
         return {"days": _number(params, "days", 1, 365)}
+    if kind == Kind.SCRIPT_VALUE:
+        from apps.automation.models import ScriptCollector
+
+        collector = ScriptCollector.objects.filter(pk=_text(params, "collector", max_len=36)).first()
+        variable = _text(params, "variable", max_len=100)
+        if collector is None or variable not in collector.allowed_variables:
+            raise ValidationError({"params": "Pick a script collector and one of its allowed variables."})
+        op = _text(params, "op", max_len=16)
+        if op not in ("equals", "not_equals", "contains", "at_least"):
+            raise ValidationError({"params": "Use equals, not_equals, contains or at_least."})
+        value = _text(params, "value", max_len=200)
+        if op == "at_least":
+            try:
+                float(value)
+            except ValueError as exc:
+                raise ValidationError({"params": "at_least needs a number."}) from exc
+        return {
+            "collector": str(collector.id),
+            "label": collector.label,
+            "variable": variable,
+            "op": op,
+            "value": value,
+        }
     if kind in Kind.values:
         return {}
     raise ValidationError({"kind": "Unknown rule kind."})
@@ -81,6 +104,9 @@ def describe(kind: str, params: dict[str, Any]) -> str:
         return f"System disk at least {params['percent']}% free"
     if kind == Kind.MAX_DAYS_OFFLINE:
         return f"Seen within {params['days']} days"
+    if kind == Kind.SCRIPT_VALUE:
+        words = {"equals": "is", "not_equals": "is not", "contains": "contains", "at_least": "is at least"}
+        return f"{params.get('label', 'Script')}: {params['variable']} {words[params['op']]} “{params['value']}”"
     return Kind(kind).label
 
 
@@ -118,6 +144,7 @@ class DeviceFacts:
     outdated: list[str] = field(default_factory=list)
     updates_collected: bool = False
     critical_available: int = 0
+    script_values: dict[str, dict[str, Any]] = field(default_factory=dict)  # collector id -> {state, values}
 
 
 def load_facts(customer_id: Any) -> list[DeviceFacts]:
@@ -174,6 +201,12 @@ def load_facts(customer_id: Any) -> list[DeviceFacts]:
     for asset_id, n in critical.items():
         if asset_id in facts:
             facts[asset_id].critical_available = n
+    from apps.automation.models import DeviceScriptValue
+
+    for v in DeviceScriptValue.objects.filter(customer_id=customer_id, collector__enabled=True):
+        f = facts.get(str(v.asset_id))
+        if f:
+            f.script_values[str(v.collector_id)] = {"state": v.state, "values": v.values}
     return list(facts.values())
 
 
@@ -262,6 +295,24 @@ def evaluate_rule(kind: str, params: dict[str, Any], f: DeviceFacts) -> tuple[st
             return UNKNOWN, "Available updates not collected"
         n = f.critical_available
         return (FAIL, f"{n} Critical update(s) available") if n else (PASS, "No Critical updates available")
+    if kind == Kind.SCRIPT_VALUE:
+        entry = f.script_values.get(params["collector"])
+        if not entry or entry["state"] != "collected":
+            return UNKNOWN, "Script result not collected for this device"
+        actual = (entry["values"].get(params["variable"]) or {}).get("value")
+        if actual is None:
+            return UNKNOWN, f"{params['variable']} not reported by the script"
+        want, op = params["value"], params["op"]
+        if op == "at_least":
+            try:
+                ok = float(actual) >= float(want)
+            except ValueError:
+                return UNKNOWN, f"{params['variable']} = “{actual}” is not a number"
+        elif op == "contains":
+            ok = want.casefold() in actual.casefold()
+        else:
+            ok = (actual.casefold() == want.casefold()) == (op == "equals")
+        return (PASS if ok else FAIL), f"{params['variable']} = “{actual}”"
     if kind == Kind.PATCH_POLICY_ASSIGNED:
         state = h["patch_policy"]
         if state == "assigned":
