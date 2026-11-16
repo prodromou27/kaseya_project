@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "apps.compliance",
     "apps.alerts",
     "apps.automation",
+    "apps.servers",
 ]
 
 MIDDLEWARE = [

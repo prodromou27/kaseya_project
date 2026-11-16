@@ -1,5 +1,13 @@
 # Changelog
 
+## SRV-01 - 2026-11-16 - servers & owners
+
+- New `servers` app (`servers.0001`), portal-only (nothing read from or written to VSA X beyond the existing snapshot): **owner groups** per customer (name, owner, owner email, notes; unique name; deleting a group unassigns its servers) and a per-device **server marking**. A device is a server when marked, or when its reported OS name contains "Server" unless marked "not a server".
+- `GET /customers/{id}/servers/` (customer.read; `scope=all`, `owner_group=<id>|none`, `attention=true`, `search`): per server the owner, available OS updates (Critical/Important/other; "not collected" is never "up to date"), patch policy, outdated programs, OS support (reviewed lifecycle catalog), last seen, and the action needed in words. `POST .../servers/designate/` (customer administrators): bulk mark as server / not a server / use detection, assign or clear owner group, note. `/customers/{id}/server-owner-groups/` CRUD (read: customer.read; change: administrators). Audited; owner contact details are kept out of audit metadata.
+- New report type **Server patching by owner** (`server_owner_patching`, CSV/XLSX/PDF): all owners grouped, one owner group, or servers without an owner; optional attention-only; titled with the group name; evaluated when generated and kept with the run.
+- **Servers & owners** page (Software & patching): totals, filters, table with selection and bulk actions; **Owner groups** tab with add/edit/delete, *Report (PDF)* per owner, report for all owners / without owner, and *Email owner* (opens the user's own mail program with that owner's servers needing attention; the portal sends no email, DEC-09).
+- Verified: 4 backend tests (detection, marking/assignment/permissions/cross-customer refusal/unique names/delete/audit, patching reasons, report per owner incl. title, grouping and foreign-group refusal), backend suite 714 passed, 112 frontend tests, browser suite 50/51 with the sync scenario passing on rerun (it had run alongside the backend suite on the same database server); accessibility covers /servers. Fixture data only.
+
 ## VSA5-EXEC - 2026-11-16 - approved group moves executed in VSA X (gated, off by default)
 
 - First and only vendor write (ADR-029): `PUT /api/v3/devices/{id}/move` with `{"GroupId"}` in a separate module (`apps/integrations/vsa/writer.py`); the read client stays GET-only and `/move` is still refused by the read allowlist. Same egress policy (shared `check_egress`), TLS always verified, no redirects, error bodies never read.

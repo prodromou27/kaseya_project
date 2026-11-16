@@ -766,6 +766,107 @@ def _custom_limitations(filters: dict[str, Any]) -> str:
     return " ".join(x for x in (SNAPSHOT_NOTE_SHORT, note) if x)
 
 
+class ServerOwnerFilters(serializers.Serializer):
+    """SRV-01. ``owner_group``: an owner group UUID of this customer, or "none" for servers without an owner."""
+
+    owner_group = serializers.CharField(required=False, allow_blank=True, max_length=40)
+    attention_only = serializers.BooleanField(required=False, default=False)
+
+    def validate_for_customer(self, customer: Any, data: dict[str, Any]) -> None:
+        import uuid
+
+        from apps.servers.models import ServerOwnerGroup
+
+        value = data.get("owner_group") or ""
+        if value in ("", "none"):
+            return
+        try:
+            gid = uuid.UUID(value)
+        except ValueError as exc:
+            raise serializers.ValidationError({"owner_group": "Owner group not found for this customer."}) from exc
+        if not ServerOwnerGroup.objects.filter(customer=customer, pk=gid).exists():
+            raise serializers.ValidationError({"owner_group": "Owner group not found for this customer."})
+
+
+SERVER_OWNER_COLUMNS = (
+    "owner_group",
+    "owner_name",
+    "owner_email",
+    "hostname",
+    "operating_system",
+    "os_version",
+    "site",
+    "vsa_group",
+    "server_source",
+    "last_seen_online_utc",
+    "os_updates_status",
+    "os_updates_available",
+    "critical_available",
+    "important_available",
+    "patch_policy",
+    "outdated_programs",
+    "os_lifecycle",
+    "os_end_of_support",
+    "needs_attention",
+    "action_needed",
+)
+
+
+def _server_owner_rows(customer: Any, filters: dict[str, Any], pins: dict[str, Any]) -> Iterator[list[Any]]:
+    from apps.servers import status as server_status
+
+    owner = filters.get("owner_group") or ""
+    data = server_status.rows(customer.id, generation_ids=pins["generation_ids"])
+    if owner == "none":
+        data = [r for r in data if not r["owner_group_id"]]
+    elif owner:
+        data = [r for r in data if r["owner_group_id"] == owner]
+    if filters.get("attention_only"):
+        data = [r for r in data if r["needs_attention"]]
+    data.sort(
+        key=lambda r: (r["owner_group"] == "", r["owner_group"].casefold(), not r["needs_attention"], r["hostname"])
+    )
+    for r in data:
+        policy = r["patch_policy"] or {"explicit_none": "No policy (explicit)", "not_reported": "No policy"}.get(
+            r["patch_policy_state"], "unknown"
+        )
+        yield [
+            r["owner_group"] or "No owner assigned",
+            r["owner_name"],
+            r["owner_email"],
+            r["hostname"],
+            r["os_name"],
+            r["os_version"],
+            r["site"],
+            r["vsa_group"],
+            r["server_source"],
+            r["last_seen_online"] or "unknown",
+            r["os_updates_status"],
+            "" if r["updates_available"] is None else r["updates_available"],
+            r["critical_available"],
+            r["important_available"],
+            policy,
+            r["outdated_programs"],
+            r["os_lifecycle"],
+            r["os_end_of_support"] or "",
+            "yes" if r["needs_attention"] else "no",
+            "; ".join(r["reasons"]) or "Nothing found from collected data",
+        ]
+
+
+def _server_owner_title(filters: dict[str, Any]) -> str:
+    from apps.servers.models import ServerOwnerGroup
+
+    owner = filters.get("owner_group") or ""
+    if owner == "none":
+        return "Server patching - servers without an owner"
+    if owner:
+        group = ServerOwnerGroup.objects.filter(pk=owner).values_list("name", flat=True).first()
+        if group:
+            return f"Server patching - {group}"
+    return "Server patching by owner"
+
+
 class ScorecardFilters(serializers.Serializer):
     """The scorecard has no filters: it always covers the whole customer."""
 
@@ -805,6 +906,25 @@ REPORT_TYPES: dict[str, ReportType] = {
         "(latest on or before 30 days ago) and are only shown for measures with history. Compliance, third-party "
         "and network measures are evaluated when the report is generated and kept with the run, so a regeneration "
         "reproduces them. Unknown is never counted as compliant.",
+    ),
+    "server_owner_patching": ReportType(
+        key="server_owner_patching",
+        title="Server patching by owner",
+        description="Servers grouped by their owner group, with available OS updates, patch policy, outdated "
+        "programs and operating-system support, and the action each owner should take. One owner or all.",
+        formats=ALL_FORMATS,
+        required_capabilities=SNAPSHOT_CAPS,
+        filter_serializer=ServerOwnerFilters,
+        columns=SERVER_OWNER_COLUMNS,
+        rows=_server_owner_rows,
+        pin=_pin_os_updates,
+        title_for=_server_owner_title,
+        evaluated_live=lambda f: True,
+        limitations="Servers and owner groups are recorded in this portal, not in VSA X. A server is a device marked "
+        "as one, or whose reported OS name contains 'Server' (unless marked otherwise). Available updates come from "
+        "the VSA X snapshot; 'not_collected' means unknown, not up to date. A patch policy is configuration, not "
+        "proof of installation. Outdated programs use the reviewed software catalog; OS support uses the reviewed "
+        "lifecycle catalog. Evaluated when generated and kept with the run.",
     ),
     "custom": ReportType(
         key="custom",

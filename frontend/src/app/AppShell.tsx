@@ -17,7 +17,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     { to: "/changes", label: "Inventory changes" }, { to: "/cleanup", label: "Cleanup" }, { to: "/automation", label: "Automation" },
   ] },
   { label: "Software & patching", items: [
-    { to: "/software", label: "Software" }, { to: "/windows-updates", label: "Windows updates" },
+    { to: "/servers", label: "Servers & owners" }, { to: "/software", label: "Software" }, { to: "/windows-updates", label: "Windows updates" },
     { to: "/patch-policies", label: "Patch policies" }, { to: "/lifecycle", label: "Lifecycle" },
   ] },
   { label: "Inventory reconciliation", items: [{ to: "/onboarding", label: "Onboarding check" }] },

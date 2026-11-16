@@ -272,3 +272,21 @@ Execution is refused when the approval is older than 24 hours, the device has ch
 the destination group is no longer active, or the inventory is stale. When execution is not enabled the page says why,
 and the move can still be made manually in VSA X.
 
+## Servers & owners
+
+**Servers & owners** (Software & patching) shows the selected customer's servers, who owns them and what each needs:
+available OS updates (Critical and Important first), whether a patch policy is assigned, outdated programs, whether the
+operating system is out of support or ending soon, and devices not seen for more than 30 days. "Action needed" says it
+in words; tick **Needs attention only** to see just those.
+
+- **Which devices are servers:** devices whose operating system name contains "Server" are detected automatically.
+  Choose **Show → All devices** to mark others (for example Linux servers) with **Mark as server**, or use
+  **Not a server** for a detected device. **Use detection** returns a device to the automatic rule.
+- **Owners:** on **Owner groups**, add a group with the owner's name and email, then select servers on the Servers tab
+  and **Assign owner**. Customer administrators can change markings and owners; everyone with access can view them.
+- **Informing owners:** **Report (PDF)** produces *Server patching - <group>* for that owner (also available under
+  Reports as "Server patching by owner", for all owners or servers without an owner). **Email owner** opens your mail
+  program with a summary of that owner's servers that need attention; attach the PDF and send it yourself.
+
+Markings and owners exist only in this portal; nothing is changed in VSA X.
+

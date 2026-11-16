@@ -4191,6 +4191,167 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/customers/{customer_pk}/server-owner-groups/:
+    get:
+      operationId: customers_server_owner_groups_list
+      description: '``/customers/{id}/server-owner-groups/`` - read: customer.read;
+        change: customer administrators.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OwnerGroup'
+          description: ''
+    post:
+      operationId: customers_server_owner_groups_create
+      description: '``/customers/{id}/server-owner-groups/`` - read: customer.read;
+        change: customer administrators.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerGroup'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerGroup'
+          description: ''
+  /api/v1/customers/{customer_pk}/server-owner-groups/{id}/:
+    patch:
+      operationId: customers_server_owner_groups_partial_update
+      description: '``/customers/{id}/server-owner-groups/`` - read: customer.read;
+        change: customer administrators.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this server owner group.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOwnerGroup'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerGroup'
+          description: ''
+    delete:
+      operationId: customers_server_owner_groups_destroy
+      description: '``/customers/{id}/server-owner-groups/`` - read: customer.read;
+        change: customer administrators.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this server owner group.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/customers/{customer_pk}/servers/:
+    get:
+      operationId: customers_servers_retrieve
+      description: '``/customers/{id}/servers/`` - servers with owner and patch/upgrade
+        needs.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/servers/designate/:
+    post:
+      operationId: customers_servers_designate_create
+      description: '``/customers/{id}/servers/`` - servers with owner and patch/upgrade
+        needs.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignateInput'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/software/:
     get:
       operationId: customers_software_list
@@ -6141,6 +6302,26 @@ components:
         * `active` - Active
         * `suspended` - Suspended
         * `archived` - Archived
+    DesignateInput:
+      type: object
+      properties:
+        assets:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 500
+          minItems: 1
+        marking:
+          $ref: '#/components/schemas/MarkingEnum'
+        owner_group:
+          type: string
+          maxLength: 40
+        note:
+          type: string
+          maxLength: 500
+      required:
+      - assets
     DeviceOsUpdate:
       type: object
       properties:
@@ -6981,6 +7162,16 @@ components:
       - created_at
       - id
       - name
+    MarkingEnum:
+      enum:
+      - server
+      - not_server
+      - auto
+      type: string
+      description: |-
+        * `server` - server
+        * `not_server` - not_server
+        * `auto` - auto
     MatchTypeEnum:
       enum:
       - exact
@@ -7279,6 +7470,46 @@ components:
         * `success` - Success
         * `denied` - Denied
         * `failure` - Failure
+    OwnerGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        owner_name:
+          type: string
+          maxLength: 120
+        owner_email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        notes:
+          type: string
+          maxLength: 1000
+        servers:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - servers
+      - updated_at
     PaginatedAlertList:
       type: object
       required:
@@ -8208,6 +8439,40 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedOwnerGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        owner_name:
+          type: string
+          maxLength: 120
+        owner_email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        notes:
+          type: string
+          maxLength: 1000
+        servers:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedProduct:
       type: object
       properties:
@@ -9051,6 +9316,7 @@ components:
       - os_updates
       - patch_policy_coverage
       - security_observations
+      - server_owner_patching
       - software_compliance
       - software_distribution
       - stale_devices
@@ -9070,6 +9336,7 @@ components:
         * `os_updates` - os_updates
         * `patch_policy_coverage` - patch_policy_coverage
         * `security_observations` - security_observations
+        * `server_owner_patching` - server_owner_patching
         * `software_compliance` - software_compliance
         * `software_distribution` - software_distribution
         * `stale_devices` - stale_devices
