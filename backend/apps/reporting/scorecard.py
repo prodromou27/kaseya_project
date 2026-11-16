@@ -128,6 +128,18 @@ def rows(customer: Any) -> list[list[Any]]:
     )
     add("Lifecycle", "Devices with end-of-support software", lc["software"]["devices_with_end_of_support"])
 
+    from apps.servers import status as servers
+
+    srv = servers.summary(servers.rows(customer.id))
+    add(
+        "Servers",
+        "Servers needing patching or an upgrade",
+        srv["needs_attention"],
+        notes=f"of {srv['servers']} servers; {srv['critical']} with Critical updates, "
+        f"{srv['out_of_support']} on an out-of-support OS, {srv['no_policy']} without a patch policy",
+    )
+    add("Servers", "Servers without an owner", srv["unassigned"], notes="Assign owners under Servers & owners")
+
     baselines = list(ComplianceBaseline.objects.filter(customer=customer, enabled=True).prefetch_related("rules"))
     if baselines:
         facts = engine.load_facts(customer.id)

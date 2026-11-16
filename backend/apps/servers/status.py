@@ -154,3 +154,16 @@ def rows(
             }
         )
     return out
+
+
+def summary(data: list[dict[str, Any]]) -> dict[str, int]:
+    """Totals over server rows (rows with ``is_server``); used by the Servers page, scorecard and customer summary."""
+    servers = [r for r in data if r["is_server"]]
+    return {
+        "servers": len(servers),
+        "needs_attention": sum(1 for r in servers if r["needs_attention"]),
+        "unassigned": sum(1 for r in servers if not r["owner_group_id"]),
+        "critical": sum(1 for r in servers if r["critical_available"]),
+        "out_of_support": sum(1 for r in servers if r["os_lifecycle"] == "end_of_support"),
+        "no_policy": sum(1 for r in servers if r["patch_policy_state"] in ATTENTION_POLICY_STATES),
+    }

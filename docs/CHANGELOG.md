@@ -1,5 +1,14 @@
 # Changelog
 
+## SRV-02 - 2026-11-16 - server owner follow-ups
+
+- **Monthly report per owner:** on **Servers & owners → Owner groups**, *Schedule monthly* creates a "Server patching - <group>" PDF definition and a monthly schedule (day 1, 07:00 in the user's time zone, in-portal delivery, DEC-09); groups already scheduled show "Monthly on day N". Uses the existing definitions/schedules API, so the owner group is validated against the customer and changes/stops happen under Reports → Definitions & schedules.
+- **Reports page:** the *Server owner group* filter is a pick-list (all owners, servers without an owner, each group) instead of a raw ID; "Only servers needing attention" label.
+- **Customer summary:** new *Servers* card (servers, needing patching or an upgrade, without an owner) linking to the filtered Servers page.
+- **Monthly scorecard:** new *Servers* section - servers needing patching or an upgrade (with counts of Critical updates, out-of-support OS and no patch policy in the notes) and servers without an owner. Shared `servers.status.summary()` also feeds the Servers page totals (adds `no_policy`).
+- E2E: the sync scenario's waits were raised (60 s / 150 s test) because a demo sync now also collects automation, scopes and global rules (~500 fixture calls, ~20 s inline under eager Celery).
+- Verified: 2 new backend tests (scorecard and summary figures; owner report definition + monthly schedule, foreign owner group refused), backend suite 721 passed, 113 frontend tests (new: monthly scheduling per owner), browser suite 51/51 on a fresh database. Fixture data only.
+
 ## P5-07 - 2026-11-16 - focused security review of recent features
 
 - Fixed (low): VSA connector credential references could name any server environment variable (e.g. `env:DJANGO_SECRET_KEY`), which would have been sent to the VSA host as credentials. The API now accepts only `env:VSA_|ITGLUE_|AUTOTASK_<NAME>` (or a not-yet-resolvable `vault:` reference) for read tokens (never `VSA_WRITE_*`) and `env:VSA_WRITE_<NAME>` for the write token, and resolution refuses other names. **Operator action:** rename a server credential variable that does not start with `VSA_`; portal-entered credentials are unaffected.

@@ -136,3 +136,46 @@ def test_report_per_owner_group(world, demo, django_capture_on_commit_callbacks)
         format="json",
     )
     assert resp.status_code == 400
+
+
+def test_scorecard_and_summary_include_servers(world, demo):  # noqa: F811
+    from apps.reporting import scorecard
+
+    group = make_group(world)
+    first = servers(world)["rows"][0]
+    world.client(world.admin_a).post(
+        url(world, "servers/designate/"), {"assets": [first["asset_id"]], "owner_group": group["id"]}, format="json"
+    )
+    totals = servers(world)["totals"]
+    assert totals["unassigned"] == totals["servers"] - 1 and "no_policy" in totals
+    rows = {(r[0], r[1]): r for r in scorecard.rows(world.customer_a)}
+    assert rows[("Servers", "Servers without an owner")][2] == totals["unassigned"]
+    attention = rows[("Servers", "Servers needing patching or an upgrade")]
+    assert attention[2] == totals["needs_attention"] and f"of {totals['servers']} servers" in attention[6]
+
+
+def test_owner_report_can_be_scheduled_monthly_only_for_own_groups(world, demo):  # noqa: F811
+    group = make_group(world)
+    client = world.client(world.engineer_a)
+    body = {"name": "Server patching - Finance", "report_type": "server_owner_patching", "format": "pdf"}
+    created = client.post(
+        url(world, "report-definitions/"), {**body, "filters": {"owner_group": group["id"]}}, format="json"
+    )
+    assert created.status_code == 201, created.content
+    schedule = client.post(
+        url(world, "report-schedules/"),
+        {
+            "definition": created.json()["id"],
+            "frequency": "monthly",
+            "day_of_month": 1,
+            "time_of_day": "07:00",
+            "timezone": "UTC",
+        },
+        format="json",
+    )
+    assert schedule.status_code == 201, schedule.content
+    other = ServerOwnerGroup.objects.create(customer=world.customer_b, name="B", created_by=world.super_admin)
+    refused = client.post(
+        url(world, "report-definitions/"), {**body, "filters": {"owner_group": str(other.id)}}, format="json"
+    )
+    assert refused.status_code == 400

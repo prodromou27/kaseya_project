@@ -154,6 +154,7 @@ fixture-verified only (no live VSA X validation).
 - [x] **GR-01** Patch global rules (count toward third-party coverage) and scopes (criteria, device count, used by).
 - [x] **VSA5-EXEC** Approved group moves executed in VSA X (gated: feature flag off, separate write token, approval, read-back).
 - [x] **SRV-01** Servers & owners (portal-only): servers detected from the OS name or marked by hand, owner groups with contact, per-server patching/upgrade needs, report per owner, email-owner summary.
+- [x] **SRV-02** Server owner follow-ups: monthly report schedule per owner, owner pick-list on Reports, Servers card on the customer summary, Servers section on the monthly scorecard.
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
 
 Still open from earlier phases (unchanged, external): VSA0-02/P0-02 host boot evidence, VSAP-01 vault (Entra dropped, DEC-03), VSAP-02 backup/restore drill on the host, VSAP-04 live pilot, VSAP-05 acceptance, VSA3-06 mail delivery (DEC-09), VSA5 group-move live validation (execution built, off by default), P3/P4 IT Glue/Autotask (out of Phase 1 scope, DEC-05).

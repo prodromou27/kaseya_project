@@ -17,12 +17,14 @@ async function login(page: Page, email: string) {
 }
 
 test("engineer syncs the approved fixture source and browses inventory", async ({ page }) => {
-  test.setTimeout(90_000); // the sync itself runs inside this test
+  // The sync runs inside this test (eager Celery: inside the request). A demo sync now also collects automation,
+  // scopes and global rules (~500 fixture calls, ~20 s), so allow for a cold first run.
+  test.setTimeout(150_000);
   await login(page, "demo.engineer.a@demo.invalid");
   await openNav(page, "Devices");
   await page.getByRole("button", { name: "Sync now (read-only)" }).click();
-  await expect(page.getByText("as of", { exact: false }).first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/130 devices/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("as of", { exact: false }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/130 devices/)).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/not a live VSA X tenant/)).toBeVisible();
   await page.reload();
   const table = page.getByRole("table", { name: "DEMO-A assets" });

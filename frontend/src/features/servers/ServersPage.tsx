@@ -10,7 +10,7 @@ import { Tabs } from "../../components/Tabs";
 import { Badge, Field, PageHeader, type Tone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
-import type { Customer, ReportRun } from "../../lib/types";
+import type { Customer, Paginated, ReportDefinitionRow, ReportRun, ReportScheduleRow } from "../../lib/types";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 
 export type ServerRow = {
@@ -61,6 +61,45 @@ function useReport(customer: Customer) {
     mutationFn: (filters: Record<string, string>) =>
       api.post<ReportRun>(`/customers/${customer.id}/reports/`, { report_type: "server_owner_patching", format: "pdf", filters }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["reports", customer.id] }),
+  });
+}
+
+/** Owner group id -> its monthly schedule (definitions and schedules belong to the signed-in user). */
+function useOwnerSchedules(customer: Customer, enabled: boolean) {
+  const definitions = useQuery({
+    queryKey: ["report-definitions", customer.id], enabled,
+    queryFn: ({ signal }) => api.get<Paginated<ReportDefinitionRow>>(`/customers/${customer.id}/report-definitions/`, { page_size: 200 }, signal),
+  });
+  const schedules = useQuery({
+    queryKey: ["report-schedules", customer.id], enabled,
+    queryFn: ({ signal }) => api.get<Paginated<ReportScheduleRow>>(`/customers/${customer.id}/report-schedules/`, { page_size: 200 }, signal),
+  });
+  const byGroup = new Map<string, ReportScheduleRow>();
+  for (const d of definitions.data?.results ?? []) {
+    const group = d.report_type === "server_owner_patching" ? d.filters.owner_group : undefined;
+    const schedule = (schedules.data?.results ?? []).find((x) => x.definition === d.id && x.enabled);
+    if (typeof group === "string" && schedule) byGroup.set(group, schedule);
+  }
+  return { byGroup, ready: definitions.isSuccess && schedules.isSuccess };
+}
+
+function useScheduleMonthly(customer: Customer) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (group: OwnerGroup) => {
+      const definition = await api.post<ReportDefinitionRow>(`/customers/${customer.id}/report-definitions/`, {
+        name: `Server patching - ${group.name}`.slice(0, 120), report_type: "server_owner_patching", format: "pdf",
+        filters: { owner_group: group.id },
+      });
+      return api.post<ReportScheduleRow>(`/customers/${customer.id}/report-schedules/`, {
+        definition: definition.id, frequency: "monthly", day_of_month: 1, weekday: null, time_of_day: "07:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", recipients: [],
+      });
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["report-definitions", customer.id] });
+      void qc.invalidateQueries({ queryKey: ["report-schedules", customer.id] });
+    },
   });
 }
 
@@ -214,6 +253,8 @@ function OwnersTab({ customer, groups }: { customer: Customer; groups: OwnerGrou
   const canExport = customer.my_capabilities.includes("customer.export");
   const [editing, setEditing] = useState<string | null>(null);
   const report = useReport(customer);
+  const schedule = useScheduleMonthly(customer);
+  const owned = useOwnerSchedules(customer, canExport);
   const servers = useQuery({
     queryKey: ["servers", customer.id, "servers", "", "", ""],
     queryFn: ({ signal }) => api.get<ServerList>(`/customers/${customer.id}/servers/`, {}, signal),
@@ -232,6 +273,8 @@ function OwnersTab({ customer, groups }: { customer: Customer; groups: OwnerGrou
           <button type="button" className="btn-secondary" disabled={report.isPending} onClick={() => report.mutate({ owner_group: "none" })}>Report: servers without an owner</button>
           {report.isSuccess ? <span role="status" className="text-sm text-emerald-800">Report requested; it appears under Reports when ready.</span> : null}
           {report.isError ? <span role="alert" className="text-sm text-red-700">{describeError(report.error)}</span> : null}
+          {schedule.isSuccess ? <span role="status" className="text-sm text-emerald-800">Scheduled monthly (day 1, 07:00 your time). Each run appears under Reports; change or stop it under Reports → Definitions &amp; schedules.</span> : null}
+          {schedule.isError ? <span role="alert" className="text-sm text-red-700">{describeError(schedule.error)}</span> : null}
         </div>
       ) : null}
       <DataTable caption="Owner groups" rows={groups} getRowId={(g) => g.id}
@@ -247,6 +290,9 @@ function OwnersTab({ customer, groups }: { customer: Customer; groups: OwnerGrou
           { id: "actions", header: "Actions", cell: ({ row }) => (
             <span className="flex flex-wrap gap-2">
               {canExport ? <button type="button" className="btn-secondary" disabled={report.isPending} onClick={() => report.mutate({ owner_group: row.original.id })}>Report (PDF)</button> : null}
+              {canExport && owned.ready ? (owned.byGroup.has(row.original.id)
+                ? <span className="self-center text-xs text-emerald-800">Monthly on day {owned.byGroup.get(row.original.id)?.day_of_month ?? 1}</span>
+                : <button type="button" className="btn-secondary" disabled={schedule.isPending} onClick={() => schedule.mutate(row.original)}>Schedule monthly</button>) : null}
               {row.original.owner_email && servers.data ? <a className="btn-secondary" href={ownerEmail(row.original, customer, rows)}>Email owner</a> : null}
               {canManage ? <button type="button" className="btn-secondary" onClick={() => setEditing(editing === row.original.id ? null : row.original.id)}>Edit</button> : null}
               {canManage ? <button type="button" className="btn-danger" disabled={remove.isPending}

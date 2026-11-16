@@ -41,11 +41,26 @@ const FILTER_LABELS: Record<string, string> = {
   severity: "Severity", kb: "KB article", product: "Product", state: "State", status: "Status", patch_state: "Patch state",
   kind: "Kind", field: "Field", since: "From (date)", until: "To (date)", priority: "Priority", drift: "Drift",
   title: "Title", outcome: "Outcome", action_prefix: "Action", requested_by: "Requested by",
+  owner_group: "Server owner group", attention_only: "Only servers needing attention",
 };
 const filterLabel = (name: string) => FILTER_LABELS[name] ?? name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " ");
 
 /** Renders inputs for a template's code-defined, allowlisted filters. */
-function FilterInputs({ template, value, onChange }: { template: ReportTemplate; value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+function OwnerGroupSelect({ id, customer, value, onChange }: { id: string; customer: Customer; value: string; onChange: (v: string) => void }) {
+  const groups = useQuery({
+    queryKey: ["server-owner-groups", customer.id],
+    queryFn: ({ signal }) => api.get<{ id: string; name: string }[]>(`/customers/${customer.id}/server-owner-groups/`, undefined, signal),
+  });
+  return (
+    <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">All owners</option>
+      <option value="none">Servers without an owner</option>
+      {(groups.data ?? []).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+    </select>
+  );
+}
+
+function FilterInputs({ template, value, onChange, customer }: { template: ReportTemplate; value: Record<string, string>; onChange: (v: Record<string, string>) => void; customer: Customer }) {
   const entries = Object.entries(template.filters);
   if (entries.length === 0) return <p className="text-xs text-slate-500">This report has no filters.</p>;
   const active = entries.filter(([name]) => (value[name] ?? "") !== "").length;
@@ -57,7 +72,9 @@ function FilterInputs({ template, value, onChange }: { template: ReportTemplate;
     <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {entries.map(([name, f]) => (
         <Field key={name} label={filterLabel(name)}>
-          {(id) => f.choices ? (
+          {(id) => name === "owner_group" ? (
+            <OwnerGroupSelect id={id} customer={customer} value={value[name] ?? ""} onChange={(v) => onChange({ ...value, [name]: v })} />
+          ) : f.choices ? (
             <select id={id} className="input" value={value[name] ?? ""} onChange={(e) => onChange({ ...value, [name]: e.target.value })}>
               <option value="">Any</option>
               {f.choices.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -116,7 +133,7 @@ function NewReport({ customer, templates }: { customer: Customer; templates: Rep
           </select>)}</Field>
       </div>
       <p className="text-xs text-slate-600">{template.description} {template.limitations ? <em>Limitations: {template.limitations}</em> : null}</p>
-      <FilterInputs template={template} value={filters} onChange={setFilters} />
+      <FilterInputs template={template} value={filters} onChange={setFilters} customer={customer} />
       <div className="flex flex-wrap items-center gap-2">
         <button type="submit" className="btn-primary" disabled={request.isPending}>Generate</button>
         <button type="button" className="btn-secondary" disabled={save.isPending}

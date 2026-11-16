@@ -148,18 +148,11 @@ class ServerViewSet(CustomerScopedMixin, viewsets.ViewSet):
                 or search in r["os_name"].casefold()
                 or search in r["owner_group"].casefold()
             ]
-        servers = [r for r in data if r["is_server"]]
         return Response(
             {
                 "rows": data[:2000],
                 "count": len(data),
-                "totals": {
-                    "servers": len(servers),
-                    "needs_attention": sum(1 for r in servers if r["needs_attention"]),
-                    "unassigned": sum(1 for r in servers if not r["owner_group_id"]),
-                    "critical": sum(1 for r in servers if r["critical_available"]),
-                    "out_of_support": sum(1 for r in servers if r["os_lifecycle"] == "end_of_support"),
-                },
+                "totals": server_status.summary(data),
                 "detection_note": "Devices whose reported operating system name contains 'Server' are detected "
                 "automatically. Mark other devices as servers, or mark a detected device as not a server.",
             }

@@ -44,6 +44,8 @@ function Line({ label, value, attention, customer, to, pending }: { label: strin
 }
 
 /** Customer workspace: everything that needs attention for one customer, each number linked to its investigation. */
+type ServerTotals = { servers: number; needs_attention: number; unassigned: number };
+
 export function CustomerWorkspace({ customer }: { customer: Customer }) {
   const id = customer.id;
   const canExport = customer.my_capabilities.includes(CAP.export);
@@ -53,6 +55,7 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
   const thirdParty = useQuery({ queryKey: ["software", id, "third-party", "", true], queryFn: ({ signal }) => api.get<ThirdParty>(`/customers/${id}/software/third-party/`, { outdated: "true" }, signal) });
   const subnets = useQuery({ queryKey: ["subnets", id, "", false, false, ""], queryFn: ({ signal }) => api.get<Subnets>(`/customers/${id}/subnets/`, undefined, signal) });
   const scopeFields = useQuery({ queryKey: ["scope-custom-fields", id], queryFn: ({ signal }) => api.get<ScopeFields>(`/customers/${id}/scope-custom-fields/`, undefined, signal) });
+  const servers = useQuery({ queryKey: ["servers", id, "summary"], queryFn: ({ signal }) => api.get<{ totals: ServerTotals }>(`/customers/${id}/servers/`, undefined, signal) });
   const datasets = useQuery({ queryKey: ["datasets", id], queryFn: ({ signal }) => api.get<DatasetStatus[]>(`/customers/${id}/datasets/`, undefined, signal) });
   const qc = useQueryClient();
   const scorecard = useMutation({
@@ -97,6 +100,11 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
           <Line pending={updates.isPending} customer={customer} label="Devices with Critical OS updates" value={critical} attention={(critical ?? 0) > 0} to="/windows-updates?state=available&severity=Critical" />
           <Line pending={thirdParty.isPending} customer={customer} label="Outdated third-party installs" value={tp?.outdated ?? null} attention={(tp?.outdated ?? 0) > 0} to="/software?view=third-party" />
           <Line pending={thirdParty.isPending} customer={customer} label="…with no rule in patch policy" value={tp ? tp.outdated_not_covered + tp.outdated_no_policy : null} attention={(tp?.outdated_not_covered ?? 0) + (tp?.outdated_no_policy ?? 0) > 0} to="/software?view=third-party" />
+        </Card>
+        <Card title="Servers" footer={<Go customer={customer} to="/servers">Open servers &amp; owners</Go>}>
+          <Line pending={servers.isPending} customer={customer} label="Servers" value={servers.data?.totals.servers ?? null} to="/servers" />
+          <Line pending={servers.isPending} customer={customer} label="Need patching or an upgrade" value={servers.data?.totals.needs_attention ?? null} attention={(servers.data?.totals.needs_attention ?? 0) > 0} to="/servers?attention=true" />
+          <Line pending={servers.isPending} customer={customer} label="Without an owner" value={servers.data?.totals.unassigned ?? null} attention={(servers.data?.totals.unassigned ?? 0) > 0} to="/servers?owner=none" />
         </Card>
         <Card title="Network" footer={<Go customer={customer} to="/groups?view=subnets">Open subnets</Go>}>
           <Line pending={subnets.isPending} customer={customer} label="Subnets observed" value={sn?.subnets ?? null} to="/groups?view=subnets" />

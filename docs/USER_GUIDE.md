@@ -287,6 +287,11 @@ in words; tick **Needs attention only** to see just those.
 - **Informing owners:** **Report (PDF)** produces *Server patching - <group>* for that owner (also available under
   Reports as "Server patching by owner", for all owners or servers without an owner). **Email owner** opens your mail
   program with a summary of that owner's servers that need attention; attach the PDF and send it yourself.
+- **Every month:** **Schedule monthly** on an owner group produces that owner's PDF on the 1st at 07:00 (your time
+  zone); it appears under Reports. Change or stop it under **Reports → Definitions & schedules**. On the Reports page
+  the *Server owner group* filter lists the customer's owner groups.
+- The customer **Summary** shows a *Servers* card, and the monthly scorecard has a *Servers* section (servers needing
+  patching or an upgrade, servers without an owner).
 
 Markings and owners exist only in this portal; nothing is changed in VSA X.
 

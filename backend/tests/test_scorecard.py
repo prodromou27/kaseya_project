@@ -35,7 +35,16 @@ def generate(world, capture, user=None):
 def test_scorecard_covers_every_area_without_inventing_history(world, synced, django_capture_on_commit_callbacks):  # noqa: F811
     header, rows = generate(world, django_capture_on_commit_callbacks)
     assert header == ["section", "measure", "value", "previous_value", "previous_as_of", "change", "notes"]
-    assert {s for s, _ in rows} == {"Inventory", "Health", "Patching", "Software", "Lifecycle", "Compliance", "Network"}
+    assert {s for s, _ in rows} == {
+        "Inventory",
+        "Health",
+        "Patching",
+        "Software",
+        "Lifecycle",
+        "Servers",
+        "Compliance",
+        "Network",
+    }
     devices = rows[("Inventory", "Devices")]
     assert devices[2] == "6" and devices[3] == "" and devices[5] == ""  # one snapshot only: no comparison
     assert rows[("Compliance", "Baselines")][6] == "No compliance baseline defined"

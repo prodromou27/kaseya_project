@@ -49,4 +49,34 @@ describe("servers & owners", () => {
     expect(link).toContain("- FIN-SRV01: 2 Critical OS updates available");
     expect(link).not.toContain("APP-SRV02");
   });
+
+  it("schedules a monthly report for an owner group and shows existing schedules", async () => {
+    const other: OwnerGroup = { ...group, id: "g2", name: "HR servers", owner_email: "" };
+    const { calls } = mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe() },
+      "GET /api/v1/customers/": { body: page([admin]) },
+      [`GET /api/v1/customers/${customerA.id}/server-owner-groups/`]: { body: [group, other] },
+      [`GET /api/v1/customers/${customerA.id}/servers/`]: { body: list },
+      [`GET /api/v1/customers/${customerA.id}/report-definitions/`]: { body: page([
+        { id: "d1", name: "Server patching - Finance servers", report_type: "server_owner_patching", format: "pdf", filters: { owner_group: "g1" }, owner: "eng@example.test" },
+      ]) },
+      [`GET /api/v1/customers/${customerA.id}/report-schedules/`]: { body: page([
+        { id: "s1", definition: "d1", frequency: "monthly", time_of_day: "07:00:00", weekday: null, day_of_month: 1, timezone: "UTC", recipient_emails: [], enabled: true, next_run_at: null, last_run_at: null },
+      ]) },
+      [`POST /api/v1/customers/${customerA.id}/report-definitions/`]: { status: 201, body: { id: "d2", name: "Server patching - HR servers", report_type: "server_owner_patching", format: "pdf", filters: { owner_group: "g2" }, owner: "eng@example.test" } },
+      [`POST /api/v1/customers/${customerA.id}/report-schedules/`]: { status: 201, body: { id: "s2" } },
+    } as never);
+    window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
+    renderApp("/servers?tab=owners");
+    const table = await screen.findByRole("table", { name: "Owner groups" });
+    const finance = within(table).getByRole("row", { name: /Finance servers/ });
+    expect(await within(finance).findByText("Monthly on day 1")).toBeInTheDocument();
+    const hr = within(table).getByRole("row", { name: /HR servers/ });
+    await userEvent.click(within(hr).getByRole("button", { name: "Schedule monthly" }));
+    expect(await screen.findByText(/Scheduled monthly/)).toBeInTheDocument();
+    const def = calls.find((c) => c.method === "POST" && c.url.includes("/report-definitions/"));
+    expect(JSON.parse(String(def?.init?.body))).toMatchObject({ report_type: "server_owner_patching", filters: { owner_group: "g2" } });
+    const sched = calls.find((c) => c.method === "POST" && c.url.includes("/report-schedules/"));
+    expect(JSON.parse(String(sched?.init?.body))).toMatchObject({ definition: "d2", frequency: "monthly", day_of_month: 1 });
+  });
 });
