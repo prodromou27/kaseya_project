@@ -34,7 +34,8 @@ fields, so the model's format validator never ran, and `resolve_secret` accepted
 `credential_ref = env:DJANGO_SECRET_KEY` (or `POSTGRES_PASSWORD`, `CONNECTOR_ENCRYPTION_KEY`) made the connector send
 that host secret as Basic-auth credentials to the configured (allowlisted) VSA host. Severity **low**: super-admin only
 and limited to allowlisted hosts, but it crosses from portal administration into host secrets. Fix: the API accepts only
-`env:VSA_|ITGLUE_|AUTOTASK_<NAME>` for read tokens (never `VSA_WRITE_*`) and `env:VSA_WRITE_<NAME>` for the write token,
+`env:VSA_|ITGLUE_|AUTOTASK_<NAME>` (or a not-yet-resolvable `vault:` reference) for read
+tokens (never `VSA_WRITE_*`) and `env:VSA_WRITE_<NAME>` for the write token,
 and `resolve_secret` refuses any other name, so a reference stored earlier is refused at use as well. Regression test:
 `test_credential_references_cannot_name_server_secrets`. Operator impact: a server reference not starting with `VSA_`
 must be renamed (portal-entered credentials are unaffected).
