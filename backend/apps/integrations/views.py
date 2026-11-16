@@ -22,7 +22,15 @@ from apps.audit.services import record_event
 
 from .models import ConnectorHost, IntegrationInstance, SyncQuarantine, SyncSchedule
 from .providers import PROVIDERS, validate_fields
-from .secrets import CredentialStorageUnavailable, credential_source, encrypt_fields, storage_available
+from .secrets import (
+    READ_REF,
+    VAULT_REF,
+    WRITE_REF,
+    CredentialStorageUnavailable,
+    credential_source,
+    encrypt_fields,
+    storage_available,
+)
 
 
 class CredentialSerializer(serializers.Serializer):
@@ -99,6 +107,17 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
 
     def get_credential_configured(self, obj: IntegrationInstance) -> bool:
         return bool(obj.credential_ref or obj.credential_ciphertext)
+
+    def validate_credential_ref(self, value: str) -> str:
+        # vault: references are kept for the future vault backend (P5-02) and cannot be resolved today.
+        if value and not (READ_REF.fullmatch(value) or VAULT_REF.fullmatch(value)):
+            raise ValidationError("Use env:VSA_<NAME> (a server secret holding TOKEN_ID:TOKEN_SECRET).")
+        return value
+
+    def validate_write_credential_ref(self, value: str) -> str:
+        if value and not WRITE_REF.fullmatch(value):
+            raise ValidationError("Use env:VSA_WRITE_<NAME> (a separate server secret for the write token).")
+        return value
 
     def get_write_credential_configured(self, obj: IntegrationInstance) -> bool:
         return bool(obj.write_credential_ref)

@@ -118,7 +118,7 @@ class _AcceptedButNotApplied:
 
 def test_timeout_is_unknown_and_verify_reads_back_without_resending(world, enabled):
     proposal, _, _ = approved(world)
-    execution = move_execution.execute(world.customer_a, world.admin_a, proposal["id"], None, transport=_Timeout())
+    execution = move_execution.execute_move(world.customer_a, world.admin_a, proposal["id"], None, transport=_Timeout())
     assert execution.state == "unknown" and execution.error_code == "timeout_or_connection"
     body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/verify/").json()
     # Read back: the device is still in its source group, so it was not moved. Nothing was sent again.
@@ -128,7 +128,7 @@ def test_timeout_is_unknown_and_verify_reads_back_without_resending(world, enabl
 
 def test_accepted_without_read_back_is_unverified_until_confirmed(world, enabled):
     proposal, obs, target = approved(world)
-    execution = move_execution.execute(
+    execution = move_execution.execute_move(
         world.customer_a, world.admin_a, proposal["id"], None, transport=_AcceptedButNotApplied()
     )
     assert execution.state == "unverified"
@@ -139,7 +139,7 @@ def test_accepted_without_read_back_is_unverified_until_confirmed(world, enabled
 
 def test_rejected_by_vsa_is_failed(world, enabled):
     proposal, _, _ = approved(world)
-    execution = move_execution.execute(
+    execution = move_execution.execute_move(
         world.customer_a, world.admin_a, proposal["id"], None, transport=fixtures.FixtureWriteTransport(enabled, 403)
     )
     assert execution.state == "failed" and execution.http_status == 403
@@ -169,3 +169,30 @@ def test_live_integration_needs_a_separate_write_token(world, settings, monkeypa
     inst.write_credential_ref = "env:DJANGO_SECRET_KEY"
     with pytest.raises(MoveNotAvailable):
         VsaMoveWriter(inst)  # only env:VSA_WRITE_* references are accepted
+
+
+def test_credential_references_cannot_name_server_secrets(world, monkeypatch, settings):
+    """P5-07 finding 1: a reference may only name a connector variable, checked at the API and at resolution."""
+    from apps.integrations.models import IntegrationInstance
+    from apps.integrations.secrets import CredentialUnavailable, resolve_basic
+
+    settings.CONNECTOR_ALLOWED_HOSTS = {**settings.CONNECTOR_ALLOWED_HOSTS, "vsa_x": ["vsa.example.com"]}
+    inst = IntegrationInstance.objects.create(
+        name="Live VSA", provider="vsa_x", base_url="https://vsa.example.com", enabled=False
+    )
+    client = world.client(world.super_admin)
+    url = f"/api/v1/integrations/{inst.id}/"
+    for bad in ("env:DJANGO_SECRET_KEY", "env:POSTGRES_PASSWORD", "env:VSA_WRITE_PROD"):
+        resp = client.patch(url, {"credential_ref": bad}, format="json")
+        assert resp.status_code == 400 and "credential_ref" in resp.content.decode(), bad
+    for bad in ("env:DJANGO_SECRET_KEY", "env:VSA_TOKEN"):
+        resp = client.patch(url, {"write_credential_ref": bad}, format="json")
+        assert resp.status_code == 400 and "write_credential_ref" in resp.content.decode(), bad
+    ok = client.patch(
+        url, {"credential_ref": "env:VSA_TOKEN_PROD", "write_credential_ref": "env:VSA_WRITE_PROD"}, format="json"
+    )
+    assert ok.status_code == 200, ok.content
+    assert "credential_ref" not in ok.json() and ok.json()["write_credential_configured"] is True
+    monkeypatch.setenv("DJANGO_SECRET_KEY", "server-secret:value")
+    with pytest.raises(CredentialUnavailable, match="VSA_, ITGLUE_ or AUTOTASK_"):
+        resolve_basic("env:DJANGO_SECRET_KEY")  # a reference stored before this check is refused too

@@ -312,9 +312,9 @@ def test_credentials_resolved_from_reference_only(monkeypatch):
     for ref in ("", "vault:x", "env:lower", "env:MISSING_VAR_X"):
         with pytest.raises(CredentialUnavailable):
             resolve_basic(ref)
-    monkeypatch.setenv("BAD_TOKEN", "no-colon")
+    monkeypatch.setenv("VSA_BAD_TOKEN", "no-colon")
     with pytest.raises(CredentialUnavailable):
-        resolve_basic("env:BAD_TOKEN")
+        resolve_basic("env:VSA_BAD_TOKEN")
 
 
 def test_organizations_listing():

@@ -57,7 +57,7 @@ curl --fail --silent --show-error \
   `$orderby=Identifier`, `include=Tags,AssetInfo,InstalledSoftware`) and `GET /api/v3/organizations` (admin discovery).
   Evidence record: `backend/apps/integrations/vsa/capabilities.json`.
 * **Fixture-tested only.** No live tenant has been called. Live pilot pending DEC-04/DEC-10.
-* Credentials: `credential_ref = env:NAME`, where `NAME` (or `NAME_FILE`) holds `TOKEN_ID:TOKEN_SECRET`. Vault support is P5-02.
+* Credentials: entered in the portal (encrypted), or `credential_ref = env:VSA_<NAME>`, where `VSA_<NAME>` (or `VSA_<NAME>_FILE`) holds `TOKEN_ID:TOKEN_SECRET`. Only `VSA_`, `ITGLUE_` and `AUTOTASK_` variables are accepted, so a reference can never name the server's own secrets (P5-07). Vault support is P5-02.
 * Since P2 (commit `c483a8f`): `include` also requests `Updates,AvailableUpdates`. `GET /api/v3/assets/:id?include=InstalledUpdates`
   is called per device within `installed_updates_budget` (default 0 = off). `InstalledAt` is stored verbatim (no timezone documented).
   There is no documented scan timestamp. All of this is fixture-tested only.

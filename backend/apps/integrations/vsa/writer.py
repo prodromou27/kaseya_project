@@ -25,11 +25,10 @@ from django.conf import settings
 
 from apps.integrations.http import DEFAULT_TIMEOUT, check_egress, default_resolver
 from apps.integrations.models import IntegrationInstance
-from apps.integrations.secrets import CredentialUnavailable, resolve_basic, resolve_instance_basic
+from apps.integrations.secrets import WRITE_REF, CredentialUnavailable, resolve_basic, resolve_instance_basic
 
 MOVE_PATH = re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/move")
 _DEVICE_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
-WRITE_REF = re.compile(r"env:VSA_WRITE_[A-Z0-9_]{1,50}")
 
 
 class MoveNotAvailable(Exception):

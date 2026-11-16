@@ -29,6 +29,12 @@ if TYPE_CHECKING:
     from .models import IntegrationInstance
 
 _ENV_REF = re.compile(r"^env:([A-Z][A-Z0-9_]{2,63})$")
+# Connector credentials may only come from connector-named variables, never from the server's own secrets
+# (DJANGO_SECRET_KEY, POSTGRES_PASSWORD, CONNECTOR_ENCRYPTION_KEY, ...), which would otherwise be sent to the vendor.
+CONNECTOR_SECRET_PREFIXES = ("VSA_", "ITGLUE_", "AUTOTASK_")
+READ_REF = re.compile(r"^env:(?:VSA|ITGLUE|AUTOTASK)_(?!WRITE_)[A-Z0-9_]{1,60}$")
+WRITE_REF = re.compile(r"^env:VSA_WRITE_[A-Z0-9_]{1,50}$")
+VAULT_REF = re.compile(r"^vault:[A-Za-z0-9_./-]{1,190}$")
 
 
 class CredentialUnavailable(Exception):
@@ -115,6 +121,8 @@ def resolve_secret(credential_ref: str) -> str:
     match = _ENV_REF.match(credential_ref or "")
     if not match:
         raise CredentialUnavailable("Unsupported or missing credential reference.")
+    if not match.group(1).startswith(CONNECTOR_SECRET_PREFIXES):
+        raise CredentialUnavailable("Credential references must name a VSA_, ITGLUE_ or AUTOTASK_ variable.")
     try:
         value = env_str(match.group(1), "")
     except (OSError, ImproperlyConfigured) as exc:

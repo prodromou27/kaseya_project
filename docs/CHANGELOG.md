@@ -1,5 +1,11 @@
 # Changelog
 
+## P5-07 - 2026-11-16 - focused security review of recent features
+
+- Fixed (low): VSA connector credential references could name any server environment variable (e.g. `env:DJANGO_SECRET_KEY`), which would have been sent to the VSA host as credentials. The API now accepts only `env:VSA_|ITGLUE_|AUTOTASK_<NAME>` (or a not-yet-resolvable `vault:` reference) for read tokens (never `VSA_WRITE_*`) and `env:VSA_WRITE_<NAME>` for the write token, and resolution refuses other names. **Operator action:** rename a server credential variable that does not start with `VSA_`; portal-entered credentials are unaffected.
+- Renamed `move_execution.execute` to `execute_move` (semgrep raw-SQL false positive that would fail the CI security job).
+- Reviewed with no further findings: tenant isolation of all new routes (resolver-driven IDOR sweep), group-move execution gates, secrets/logging, frontend sinks. Scans clean: pip-audit, bandit, npm audit, semgrep (CI rule packs), git-history pattern scan. Details: `CODEX_SECURITY_REVIEW.md`.
+
 ## FIX-BADRESP - 2026-11-16 - a non-JSON answer from VSA X no longer fails the whole sync
 
 - Operator report: "1 sync(s) in the last 24 h: bad_response". A 2xx answer that is not JSON (empty body, HTML from a proxy) raised `bad_response`, which the per-device detail collectors did not catch, contrary to their documented behaviour - so one device's odd answer failed the run.

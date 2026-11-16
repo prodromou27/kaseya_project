@@ -151,7 +151,7 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         """Send the approved move to VSA X once (gated; see VSA5-EXEC). Re-sending is impossible; use verify."""
         customer = self.get_customer()
         original = self.get_object()
-        move_execution.execute(customer, request.user, original.id, request)
+        move_execution.execute_move(customer, request.user, original.id, request)
         return Response(MoveSerializer(self.get_queryset().get(pk=original.pk)).data)
 
     @extend_schema(request=None, responses={200: MoveSerializer})

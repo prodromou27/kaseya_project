@@ -46,7 +46,7 @@ def inst(db):
         is_fixture=True,
         enabled=True,
         max_rps=20,
-        credential_ref="env:SHOULD_NOT_APPEAR",
+        credential_ref="env:VSA_SHOULD_NOT_APPEAR",
     )
 
 

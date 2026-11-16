@@ -132,7 +132,9 @@ def _read_back(proposal: GroupMoveRequest) -> str | None:
     return group_id
 
 
-def execute(customer: Any, user: Any, proposal_id: Any, request: Any, *, transport: Any = None) -> GroupMoveExecution:
+def execute_move(
+    customer: Any, user: Any, proposal_id: Any, request: Any, *, transport: Any = None
+) -> GroupMoveExecution:
     probe = GroupMoveRequest.objects.select_related("asset__integration_instance").filter(
         customer=customer, pk=proposal_id
     )
