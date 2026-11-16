@@ -36,7 +36,7 @@ from apps.patching.ingest import (
     record_list_sections,
 )
 
-from .http import ConnectorError, VendorAuthError, VendorRateLimited, VendorUnavailable
+from .http import ConnectorError, VendorAuthError, VendorBadResponse, VendorRateLimited, VendorUnavailable
 from .models import DatasetGeneration, IntegrationInstance, SyncQuarantine, SyncRun
 from .secrets import CredentialUnavailable
 from .vsa.adapter import AssetPage, VsaXAdapter, validate_org_id
@@ -215,7 +215,14 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
         code = getattr(exc, "code", None) or (
             "credential_unavailable" if isinstance(exc, CredentialUnavailable) else "malformed_page"
         )
-        return _fail(run, code, instance_status=IntegrationInstance.Status.FAILED)
+        endpoint = getattr(exc, "endpoint", "")
+        logger.warning("sync_failed", extra={"sync_run_id": str(run.id), "error_code": code, "endpoint": endpoint})
+        return _fail(
+            run,
+            code,
+            instance_status=IntegrationInstance.Status.FAILED,
+            details={"endpoint": endpoint} if endpoint else None,
+        )
     except Exception:
         logger.exception("sync_internal_error", extra={"sync_run_id": str(run.id)})
         return _fail(run, "internal_error")
@@ -468,7 +475,7 @@ def _collect_installed_updates(run: SyncRun, generation: DatasetGeneration, adap
             guard.ok()
         except (VendorClientError, RecordInvalid, ValueError):
             record_installed_failure(po)
-        except VendorUnavailable:
+        except (VendorUnavailable, VendorBadResponse):
             record_installed_failure(po)
             guard.unavailable()
     carry_forward(generation)
@@ -496,7 +503,7 @@ def _collect_applied_policies(run: SyncRun, generation: DatasetGeneration, adapt
             guard.ok()
         except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
             policies.record_failure(po)
-        except VendorUnavailable:
+        except (VendorUnavailable, VendorBadResponse):
             policies.record_failure(po)
             guard.unavailable()
     policies.carry_forward(generation)
@@ -509,7 +516,7 @@ def _collect_applied_policies(run: SyncRun, generation: DatasetGeneration, adapt
             guard.ok()
         except (VendorClientError, RecordInvalid, ValueError):
             policies.record_definition_failure(generation, policy_id)
-        except VendorUnavailable:
+        except (VendorUnavailable, VendorBadResponse):
             policies.record_definition_failure(generation, policy_id)
             guard.unavailable()
     run.refresh_from_db()
@@ -542,7 +549,7 @@ def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter
                 guard.ok()
             except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
                 details.record_failure(fetch)
-            except VendorUnavailable:
+            except (VendorUnavailable, VendorBadResponse):
                 details.record_failure(fetch)
                 guard.unavailable()
     except DetailsAbandoned as exc:  # notifications failing must not skip custom fields
@@ -563,7 +570,7 @@ def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter
                 guard.ok()
             except (VendorClientError, RecordInvalid, PageInvalid, ValueError):
                 details.record_failure(fetch)
-            except VendorUnavailable:
+            except (VendorUnavailable, VendorBadResponse):
                 details.record_failure(fetch)
                 guard.unavailable()
     run.refresh_from_db()
@@ -692,7 +699,14 @@ def _pause(run: SyncRun, code: str) -> SyncRun:
     return run
 
 
-def _fail(run: SyncRun, code: str, *, outcome: str = "failure", instance_status: str | None = None) -> SyncRun:
+def _fail(
+    run: SyncRun,
+    code: str,
+    *,
+    outcome: str = "failure",
+    instance_status: str | None = None,
+    details: dict[str, str] | None = None,
+) -> SyncRun:
     SyncRun.objects.filter(pk=run.pk).update(state=SyncRun.State.FAILED, error_code=code, ended_at=timezone.now())
     if run.generation_id:
         DatasetGeneration.objects.filter(pk=run.generation_id, state=DatasetGeneration.State.STAGED).update(
@@ -708,6 +722,6 @@ def _fail(run: SyncRun, code: str, *, outcome: str = "failure", instance_status:
         customer=run.customer,
         target_type="sync_run",
         target_id=str(run.id),
-        metadata={"error_code": code},
+        metadata={"error_code": code, **(details or {})},
     )
     return run

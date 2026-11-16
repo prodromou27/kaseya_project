@@ -23,7 +23,7 @@ HINTS = {
     "row_count_drop_guard": "The device count dropped sharply, so the snapshot was not published (protects good data).",
     "retry_budget_exhausted": "VSA X kept failing or rate limiting; the run gave up after its retries.",
     "malformed_page": "VSA X returned data in an unexpected shape; see the backend/worker logs.",
-    "bad_response": "VSA X returned an unexpected response; see the worker logs.",
+    "bad_response": "VSA X answered with something that is not JSON; System status names the endpoint.",
     "endpoint_not_allowed": "A request path is not on the read-only allowlist (report this; it is a bug).",
     "internal_error": "Unexpected error in the worker; see `docker compose logs worker`.",
 }

@@ -29,7 +29,23 @@ SYNC_HINTS = {
     "row_count_drop_guard": "Far fewer devices than last time, so the previous data was kept.",
     "malformed_page": "VSA X returned data in an unexpected shape; see the worker log.",
     "internal_error": "Unexpected error in the worker; see the worker log.",
+    "bad_response": "VSA X answered a request with something that is not JSON (for example an HTML page from a "
+    "proxy, or an empty body).",
 }
+
+
+def _failed_endpoints(since: Any, code: str) -> list[str]:
+    """Endpoint templates (identifiers masked) recorded on recent failed syncs with this code."""
+    from apps.audit.models import AuditEvent
+
+    found: list[str] = []
+    for meta in AuditEvent.objects.filter(
+        action="sync.failed", created_at__gte=since, metadata__error_code=code
+    ).values_list("metadata", flat=True)[:50]:
+        endpoint = str((meta or {}).get("endpoint") or "")
+        if endpoint and endpoint not in found:
+            found.append(endpoint)
+    return found[:3]
 
 
 def _worker_answering(timeout: float) -> int | None:
@@ -96,7 +112,11 @@ def collect(*, check_worker: bool = True, worker_timeout: float = 1.5) -> dict[s
     )
     for code, n in sorted(errors.items(), key=lambda kv: -kv[1]):
         level = "warn" if code in ("rate_limited",) else "error"
-        add(level, f"sync_{code}", f"{n} sync(s) in the last 24 h: {SYNC_HINTS.get(code, code)}")
+        message = f"{n} sync(s) in the last 24 h: {SYNC_HINTS.get(code, code)}"
+        endpoints = _failed_endpoints(day, code)
+        if endpoints:
+            message += f" Endpoint: {', '.join(endpoints)}."
+        add(level, f"sync_{code}", message)
 
     # Data freshness per approved mapping
     stale_after = now - timedelta(hours=settings.DATA_STALE_AFTER_HOURS)

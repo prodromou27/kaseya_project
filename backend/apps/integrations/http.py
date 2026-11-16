@@ -72,6 +72,7 @@ class VendorUnavailable(ConnectorError):
 
 class VendorBadResponse(ConnectorError):
     code = "bad_response"
+    endpoint = ""
 
 
 class VendorClientError(ConnectorError):
@@ -238,8 +239,30 @@ class ReadOnlyHttpClient:
             try:
                 body = resp.json()
             except ValueError as exc:
-                raise VendorBadResponse("Response was not valid JSON.", status=status) from exc
+                endpoint = endpoint_template(path)
+                # Diagnostics without content: which endpoint, status, declared type and size. Never the body.
+                logger.warning(
+                    "vendor_bad_response",
+                    extra={
+                        "provider": self.provider,
+                        "endpoint": endpoint,
+                        "status": status,
+                        "content_type": str(resp.headers.get("Content-Type", ""))[:80],
+                        "content_length": len(getattr(resp, "content", b"") or b""),
+                    },
+                )
+                error = VendorBadResponse("Response was not valid JSON.", status=status)
+                error.endpoint = endpoint
+                raise error from exc
             return HttpResult(status=status, json=body, headers=dict(resp.headers))
+
+
+_ID_SEGMENT = re.compile(r"[0-9]")
+
+
+def endpoint_template(path: str) -> str:
+    """'/api/v3/devices/7c1e-42/appliedpolicies' -> '/api/v3/devices/:id/appliedpolicies' (no identifiers logged)."""
+    return "/".join(":id" if i > 3 and _ID_SEGMENT.search(seg) else seg for i, seg in enumerate(path.split("/")))[:120]
 
 
 def _parse_retry_after(value: str | None) -> float:

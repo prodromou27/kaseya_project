@@ -1,5 +1,12 @@
 # Changelog
 
+## FIX-BADRESP - 2026-11-16 - a non-JSON answer from VSA X no longer fails the whole sync
+
+- Operator report: "1 sync(s) in the last 24 h: bad_response". A 2xx answer that is not JSON (empty body, HTML from a proxy) raised `bad_response`, which the per-device detail collectors did not catch, contrary to their documented behaviour - so one device's odd answer failed the run.
+- Per-device detail calls (installed updates, applied policies, patch policy definitions, notifications, custom fields) now treat it like an unanswered call: that device's section is `failed`, the run continues, and three in a row mark the section incomplete. Core calls (asset pages, sites/groups/devices) still fail the run, as publishing incomplete inventory would be wrong.
+- Diagnostics: the connector logs `vendor_bad_response` with the endpoint (identifiers masked), status, content type and size, never the body; the `sync.failed` audit event and **System status** now name the endpoint.
+- Verified: 4 new tests; backend suite 718 passed. Fixture only; the live cause is still to be identified from the endpoint shown.
+
 ## SRV-01 - 2026-11-16 - servers & owners
 
 - New `servers` app (`servers.0001`), portal-only (nothing read from or written to VSA X beyond the existing snapshot): **owner groups** per customer (name, owner, owner email, notes; unique name; deleting a group unassigns its servers) and a per-device **server marking**. A device is a server when marked, or when its reported OS name contains "Server" unless marked "not a server".
