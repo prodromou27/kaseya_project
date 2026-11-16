@@ -11,10 +11,12 @@ from django.utils.dateparse import parse_datetime
 
 from .models import (
     AutomationCollection,
+    AutomationScope,
     AutomationScript,
     AutomationTask,
     AutomationWorkflow,
     DeviceScriptValue,
+    PatchGlobalRules,
     ScriptCollector,
     WorkflowExecution,
 )
@@ -105,6 +107,7 @@ def collect(instance: Any, adapter: Any, *, force: bool = False) -> str:
                     "seen_at": now,
                 },
             )
+        _collect_rules_and_scopes(instance, adapter, now)
         assets = dict(Asset.objects.filter(integration_instance=instance).values_list("external_id", "id"))
         customers = dict(Asset.objects.filter(integration_instance=instance).values_list("id", "customer_id"))
         cutoff = now - WINDOW
@@ -227,3 +230,64 @@ def collect_script_values(run: Any, adapter: Any, budget: int) -> int:
         if unavailable >= 3:
             break  # VSA X is struggling; the remaining devices are read on the next sync
     return calls
+
+
+SCOPE_CAP = 100
+
+
+def _collect_rules_and_scopes(instance: Any, adapter: Any, now: datetime) -> None:
+    """GR-01. Each part is optional: a 403/404 on one does not stop the others or the workflow collection."""
+    from apps.integrations.http import ConnectorError
+
+    try:
+        data = (adapter.get_global_rules() or {}).get("Data") or {}
+        PatchGlobalRules.objects.update_or_create(
+            integration_instance=instance,
+            defaults={
+                "os_rules": [r for r in data.get("OsRules") or [] if isinstance(r, dict)][:200],
+                "software_rules": [r for r in data.get("SoftwareRules") or [] if isinstance(r, dict)][:500],
+                "fetched_at": now,
+            },
+        )
+    except ConnectorError:
+        pass
+    try:
+        scopes = adapter.list_scopes()[:SCOPE_CAP]
+    except ConnectorError:
+        return
+    for row in scopes:
+        sid = _text(row.get("Id"), 20)
+        if not sid.isdigit():
+            continue
+        try:
+            detail = (adapter.get_scope(sid) or {}).get("Data") or {}
+            usage = adapter.get_scope_usage(sid)
+        except (ConnectorError, ValueError):
+            detail, usage = {}, []
+        criteria = [
+            {
+                "type": _text(c.get("Type"), 64),
+                # Custom-field criteria can carry customer values; only the criterion type is kept for those.
+                "identifier": ""
+                if "custom" in _text(c.get("Type"), 64).casefold()
+                else _text(c.get("Identifier"), 255),
+            }
+            for c in detail.get("Criteria") or []
+            if isinstance(c, dict)
+        ][:50]
+        AutomationScope.objects.update_or_create(
+            integration_instance=instance,
+            external_id=sid,
+            defaults={
+                "name": _text(row.get("Name")) or f"Scope {sid}",
+                "description": _text(row.get("Description"), 500),
+                "criteria": criteria,
+                "total_devices": detail.get("TotalDevices") if isinstance(detail.get("TotalDevices"), int) else None,
+                "used_by": [
+                    {"type": _text(u.get("UsageContextType"), 16), "id": _text(u.get("ContextItemId"), 20)}
+                    for u in usage
+                    if isinstance(u, dict)
+                ][:100],
+                "seen_at": now,
+            },
+        )

@@ -12,7 +12,7 @@ These paths were exercised with synthetic fixtures; live source accuracy remains
 6. **Onboarding check** uploads only after a customer is selected. Its progress indicator guides upload, mapping/preview, comparison and review/export. A new preview must finish validating before comparison can start. Ambiguous identities remain review items; no automatic move or merge occurs.
 7. **Groups & network** separates source instances even when IDs match. Open a group to inspect reported adapters/addresses and use **Export group network** for CSV/XLSX/PDF. The file pins the source snapshot and retains missing-data states. Derived CIDRs are inventory observations, not physical topology.
 8. **Reports** starts with inventory and supports format choice, saved definitions, schedules and paginated history. Downloads show the actual file format and remain protected by current customer permissions.
-9. In a current device's **Operations** tab, an engineer with proposal permission can select an active destination in the same source/customer/organization and provide a reason. A different authorized administrator reviews it under **Group move approvals**. Requests expire after 24 hours and cannot be approved against changed or stale inventory. **Approval never executes a VSA change.**
+9. In a current device's **Operations** tab, an engineer with proposal permission can select an active destination in the same source/customer/organization and provide a reason. A different authorized administrator reviews it under **Group move approvals**. Requests expire after 24 hours and cannot be approved against changed or stale inventory. **Approval never executes a VSA change by itself.** Where an administrator has enabled execution (see *Executing an approved group move*), an approved proposal can then be executed in VSA X as a separate step.
 
 Final screens and checks: [CODEX_VERIFICATION.md](CODEX_VERIFICATION.md). Existing design targets below may include future capabilities; the remediation backlog explicitly records remaining refinements and gates.
 
@@ -242,4 +242,33 @@ VSA scripts can report values the inventory does not have (for example BitLocker
 super administrator selects such scripts under **Settings → Script collectors** and lists which output variables to
 keep. The values appear on the device page (**Script data**), can be used in compliance baselines ("A value collected
 by a VSA script matches") and in custom reports ("Script results").
+
+## Details from VSA (organisation, site and group custom fields)
+
+Custom fields set on the VSA organisation, its sites and groups (for example contract tier or site contact) appear
+on the customer page as **Details from VSA**, and in custom reports ("VSA custom fields (organisation, site, group)"). Only field
+names approved for that customer under the custom-field allowlist are read and stored; nothing is requested until a
+name is approved.
+
+## Scopes and patch global rules
+
+Super administrators see, under **Automation → Catalog**, every VSA scope with what it matches, how many devices it
+covers and which tasks or workflows use it (scopes used by nothing are flagged), plus the tenant's patch global rules.
+A global software rule counts as third-party patch coverage ("Global rule") for devices that have a patch policy
+assigned. This is configuration only: whether VSA deployed an update is not available from the API.
+
+## Executing an approved group move
+
+When execution is enabled for the VSA X integration, an approved proposal shows **Execute move in VSA X…** under
+**Group move proposals → Review proposal**. Someone other than the requester, with approval permission, confirms the
+move; the portal sends it to VSA X once and then reads the device back:
+
+- **Moved in VSA X** - VSA X accepted it and the device now reports the destination group.
+- **Not confirmed yet** - VSA X accepted it but the device still reported the old group; press **Verify in VSA X** later.
+- **Outcome unknown** - VSA X did not answer clearly. The move is never sent twice; press **Verify in VSA X**.
+- **Not moved** - VSA X refused it, or reading back showed the device still in its old group. Propose again if needed.
+
+Execution is refused when the approval is older than 24 hours, the device has changed group since it was proposed,
+the destination group is no longer active, or the inventory is stale. When execution is not enabled the page says why,
+and the move can still be made manually in VSA X.
 

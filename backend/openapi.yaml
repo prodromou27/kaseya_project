@@ -1965,6 +1965,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Move'
           description: ''
+  /api/v1/customers/{customer_pk}/group-moves/{id}/execute/:
+    post:
+      operationId: customers_group_moves_execute_create
+      description: Send the approved move to VSA X once (gated; see VSA5-EXEC). Re-sending
+        is impossible; use verify.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this group move request.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Move'
+          description: ''
   /api/v1/customers/{customer_pk}/group-moves/{id}/review/:
     post:
       operationId: customers_group_moves_review_create
@@ -1993,6 +2022,35 @@ paths:
             schema:
               $ref: '#/components/schemas/ReviewInput'
         required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Move'
+          description: ''
+  /api/v1/customers/{customer_pk}/group-moves/{id}/verify/:
+    post:
+      operationId: customers_group_moves_verify_create
+      description: Read the device back from VSA X (GET) to confirm an unknown/unconfirmed
+        execution.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this group move request.
+        required: true
+      tags:
+      - customers
       security:
       - sessionAuth: []
       responses:
@@ -4063,6 +4121,29 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/customers/{customer_pk}/scope-custom-fields/:
+    get:
+      operationId: customers_scope_custom_fields_retrieve
+      description: '``/customers/{id}/scope-custom-fields/`` - approved organisation/site/group
+        custom fields (current data).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/script-collectors/:
     get:
       operationId: customers_script_collectors_retrieve
@@ -6233,6 +6314,65 @@ components:
       description: |-
         * `active` - Active
         * `revoked` - Revoked
+    Execution:
+      type: object
+      properties:
+        state:
+          allOf:
+          - $ref: '#/components/schemas/ExecutionStateEnum'
+          readOnly: true
+        executed_by:
+          type: string
+          format: email
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+        finished_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        http_status:
+          type: integer
+          readOnly: true
+          nullable: true
+        error_code:
+          type: string
+          readOnly: true
+        observed_group_id:
+          type: string
+          readOnly: true
+          description: GroupId read back from VSA X.
+        verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - error_code
+      - executed_by
+      - finished_at
+      - http_status
+      - observed_group_id
+      - started_at
+      - state
+      - verified_at
+    ExecutionStateEnum:
+      enum:
+      - sending
+      - succeeded
+      - unverified
+      - unknown
+      - failed
+      type: string
+      description: |-
+        * `sending` - Sending to VSA X
+        * `succeeded` - Moved and confirmed
+        * `unverified` - VSA X accepted; not confirmed yet
+        * `unknown` - Outcome unknown - verify
+        * `failed` - Not moved
     ExpectedPatchPolicy:
       type: object
       properties:
@@ -6557,6 +6697,20 @@ components:
           readOnly: true
         enabled:
           type: boolean
+        group_move_execution_enabled:
+          type: boolean
+          description: Allow approved group moves to be executed in VSA X (super admin,
+            audited).
+        write_credential_ref:
+          type: string
+          writeOnly: true
+          maxLength: 80
+        write_credential_configured:
+          type: boolean
+          readOnly: true
+        group_move_execution_server_enabled:
+          type: boolean
+          readOnly: true
         installed_updates_budget:
           type: integer
           maximum: 3000
@@ -6620,12 +6774,14 @@ components:
       - credential_set_at
       - credential_set_by
       - credential_source
+      - group_move_execution_server_enabled
       - id
       - name
       - provider
       - status
       - updated_at
       - verify_tls
+      - write_credential_configured
     IntegrationInstanceStatusEnum:
       enum:
       - idle
@@ -6954,10 +7110,20 @@ components:
         execution_enabled:
           type: boolean
           readOnly: true
+        execution_blocked_reason:
+          type: string
+          readOnly: true
+        execution:
+          allOf:
+          - $ref: '#/components/schemas/Execution'
+          nullable: true
+          readOnly: true
       required:
       - asset
       - created_at
       - device_name
+      - execution
+      - execution_blocked_reason
       - execution_enabled
       - expired
       - expires_at
@@ -7932,6 +8098,20 @@ components:
           readOnly: true
         enabled:
           type: boolean
+        group_move_execution_enabled:
+          type: boolean
+          description: Allow approved group moves to be executed in VSA X (super admin,
+            audited).
+        write_credential_ref:
+          type: string
+          writeOnly: true
+          maxLength: 80
+        write_credential_configured:
+          type: boolean
+          readOnly: true
+        group_move_execution_server_enabled:
+          type: boolean
+          readOnly: true
         installed_updates_budget:
           type: integer
           maximum: 3000

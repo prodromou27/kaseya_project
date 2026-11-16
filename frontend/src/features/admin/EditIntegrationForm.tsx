@@ -17,6 +17,8 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
     notifications_budget: String(integration.notifications_budget),
     custom_fields_budget: String(integration.custom_fields_budget),
   });
+  const [executeMoves, setExecuteMoves] = useState(Boolean(integration.group_move_execution_enabled));
+  const [writeRef, setWriteRef] = useState("");
   const urlChanged = baseUrl.trim().replace(/\/$/, "") !== integration.base_url;
   const save = useMutation({
     mutationFn: () =>
@@ -25,6 +27,8 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
         base_url: baseUrl.trim(),
         max_rps: maxRps,
         ...Object.fromEntries(Object.entries(budgets).map(([k, v]) => [k, Number(v)])),
+        ...(integration.provider === "vsa_x" ? { group_move_execution_enabled: executeMoves } : {}),
+        ...(writeRef.trim() ? { write_credential_ref: writeRef.trim() } : {}),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["integrations"] });
@@ -63,6 +67,26 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
         <button type="submit" className="btn-primary" disabled={save.isPending}>Save</button>
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
       </div>
+      {integration.provider === "vsa_x" ? (
+        <fieldset className="space-y-2 rounded border border-amber-200 bg-amber-50/50 p-3">
+          <legend className="px-1 text-sm font-semibold">Execute approved group moves in VSA X</legend>
+          <p className="text-xs text-slate-600">
+            The only change the portal can make in VSA X. It needs three things: the server switch
+            (<code>VSA_GROUP_MOVE_EXECUTION_ENABLED</code>, currently <strong>{integration.group_move_execution_server_enabled ? "on" : "off"}</strong>),
+            this switch, and a separate VSA X API token kept as a server secret (<strong>{integration.write_credential_configured ? "configured" : "not configured"}</strong>).
+            Every move still needs an independent approval and is sent once.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={executeMoves} onChange={(e) => setExecuteMoves(e.target.checked)} />
+            Allow approved moves to be executed for this integration
+          </label>
+          {!integration.is_fixture ? (
+            <Field label="Write token reference" hint="Server secret name, e.g. env:VSA_WRITE_PROD (TOKEN_ID:TOKEN_SECRET). Leave empty to keep the current one.">
+              {(id, h) => <input id={id} aria-describedby={h} className="input w-64" pattern="env:VSA_WRITE_[A-Z0-9_]{1,50}" value={writeRef} onChange={(e) => setWriteRef(e.target.value)} />}
+            </Field>
+          ) : null}
+        </fieldset>
+      ) : null}
       {save.isError ? <p role="alert" className="text-sm text-red-700">{describeError(save.error)}</p> : null}
     </form>
   );

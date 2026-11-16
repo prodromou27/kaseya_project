@@ -69,7 +69,7 @@
       "fields_used": "Identifier (GUID, same as asset Identifier), GroupId, GroupName, SiteId, SiteName, OrganizationId, IsAgentInstalled, IsMdmEnrolled"
     },
     "GET /api/v3/devices/:id": {
-      "status": "docs-verified 2026-11-13; not used yet",
+      "status": "docs-verified 2026-11-13; used only to read back a group move (VSA5-EXEC); NOT live-tested",
       "fields": "IsOnline, Uptime (free text), InMaintenance, ExternalIpAddress, notification counts, LocalIpAddresses, ClientVersion, GroupId, ..."
     },
     "GET /api/v3/devices/:id/appliedpolicies": {
@@ -88,7 +88,7 @@
       "fields": "FailedRequestRateLimits[], EndpointRateLimits[{EndpointName, Rules[{Limit, Remaining, PeriodInSeconds, ResetInSeconds}]}]"
     },
     "PUT /api/v3/devices/:deviceId/move": {
-      "status": "docs-verified WRITE route; NOT on the allowlist; disabled (VSA5, BLOCKED_APPROVAL)",
+      "status": "docs-verified WRITE route; never on the read allowlist; used only by the gated writer (VSA5-EXEC, ADR-029), off by default; NOT live-tested",
       "response": "DeviceIdentifier, GroupId, GroupName (docs 2026-11-16)"
     },
     "GET /api/v3/automation/workflows": {
@@ -120,15 +120,15 @@
       "response": "list: Id, StartTime, DurationInSeconds, State; detail: + Endtime, Output, ExitCode, VariableOutputs[Id, Name, Value, DataType]"
     },
     "GET /api/v3/organizations|sites|groups/:id/customfields": {
-      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned CF-02",
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; used by CF-02 (approved names only)",
       "response": "Id, Name, Value (string), Type (Text|Number|Date|Boolean)"
     },
     "GET /api/v3/patchmanagement/globalrules": {
-      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned GR-01",
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; used by GR-01 (CustomField* criterion values not stored)",
       "response": "OsRules[], SoftwareRules[]"
     },
     "GET /api/v3/scopes, /scopes/:id, /scopes/:id/usage": {
-      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; planned GR-01",
+      "status": "docs-verified 2026-11-16 (https://api.vsax.net/, full reference re-read); NOT live-tested; used by GR-01 (CustomField* criterion values not stored)",
       "response": "Id, Name, Description, UpdatedAt, Criteria[Type, Identifier, CustomField*], TotalDevices; usage: UsageContextType (Workflow|Task), ContextItemId"
     },
     "GET /api/v3/environment": {

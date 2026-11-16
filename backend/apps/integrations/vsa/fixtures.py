@@ -68,6 +68,32 @@ DOC_RATE_LIMITS: dict[str, Any] = {
 }
 
 
+# VSA5-EXEC fixture state: (integration id, device id) -> (group id, group name). In-process only (demo/tests); a
+# fixture move is visible to later fixture reads of the same integration so read-back and the next sync agree.
+FIXTURE_MOVES: dict[tuple[str, str], tuple[str, str]] = {}
+
+
+class FixtureWriteTransport:
+    """Answers the single move PUT for a fixture integration. Never touches the network."""
+
+    def __init__(self, instance: Any, status: int = 200):
+        self.instance_id = str(instance.id)
+        self.status = status
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def put(self, url: str, *, json: Mapping[str, Any], headers: Mapping[str, str], auth: Any) -> FakeResponse:
+        path = re.sub(r"^https://[^/]+", "", url)
+        self.calls.append((path, dict(json)))
+        match = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)/move", path)
+        if not match or self.status >= 300:
+            return FakeResponse(self.status if match else 404)
+        group = str(json.get("GroupId"))
+        FIXTURE_MOVES[(self.instance_id, match.group(1))] = (group, f"Group {group}")
+        return FakeResponse(
+            200, {"Data": {"DeviceIdentifier": match.group(1), "GroupId": int(group), "GroupName": f"Group {group}"}}
+        )
+
+
 class FixtureVsaTransport:
     def __init__(
         self,
@@ -102,12 +128,21 @@ class FixtureVsaTransport:
         from .demo_data import demo_tenant
 
         tenant = demo_tenant()
-        return cls(
+        transport = cls(
             tenant["assets"],
             tenant["organizations"],
             patch_policies=tenant.get("patch_policies"),
             automation=tenant.get("automation"),
         )
+        moved = {d: g for (i, d), g in FIXTURE_MOVES.items() if i == str(instance.id)}
+        for device in transport.devices:
+            if str(device.get("Identifier")) in moved:
+                gid, gname = moved[str(device["Identifier"])]
+                device["GroupId"], device["GroupName"] = (
+                    int(gid),
+                    next((str(g.get("Name")) for g in transport.groups if str(g.get("Id")) == gid), gname),
+                )
+        return transport
 
     def _list(self, rows: list[dict[str, Any]], skip: int, top: int, total: bool = True) -> FakeResponse:
         meta: dict[str, Any] = {"ResponseCode": 200}
@@ -168,6 +203,29 @@ class FixtureVsaTransport:
             if params.get("$filter") == "State eq 'Successful'":
                 rows = [r for r in rows if r.get("State") == "Successful"]
             return self._list(rows, skip, min(top, 100))
+        scoped = re.fullmatch(r"/api/v3/(organizations|sites|groups)/([0-9]+)/customfields", path)
+        if scoped:
+            rows = self.automation.get("scope_custom_fields", {}).get(f"{scoped.group(1)}:{scoped.group(2)}", [])
+            return self._list(list(rows), skip, min(top, 100))
+        if path == "/api/v3/patchmanagement/globalrules":
+            rules = self.automation.get("global_rules")
+            return FakeResponse(200, {"Data": rules, "Meta": {"ResponseCode": 200}}) if rules else FakeResponse(404)
+        scope = re.fullmatch(r"/api/v3/scopes/([0-9]+)(/usage)?", path)
+        if scope:
+            found = next((x for x in self.automation.get("scopes", []) if str(x["Id"]) == scope.group(1)), None)
+            if found is None:
+                return FakeResponse(404)
+            if scope.group(2):
+                return self._list(
+                    list(self.automation.get("scope_usage", {}).get(scope.group(1), [])), skip, min(top, 100)
+                )
+            return FakeResponse(200, {"Data": found, "Meta": {"ResponseCode": 200}})
+        if path == "/api/v3/scopes":
+            rows = [
+                {k: v for k, v in x.items() if k in ("Id", "Name", "Description", "UpdatedAt")}
+                for x in self.automation.get("scopes", [])
+            ]
+            return self._list(rows, skip, min(top, 100))
         if path == "/api/v3/automation/scripts":
             return self._list(list(self.automation.get("scripts", [])), skip, min(top, 100))
         execution = re.fullmatch(r"/api/v3/automation/workflows/executions/([0-9]+)", path)
@@ -196,6 +254,10 @@ class FixtureVsaTransport:
                 rows = sorted(dev.get("_Notifications", []), key=lambda r: str(r.get("DateTime")), reverse=True)
                 return self._list(rows, skip, top)
             return self._list(list(dev.get("_CustomFields", [])), skip, min(top, 100))
+        one = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)", path)
+        if one:
+            device = next((d for d in self.devices if str(d.get("Identifier")) == one.group(1)), None)
+            return FakeResponse(200, {"Data": device, "Meta": {"ResponseCode": 200}}) if device else FakeResponse(404)
         applied = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)/appliedpolicies", path)
         if applied:
             asset = next((a for a in self.assets if str(a.get("Identifier")) == applied.group(1)), None)

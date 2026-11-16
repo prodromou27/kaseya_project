@@ -27,4 +27,26 @@ describe("automation", () => {
     await userEvent.click(within(screen.getByRole("table", { name: "Workflows" })).getByRole("button", { name: "Clean temp files" }));
     expect(calls.some((c) => c.url.includes("workflow=501"))).toBe(true);
   });
+
+  it("lists scopes with what uses them and the patch global rules", async () => {
+    mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe({ is_super_admin: true }) },
+      "GET /api/v1/customers/": { body: page([customerA]) },
+      "GET /api/v1/automation/catalog/": { body: {
+        workflows: [], tasks: [], collection: [], task_limitation: "",
+        scopes: [
+          { integration: "VSA", id: "71", name: "All workstations", description: "", criteria: [{ type: "Organization", identifier: "1001" }], total_devices: 118,
+            used_by: [{ type: "Task", id: "601", name: "Weekly maintenance" }] },
+          { integration: "VSA", id: "73", name: "Old scope", description: "", criteria: [], total_devices: 0, used_by: [] },
+        ],
+        global_rules: [{ integration: "VSA", fetched_at: "2026-11-16T08:00:00Z", os_rules: [],
+          software_rules: [{ ProductId: "firefox-x64", ProductName: "Mozilla Firefox", Action: "INSTALL_AND_UPDATE" }] }],
+      } },
+    } as never);
+    renderApp("/automation?tab=catalog");
+    const scopes = await screen.findByRole("table", { name: "Scopes" });
+    expect(scopes).toHaveTextContent("Task: Weekly maintenance");
+    expect(scopes).toHaveTextContent("Not used");
+    expect(screen.getByText("Mozilla Firefox → install and update")).toBeInTheDocument();
+  });
 });

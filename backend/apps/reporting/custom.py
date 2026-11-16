@@ -276,6 +276,34 @@ def _load_script_values(customer: Any, pins: dict[str, Any]) -> list[dict[str, A
     return out
 
 
+def _load_scope_fields(customer: Any, pins: dict[str, Any]) -> list[dict[str, Any]]:
+    from apps.inventory.models import GroupNode, ScopeCustomField, SiteNode
+
+    gens = pins["generation_ids"]
+    names = {
+        ("site", e): n for e, n in SiteNode.objects.filter(generation_id__in=gens).values_list("external_id", "name")
+    }
+    names.update(
+        {
+            ("group", e): n
+            for e, n in GroupNode.objects.filter(generation_id__in=gens).values_list("external_id", "name")
+        }
+    )
+    labels = {"organization": "Organisation", "site": "Site", "group": "Group"}
+    return [
+        {
+            "scope_type": labels[f.scope_type],
+            "scope": names.get(
+                (f.scope_type, f.scope_external_id), customer.name if f.scope_type == "organization" else ""
+            ),
+            "scope_id": f.scope_external_id,
+            "field": f.name,
+            "value": f.value,
+        }
+        for f in ScopeCustomField.objects.filter(customer=customer, generation_id__in=gens)
+    ]
+
+
 def _load_subnets(customer: Any, pins: dict[str, Any]) -> list[dict[str, Any]]:
     from apps.inventory import subnets
 
@@ -466,6 +494,20 @@ SOURCES: dict[str, Source] = {
         ("hostname", "collector", "variable", "value", "executed_at"),
         _load_script_values,
         LIVE_NOTE + " Only administrator-allowlisted script variables are included.",
+    ),
+    "scope_fields": Source(
+        "VSA custom fields (organisation, site, group)",
+        "One row per approved custom field on the organisation, a site or a group.",
+        {
+            "scope_type": F("Level", "enum", ("Organisation", "Site", "Group")),
+            "scope": F("Name"),
+            "scope_id": F("ID"),
+            "field": F("Field"),
+            "value": F("Value"),
+        },
+        ("scope_type", "scope", "field", "value"),
+        _load_scope_fields,
+        "Only custom field names approved for this customer are collected.",
     ),
     "subnets": Source(
         "Subnets",

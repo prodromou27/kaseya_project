@@ -87,8 +87,9 @@ def test_policy_routes_are_get_only_and_exact():
     assert allowed("/api/v3/devices/11-dev-001/appliedpolicies")
     assert allowed("/api/v3/patchmanagement/policies/292")
     assert not allowed("/api/v3/patchmanagement/policies/292/assign")
-    assert not allowed("/api/v3/patchmanagement/globalrules")
-    assert not allowed("/api/v3/devices/11-dev-001/move")
+    assert allowed("/api/v3/patchmanagement/globalrules")  # GR-01: configuration, GET only
+    assert not allowed("/api/v3/patchmanagement/globalrules/1")
+    assert not allowed("/api/v3/devices/11-dev-001/move")  # the move write is never on the read allowlist
 
 
 # ---------------------------------------------------------------- sync collection
@@ -134,7 +135,7 @@ def test_budgeted_collection_states_and_definitions(world, env):  # noqa: F811
     defs = {d.policy_id: d for d in PatchPolicyDefinition.objects.filter(generation_id=r.generation_id)}
     assert set(defs) == {"301", "302"} and defs["301"].status == "collected"
     assert "NotificationSettings" not in defs["301"].general_settings
-    policy_calls = [p for p, _ in t.calls if p.startswith("/api/v3/patchmanagement/")]
+    policy_calls = [p for p, _ in t.calls if p.startswith("/api/v3/patchmanagement/policies")]
     assert sorted(policy_calls) == ["/api/v3/patchmanagement/policies/301", "/api/v3/patchmanagement/policies/302"]
 
 

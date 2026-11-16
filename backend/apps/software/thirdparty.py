@@ -7,7 +7,9 @@ portal *can* state from collected evidence, per installed program on each device
   excluded);
 * patch-rule coverage - whether the device's assigned VSA Patch Management policy (configuration, collected via
   ``appliedpolicies`` + ``patchmanagement/policies/{id}``) contains a SoftwareRule for that program, matched by
-  normalised name.
+  normalised name;
+* tenant-wide patch *global rules* (GR-01, ``patchmanagement/globalrules``): a matching global SoftwareRule also counts
+  as covered for devices that have a patch policy assigned (shown as "Global rule").
 
 "Outdated and not covered by any rule" is the actionable gap. "Covered" means configuration only - whether VSA
 deployed the update is not available from the API and is never implied.
@@ -72,12 +74,35 @@ def _device_policies(
     return devices, definitions
 
 
+def _global_rules(customer_id: Any) -> dict[str, list[tuple[str, str]]]:
+    """asset_id -> parsed global SoftwareRules of that asset's integration (empty when never collected)."""
+    from apps.automation.models import PatchGlobalRules
+    from apps.inventory.models import Asset
+
+    by_instance = {
+        iid: [
+            (normalise(str(r.get("ProductName") or r.get("ProductId") or "")), str(r.get("Action") or ""))
+            for r in rules or []
+            if isinstance(r, dict)
+        ]
+        for iid, rules in PatchGlobalRules.objects.values_list("integration_instance_id", "software_rules")
+    }
+    if not by_instance:
+        return {}
+    return {
+        str(a): by_instance[iid]
+        for a, iid in Asset.objects.filter(customer_id=customer_id).values_list("id", "integration_instance_id")
+        if iid in by_instance
+    }
+
+
 def rows(customer_id: Any) -> list[dict[str, Any]]:
     """One row per installed program per device in the current snapshot."""
     from apps.software.models import ComplianceResult, SoftwareInstallation
 
     gens = list(current_generations(customer_id))
     devices, definitions = _device_policies(customer_id, gens)
+    global_rules = _global_rules(customer_id)
     state_by_install = {
         inst: (state, product, ref)
         for inst, state, product, ref in ComplianceResult.objects.filter(
@@ -111,6 +136,10 @@ def rows(customer_id: Any) -> list[dict[str, Any]]:
                 policy_name = definition["name"]
                 match = next((a for r, a in definition["rules"] if _rule_matches(r, norm)), None)
                 coverage, action = ("covered", match) if match is not None else ("not_covered", "")
+            if coverage != "covered":
+                g = next((a for r, a in global_rules.get(aid, []) if _rule_matches(r, norm)), None)
+                if g is not None:
+                    coverage, action, policy_name = "covered", g, "Global rule"
         host, gid, gname = hosts.get(aid, ("", "", ""))
         out.append(
             {

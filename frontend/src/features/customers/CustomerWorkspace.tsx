@@ -10,6 +10,7 @@ import { CAP, type Customer, type DatasetStatus, type HealthSummary, type OsUpda
 
 type ComplianceOverview = { baselines: { id: string; name: string; score_pct: number | null; devices_in_scope: number; totals: Record<"pass" | "fail" | "unknown", number> }[] };
 type ThirdParty = { totals: { outdated: number; outdated_not_covered: number; outdated_no_policy: number; outdated_covered: number } };
+type ScopeFields = { scope_type: "organization" | "site" | "group"; scope_external_id: string; scope_name: string; fields: { name: string; value: string; type: string }[] }[];
 type Subnets = { subnets: number; by_status: { unassigned: number }; mixed_groups: number; devices_outside_expected: number };
 
 const sum = (r: Record<string, number> | undefined, keys: string[]) => (r ? keys.reduce((n, k) => n + (r[k] ?? 0), 0) : null);
@@ -51,6 +52,7 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
   const compliance = useQuery({ queryKey: ["compliance", id, "overview"], queryFn: ({ signal }) => api.get<ComplianceOverview>(`/customers/${id}/compliance-baselines/overview/`, undefined, signal) });
   const thirdParty = useQuery({ queryKey: ["software", id, "third-party", "", true], queryFn: ({ signal }) => api.get<ThirdParty>(`/customers/${id}/software/third-party/`, { outdated: "true" }, signal) });
   const subnets = useQuery({ queryKey: ["subnets", id, "", false, false, ""], queryFn: ({ signal }) => api.get<Subnets>(`/customers/${id}/subnets/`, undefined, signal) });
+  const scopeFields = useQuery({ queryKey: ["scope-custom-fields", id], queryFn: ({ signal }) => api.get<ScopeFields>(`/customers/${id}/scope-custom-fields/`, undefined, signal) });
   const datasets = useQuery({ queryKey: ["datasets", id], queryFn: ({ signal }) => api.get<DatasetStatus[]>(`/customers/${id}/datasets/`, undefined, signal) });
   const qc = useQueryClient();
   const scorecard = useMutation({
@@ -101,6 +103,16 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
           <Line pending={subnets.isPending} customer={customer} label="Not in an approved subnet" value={sn?.by_status.unassigned ?? null} attention={(sn?.by_status.unassigned ?? 0) > 0} to="/groups?view=subnets" />
           <Line pending={subnets.isPending} customer={customer} label="Devices outside approved scope" value={sn?.devices_outside_expected ?? null} attention={(sn?.devices_outside_expected ?? 0) > 0} to="/groups?view=subnets" />
         </Card>
+        {scopeFields.data?.length ? (
+          <Card title="Details from VSA" footer={<span className="text-slate-500">Custom fields approved for this customer (organisation, sites, groups).</span>}>
+            {scopeFields.data.map((scope) => (
+              <div key={`${scope.scope_type}-${scope.scope_external_id}`}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{scope.scope_type === "organization" ? "Organisation" : scope.scope_type === "site" ? `Site ${scope.scope_name}` : `Group ${scope.scope_name}`}</p>
+                {scope.fields.map((f) => <div key={f.name} className="flex items-baseline justify-between gap-3"><span className="text-slate-600">{f.name}</span><span className="font-medium text-slate-900">{f.value || "—"}</span></div>)}
+              </div>
+            ))}
+          </Card>
+        ) : null}
         <Card title="Data sources">
           {datasets.data?.length ? datasets.data.map((d) => (
             <div key={d.mapping_id} className="flex flex-wrap items-center justify-between gap-2">

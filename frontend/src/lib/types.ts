@@ -72,6 +72,10 @@ export type Integration = {
   credential_set_at: string | null;
   credential_set_by: string | null;
   enabled: boolean;
+  /** VSA5-EXEC: approved group moves may be executed (also needs the server switch and a write token). */
+  group_move_execution_enabled?: boolean;
+  write_credential_configured?: boolean;
+  group_move_execution_server_enabled?: boolean;
   verify_tls: boolean;
   max_rps: string;
   installed_updates_budget: number;

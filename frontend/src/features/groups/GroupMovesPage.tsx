@@ -18,10 +18,24 @@ type Proposal = {
   id: string; asset: string; device_name: string; source_group_name: string;
   target_group_name: string; target_group_external_id: string; reason: string; policy_impact: string;
   state: "pending" | "approved" | "rejected"; requested_by: string; reviewed_by: string | null;
-  review_reason: string; created_at: string; expires_at: string; expired: boolean; execution_enabled: false;
+  review_reason: string; created_at: string; expires_at: string; expired: boolean;
+  execution_enabled: boolean; execution_blocked_reason: string; execution: Execution | null;
+};
+type ExecutionState = "sending" | "succeeded" | "unverified" | "unknown" | "failed";
+type Execution = {
+  state: ExecutionState; executed_by: string; started_at: string; finished_at: string | null;
+  http_status: number | null; error_code: string; observed_group_id: string; verified_at: string | null;
+};
+
+const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "warn" | "bad" | "neutral"; help: string }> = {
+  sending: { label: "Sending", tone: "neutral", help: "The move is being sent to VSA X." },
+  succeeded: { label: "Moved in VSA X", tone: "good", help: "VSA X accepted the move and reading the device back confirmed the new group." },
+  unverified: { label: "Not confirmed yet", tone: "warn", help: "VSA X accepted the move but the device still reported its old group. Verify again in a few minutes." },
+  unknown: { label: "Outcome unknown", tone: "warn", help: "VSA X did not answer clearly. The move is never sent twice; use Verify to read the device back." },
+  failed: { label: "Not moved", tone: "bad", help: "The device was not moved. Submit a new proposal if it is still needed." },
 };
 type MoveOptions = {
-  source_group: string; policy_impact: string; execution_enabled: false;
+  source_group: string; policy_impact: string; execution_enabled: boolean;
   source_is_onboarding: boolean; suggestion_note: string; suggestions_ambiguous: boolean;
   suggestions: GroupSuggestion[];
   groups: { id: string; name: string; external_id: string; site: string }[];
@@ -92,7 +106,44 @@ function Review({ proposal, customer }: { proposal: Proposal; customer: Customer
       </form>
     ) : proposal.state === "pending" ? <p className="text-xs text-slate-500">A different authorized administrator must review this proposal.</p> : null}
     {decision.isError ? <p role="alert" className="text-sm text-red-700">{describeError(decision.error)}</p> : null}
+    {proposal.state === "approved" ? <ExecutionPanel proposal={proposal} customer={customer} /> : null}
   </div>;
+}
+
+function ExecutionPanel({ proposal, customer }: { proposal: Proposal; customer: Customer }) {
+  const me = useMe();
+  const qc = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const run = useMutation({
+    mutationFn: (step: "execute" | "verify") => api.post<Proposal>(`/customers/${customer.id}/group-moves/${proposal.id}/${step}/`, {}),
+    onSettled: () => { setConfirming(false); void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] }); },
+  });
+  const canApprove = customer.my_capabilities.includes("customer.group_move.approve");
+  const ex = proposal.execution;
+  return <section aria-label="Execute in VSA X" className="space-y-2 border-t border-slate-200 pt-3">
+    <h3 className="text-sm font-semibold">Execute in VSA X</h3>
+    {ex ? (
+      <div className="space-y-1 text-sm">
+        <p><Badge tone={EXECUTION_TEXT[ex.state].tone}>{EXECUTION_TEXT[ex.state].label}</Badge> <span className="text-xs text-slate-500">by {ex.executed_by} · {formatUtc(ex.started_at)}{ex.http_status ? ` · HTTP ${ex.http_status}` : ""}</span></p>
+        <p className="text-xs text-slate-600">{EXECUTION_TEXT[ex.state].help}</p>
+        {ex.observed_group_id ? <p className="text-xs text-slate-500">Group reported by VSA X: ID {ex.observed_group_id}{ex.verified_at ? ` (read ${formatUtc(ex.verified_at)})` : ""}</p> : null}
+        {["unknown", "unverified", "sending"].includes(ex.state) && canApprove ? <button type="button" className="btn-secondary" disabled={run.isPending} onClick={() => run.mutate("verify")}>Verify in VSA X</button> : null}
+      </div>
+    ) : proposal.execution_enabled ? (
+      canApprove && me.email !== proposal.requested_by ? (
+        confirming ? (
+          <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="group" aria-label="Confirm move">
+            <p>Move <strong>{proposal.device_name}</strong> from <strong>{proposal.source_group_name}</strong> to <strong>{proposal.target_group_name}</strong> (ID {proposal.target_group_external_id}) in VSA X now? Policies inherited from the new group apply to the device. This is sent once and cannot be undone from the portal.</p>
+            <div className="flex gap-2">
+              <button type="button" className="btn-danger" disabled={run.isPending} onClick={() => run.mutate("execute")}>Move device in VSA X</button>
+              <button type="button" className="btn-secondary" disabled={run.isPending} onClick={() => setConfirming(false)}>Cancel</button>
+            </div>
+          </div>
+        ) : <button type="button" className="btn-primary" onClick={() => setConfirming(true)}>Execute move in VSA X…</button>
+      ) : <p className="text-xs text-slate-500">An administrator other than the requester can execute this approved move.</p>
+    ) : <p className="text-xs text-slate-500">{proposal.execution_blocked_reason || "Execution is not available."} The move can be made manually in VSA X.</p>}
+    {run.isError ? <p role="alert" className="text-sm text-red-700">{describeError(run.error)}</p> : null}
+  </section>;
 }
 
 function Requests({ customer }: { customer: Customer }) {
@@ -102,12 +153,13 @@ function Requests({ customer }: { customer: Customer }) {
   const selected = query.data?.results.find((proposal) => proposal.id === open);
   return <QueryBoundary query={query}>{(data) => <div className="space-y-4">
     <DataTable caption="Group move proposals" rows={data.results} total={data.count} page={page} onPageChange={setPage} getRowId={(row) => row.id}
-      emptyTitle="No group changes have been proposed." emptyHint="Open a device's Operations tab to propose a change. Execution remains disabled."
+      emptyTitle="No group changes have been proposed." emptyHint="Open a device's Operations tab to propose a change."
       columns={[
         { header: "Device", cell: ({ row }) => <Link className="font-medium text-sky-800 underline" to={`/assets/${row.original.asset}`}>{row.original.device_name}</Link> },
         { header: "From", accessorKey: "source_group_name" }, { header: "To", accessorKey: "target_group_name" },
         { header: "Proposed by", accessorKey: "requested_by" },
         { header: "State", cell: ({ row }) => <Badge tone={row.original.expired && row.original.state === "pending" ? "warn" : "neutral"}>{row.original.expired && row.original.state === "pending" ? "expired" : row.original.state}</Badge> },
+        { header: "In VSA X", cell: ({ row }) => row.original.execution ? <Badge tone={EXECUTION_TEXT[row.original.execution.state].tone}>{EXECUTION_TEXT[row.original.execution.state].label}</Badge> : <span className="text-xs text-slate-500">—</span> },
         { header: "Review", cell: ({ row }) => <button type="button" className="btn-secondary" aria-expanded={open === row.original.id} onClick={() => setOpen(open === row.original.id ? null : row.original.id)}>Review proposal</button> },
       ]} />
     {selected ? <section className="investigation-card" aria-label="Selected group move proposal"><Review key={selected.id} proposal={selected} customer={customer} /></section> : null}
@@ -117,7 +169,7 @@ function Requests({ customer }: { customer: Customer }) {
 export function GroupMovesPage() {
   const { selected } = useCustomers();
   return <>
-    <PageHeader title="Group move proposals" subtitle="Customer-scoped requests and independent approvals. Vendor execution is disabled." />
+    <PageHeader title="Group move proposals" subtitle="Customer-scoped requests and independent approvals. Approved moves can be executed in VSA X only where an administrator enabled it." />
     {!selected ? <SelectCustomer /> : <Requests key={selected.id} customer={selected} />}
   </>;
 }

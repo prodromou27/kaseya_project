@@ -28,6 +28,8 @@ ALLOWED_PATHS = [
     re.compile(r"/api/v3/devices"),
     # VSA3-04 (docs-verified 2026-11-13): per-device applied policies and patch policy configuration. GET only.
     re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/appliedpolicies"),
+    # VSA5-EXEC read-back (docs-verified 2026-11-13): one device, to confirm a move. GET only.
+    re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}"),
     re.compile(r"/api/v3/patchmanagement/policies/[0-9]{1,18}"),
     # VSA1-01 connection test (docs-verified 2026-11-13): read-only rate-limit status for the token.
     re.compile(r"/api/v3/ratelimits"),
@@ -43,6 +45,13 @@ ALLOWED_PATHS = [
     re.compile(r"/api/v3/automation/tasks"),
     # SCR-01 (docs-verified 2026-11-16): script catalog and per-device script results (VariableOutputs).
     re.compile(r"/api/v3/automation/scripts"),
+    # GR-01 (docs-verified 2026-11-16): patch global rules and automation scopes.
+    re.compile(r"/api/v3/patchmanagement/globalrules"),
+    re.compile(r"/api/v3/scopes"),
+    re.compile(r"/api/v3/scopes/[0-9]{1,18}"),
+    re.compile(r"/api/v3/scopes/[0-9]{1,18}/usage"),
+    # CF-02 (docs-verified 2026-11-16): organisation/site/group custom field values.
+    re.compile(r"/api/v3/(organizations|sites|groups)/[0-9]{1,18}/customfields"),
     re.compile(r"/api/v3/automation/scripts/[A-Za-z0-9-]{1,64}/device/[A-Za-z0-9-]{1,64}/executions"),
     re.compile(
         r"/api/v3/automation/scripts/[A-Za-z0-9-]{1,64}/device/[A-Za-z0-9-]{1,64}/executions/[A-Za-z0-9-]{1,64}"
@@ -211,6 +220,49 @@ class VsaXAdapter:
         return self.client.get_json(
             f"/api/v3/automation/workflows/executions/{execution_id}", {}, max_retries=DETAIL_RETRIES
         ).json
+
+    def list_scope_custom_fields(self, scope: str, scope_id: str) -> list[dict[str, Any]]:
+        """``GET /api/v3/{organizations|sites|groups}/:id/customfields`` -> [{Id, Name, Value, Type}]."""
+        if scope not in ("organizations", "sites", "groups") or not _ORG_ID.fullmatch(scope_id or ""):
+            raise ValueError("Unsafe scope.")
+        rows: list[dict[str, Any]] = []
+        for page in self._paged(
+            f"/api/v3/{scope}/{scope_id}/customfields", {}, 100, max_pages=10, max_retries=DETAIL_RETRIES
+        ):
+            rows.extend(page.records)
+        return rows
+
+    def get_device_group(self, device_id: str) -> tuple[str, str]:
+        """``GET /api/v3/devices/{id}`` -> (GroupId, GroupName), used only to read back a group move."""
+        if not re.fullmatch(r"[A-Za-z0-9-]{1,64}", device_id or ""):
+            raise ValueError("Unsafe device identifier.")
+        data = (self.client.get_json(f"/api/v3/devices/{device_id}", {}, max_retries=DETAIL_RETRIES).json or {}).get(
+            "Data"
+        ) or {}
+        return str(data.get("GroupId") or "")[:20], str(data.get("GroupName") or "")[:255]
+
+    def get_global_rules(self) -> Any:
+        """``GET /api/v3/patchmanagement/globalrules`` -> {Data: {OsRules: [], SoftwareRules: []}} (configuration)."""
+        return self.client.get_json("/api/v3/patchmanagement/globalrules", {}, max_retries=DETAIL_RETRIES).json
+
+    def list_scopes(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for page in self._paged("/api/v3/scopes", {}, 100, max_pages=10):
+            rows.extend(page.records)
+        return rows
+
+    def get_scope(self, scope_id: str) -> Any:
+        if not _ORG_ID.fullmatch(scope_id or ""):
+            raise ValueError("Unsafe scope identifier.")
+        return self.client.get_json(f"/api/v3/scopes/{scope_id}", {}, max_retries=DETAIL_RETRIES).json
+
+    def get_scope_usage(self, scope_id: str) -> list[dict[str, Any]]:
+        if not _ORG_ID.fullmatch(scope_id or ""):
+            raise ValueError("Unsafe scope identifier.")
+        rows: list[dict[str, Any]] = []
+        for page in self._paged(f"/api/v3/scopes/{scope_id}/usage", {}, 100, max_pages=5, max_retries=DETAIL_RETRIES):
+            rows.extend(page.records)
+        return rows
 
     def list_scripts(self) -> list[dict[str, Any]]:
         """``GET /api/v3/automation/scripts`` - tenant-wide script catalog (names only; bodies are not requested)."""

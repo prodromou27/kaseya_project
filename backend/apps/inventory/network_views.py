@@ -222,3 +222,40 @@ class CustomerCleanupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
                 "results": shown,
             }
         )
+
+
+class CustomerScopeFieldsViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
+    """``/customers/{id}/scope-custom-fields/`` - approved organisation/site/group custom fields (current data)."""
+
+    customer_capability = Cap.CUSTOMER_READ
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        from .models import ScopeCustomField
+
+        customer = self.get_customer()
+        gens = list(current_generations(customer.id))
+        names = {
+            ("site", s): n for s, n in SiteNode.objects.filter(generation__in=gens).values_list("external_id", "name")
+        }
+        names.update(
+            {
+                ("group", g): n
+                for g, n in GroupNode.objects.filter(generation__in=gens).values_list("external_id", "name")
+            }
+        )
+        scopes: dict[tuple[str, str], dict[str, Any]] = {}
+        for f in ScopeCustomField.objects.filter(customer=customer, generation__in=gens):
+            key = (f.scope_type, f.scope_external_id)
+            entry = scopes.setdefault(
+                key,
+                {
+                    "scope_type": f.scope_type,
+                    "scope_external_id": f.scope_external_id,
+                    "scope_name": names.get(key, customer.name if f.scope_type == "organization" else ""),
+                    "fields": [],
+                },
+            )
+            entry["fields"].append({"name": f.name, "value": f.value, "type": f.type})
+        order = {"organization": 0, "site": 1, "group": 2}
+        return Response(sorted(scopes.values(), key=lambda s: (order[s["scope_type"]], s["scope_name"].casefold())))

@@ -503,6 +503,51 @@ def _automation(rng: random.Random, assets: list[dict[str, Any]]) -> dict[str, A
         "execution_details": details,
         "scripts": scripts,
         "script_runs": script_runs,
+        "global_rules": {
+            "OsRules": [
+                {"Field": "SEVERITY", "Operator": "CONTAINS", "Severity": "CRITICAL", "Action": "APPROVE_AND_INSTALL"}
+            ],
+            "SoftwareRules": [
+                {"ProductId": "firefox-x64", "ProductName": "Mozilla Firefox", "Action": "INSTALL_AND_UPDATE"}
+            ],
+        },
+        "scopes": [
+            {
+                "Id": 71,
+                "Name": "DEMO All workstations",
+                "Description": "fixture",
+                "UpdatedAt": "2026-10-01T08:00:00Z",
+                "Criteria": [
+                    {"Type": "Organization", "Identifier": "1001"},
+                    {"Type": "Description contains", "Identifier": "WS"},
+                ],
+                "TotalDevices": 118,
+            },
+            {
+                "Id": 72,
+                "Name": "DEMO Servers",
+                "Description": "fixture",
+                "UpdatedAt": "2026-10-01T08:00:00Z",
+                "Criteria": [{"Type": "Group", "Identifier": "20012"}],
+                "TotalDevices": 12,
+            },
+        ],
+        "scope_usage": {
+            "71": [
+                {"UsageContextType": "Task", "ContextItemId": 601},
+                {"UsageContextType": "Workflow", "ContextItemId": 501},
+            ],
+            "72": [{"UsageContextType": "Task", "ContextItemId": 602}],
+        },
+        # CF-02: organisation/site custom fields (the credential-like one must never be stored).
+        "scope_custom_fields": {
+            "organizations:1001": [
+                {"Id": 11, "Name": "Contract tier", "Value": "Gold (fixture)", "Type": "Text"},
+                {"Id": 12, "Name": "SLA response hours", "Value": "8", "Type": "Number"},
+                {"Id": 13, "Name": "Admin password", "Value": "never-stored-fixture", "Type": "Text"},
+            ],
+            "sites:2001": [{"Id": 21, "Name": "Site contact", "Value": "Front desk (fixture)", "Type": "Text"}],
+        },
     }
 
 

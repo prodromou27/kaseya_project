@@ -125,6 +125,24 @@ def check_resolved_addresses(host: str, provider: str, resolver: Resolver) -> No
             raise EgressBlocked("Destination resolves to an unapproved private address.")
 
 
+def check_egress(base_url: str, provider: str, *, is_fixture: bool, resolver: Resolver) -> None:
+    """Egress policy shared by the read-only client and the gated VSA5 move writer."""
+    host = urlsplit(base_url).hostname or ""
+    if is_fixture:
+        if not host.endswith(".invalid"):
+            raise EgressBlocked("Fixture instance with a non-.invalid host.")
+        return
+    try:
+        validate_connector_base_url(base_url, provider)
+    except ValidationError as exc:
+        raise EgressBlocked("Base URL is no longer on the egress allowlist.") from exc
+    try:
+        ipaddress.ip_address(host)
+        return  # IP literal already validated against approved CIDRs by the URL policy
+    except ValueError:
+        check_resolved_addresses(host, provider, resolver)
+
+
 class ReadOnlyHttpClient:
     def __init__(
         self,
@@ -159,20 +177,7 @@ class ReadOnlyHttpClient:
 
     # -- policy -----------------------------------------------------------------------------------
     def _check_egress(self) -> None:
-        host = urlsplit(self.base_url).hostname or ""
-        if self.is_fixture:
-            if not host.endswith(".invalid"):
-                raise EgressBlocked("Fixture instance with a non-.invalid host.")
-            return
-        try:
-            validate_connector_base_url(self.base_url, self.provider)
-        except ValidationError as exc:
-            raise EgressBlocked("Base URL is no longer on the egress allowlist.") from exc
-        try:
-            ipaddress.ip_address(host)
-            return  # IP literal already validated against approved CIDRs by the URL policy
-        except ValueError:
-            check_resolved_addresses(host, self.provider, self.resolver)
+        check_egress(self.base_url, self.provider, is_fixture=self.is_fixture, resolver=self.resolver)
 
     def _check_path(self, path: str) -> None:
         if not path.startswith("/") or ".." in path or "//" in path:

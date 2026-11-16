@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -49,6 +50,10 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
     credential_configured = serializers.SerializerMethodField()
     credential_source = serializers.SerializerMethodField()
     credential_set_by = serializers.SerializerMethodField()
+    # VSA5-EXEC: the write token reference is write-only; responses only say whether one is set.
+    write_credential_ref = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=80)
+    write_credential_configured = serializers.SerializerMethodField()
+    group_move_execution_server_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = IntegrationInstance
@@ -64,6 +69,10 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "credential_set_at",
             "credential_set_by",
             "enabled",
+            "group_move_execution_enabled",
+            "write_credential_ref",
+            "write_credential_configured",
+            "group_move_execution_server_enabled",
             "installed_updates_budget",
             "applied_policies_budget",
             "notifications_budget",
@@ -90,6 +99,12 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
 
     def get_credential_configured(self, obj: IntegrationInstance) -> bool:
         return bool(obj.credential_ref or obj.credential_ciphertext)
+
+    def get_write_credential_configured(self, obj: IntegrationInstance) -> bool:
+        return bool(obj.write_credential_ref)
+
+    def get_group_move_execution_server_enabled(self, obj: IntegrationInstance) -> bool:
+        return bool(getattr(settings, "VSA_GROUP_MOVE_EXECUTION_ENABLED", False))
 
     def get_credential_source(self, obj: IntegrationInstance) -> str:
         """``portal`` (entered in the portal, encrypted), ``server`` (env/file reference) or ``none``."""
@@ -160,6 +175,10 @@ class IntegrationInstanceViewSet(
             SyncSchedule.objects.filter(
                 mapping__integration_instance=inst, mapping__mapping_status="approved", enabled=True
             ).update(next_run_at=timezone.now())
+        if inst.base_url != old_url and inst.group_move_execution_enabled:
+            # A new server must be re-approved for writes.
+            inst.group_move_execution_enabled = False
+            inst.save(update_fields=["group_move_execution_enabled"])
         if inst.base_url != old_url and inst.credential_ciphertext:
             # Never send a token entered for one server to another: the admin must enter it again.
             _clear_portal_credential(inst)

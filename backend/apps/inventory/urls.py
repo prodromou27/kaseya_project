@@ -22,6 +22,7 @@ nested.register("changes", changes_views.CustomerChangesViewSet, basename="custo
 nested.register("expected-subnets", network_views.ExpectedSubnetViewSet, basename="customer-expected-subnet")
 nested.register("subnets", network_views.CustomerSubnetViewSet, basename="customer-subnet")
 nested.register("cleanup", network_views.CustomerCleanupViewSet, basename="customer-cleanup")
+nested.register("scope-custom-fields", network_views.CustomerScopeFieldsViewSet, basename="customer-scope-fields")
 nested.register("group-moves", move_views.GroupMoveViewSet, basename="customer-group-move")
 
 urlpatterns = [

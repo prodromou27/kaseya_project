@@ -150,9 +150,9 @@ fixture-verified only (no live VSA X validation).
 - [x] **CRM-05** All-customers overview: customers side by side (health, updates, software, compliance, freshness), sorting, CSV, drill-down. Commit 5f79092.
 - [x] **AUT-01** Automation health: workflow results per customer device, task/workflow catalog, workflow-failure alerts. *Limitation: scheduled task runs are not listable read-only.*
 - [x] **SCR-01** Script collectors: allowlisted script output variables per device, device tab, compliance rule, report source.
-- [ ] **CF-02** Organisation/site/group custom fields (allowlisted) on customer, site and group views and in reports.
-- [ ] **GR-01** Patch global rules (count toward third-party coverage) and scopes (criteria, device count, used by).
-- [ ] **VSA5-EXEC** Approved group moves executed in VSA X (gated: feature flag off, separate write token, approval, read-back).
+- [x] **CF-02** Organisation/site/group custom fields (allowlisted names only) on the customer page (organisation, each site and group) and in custom reports.
+- [x] **GR-01** Patch global rules (count toward third-party coverage) and scopes (criteria, device count, used by).
+- [x] **VSA5-EXEC** Approved group moves executed in VSA X (gated: feature flag off, separate write token, approval, read-back).
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
 
 Still open from earlier phases (unchanged, external): VSA0-02/P0-02 host boot evidence, VSAP-01 vault (Entra dropped, DEC-03), VSAP-02 backup/restore drill on the host, VSAP-04 live pilot, VSAP-05 acceptance, VSA3-06 mail delivery (DEC-09), VSA5 group-move execution (gated, disabled), P3/P4 IT Glue/Autotask (out of Phase 1 scope, DEC-05).

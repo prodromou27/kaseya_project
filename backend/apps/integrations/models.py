@@ -43,6 +43,16 @@ class IntegrationInstance(models.Model):
         help_text="Name of the secret in the approved secret store, e.g. 'vault:kv/portal/vsa-prod'.",
     )
     enabled = models.BooleanField(default=False)
+    # VSA5-EXEC: both are needed in addition to the server switch VSA_GROUP_MOVE_EXECUTION_ENABLED.
+    group_move_execution_enabled = models.BooleanField(
+        default=False, help_text="Allow approved group moves to be executed in VSA X (super admin, audited)."
+    )
+    write_credential_ref = models.CharField(
+        max_length=80,
+        blank=True,
+        validators=[RegexValidator(r"^(env:VSA_WRITE_[A-Z0-9_]{1,50})?$", "Use env:VSA_WRITE_<NAME> (server secret).")],
+        help_text="Separate VSA X write token (TOKEN_ID:TOKEN_SECRET) as a server secret reference; never stored here.",
+    )
     verify_tls = models.BooleanField(default=True, editable=False)
     max_rps = models.DecimalField(
         max_digits=6,

@@ -236,6 +236,10 @@ SYNC_REQUEUE_AFTER_MINUTES = env_int("SYNC_REQUEUE_AFTER_MINUTES", 10)
 DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
 # SCR-01: device x script-collector pairs read per sync (2 GET calls each); oldest values first.
 SCRIPT_RESULTS_BUDGET = env_int("SCRIPT_RESULTS_BUDGET", 200)
+# VSA5-EXEC: server switch for executing approved group moves in VSA X (the only vendor write). Off unless set.
+VSA_GROUP_MOVE_EXECUTION_ENABLED = env_bool("VSA_GROUP_MOVE_EXECUTION_ENABLED", default=False)
+# An approval older than this cannot be executed; a new proposal against fresh inventory is needed.
+GROUP_MOVE_EXECUTION_WINDOW_HOURS = env_int("GROUP_MOVE_EXECUTION_WINDOW_HOURS", 24)
 # Two-person approval for catalog, lifecycle, thresholds, subnets, patch baselines and custom fields. Off by default
 # so a single administrator can approve their own changes (always audited). Set REQUIRE_SECOND_APPROVER=true to require
 # a different approver. CATALOG_REQUIRE_SEPARATE_REVIEWER is the older name and is still honoured.

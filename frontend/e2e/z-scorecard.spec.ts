@@ -16,7 +16,8 @@ test("a customer admin produces the monthly scorecard from the customer summary"
   await page.getByRole("link", { name: /DEMO-A/ }).first().click();
   await expect(page.getByRole("tab", { name: "Summary", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: "Monthly scorecard (PDF)" }).click();
-  await expect(page.getByRole("status")).toContainText("Scorecard requested");
+  // With eager Celery (E2E) the PDF renders inside the request, so allow for a slow answer.
+  await expect(page.getByRole("status")).toContainText("Scorecard requested", { timeout: 30_000 });
   const recent = page.getByRole("region", { name: "Recent reports" });
   await expect(recent.getByRole("link", { name: /Customer scorecard/ })).toBeVisible({ timeout: 30_000 });
 });

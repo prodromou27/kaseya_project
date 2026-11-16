@@ -186,3 +186,51 @@ def collect_hierarchy(run: Any, generation: Any, adapter: Any) -> None:
         generation.device_list_count = len(devices) if device_total is None else device_total
         generation.devices_without_asset = len(devices) - matched
         generation.save(update_fields=["hierarchy_status", "device_list_count", "devices_without_asset"])
+
+
+SCOPE_FIELD_CALL_CAP = 300
+
+
+def collect_scope_custom_fields(run: Any, generation: Any, adapter: Any) -> int:
+    """CF-02: approved organisation/site/group custom fields. No calls at all unless the customer approved names.
+    Best-effort: errors leave the fields empty for this generation; the published inventory is unaffected."""
+    from .details import approved_field_keys
+    from .models import GroupNode, ScopeCustomField, SiteNode
+
+    approved = approved_field_keys(run.customer_id)
+    if not approved:
+        return 0
+    scopes = [("organizations", "organization", run.mapping.external_org_id)]
+    scopes += [
+        ("sites", "site", s)
+        for s in SiteNode.objects.filter(generation=generation).values_list("external_id", flat=True)
+    ]
+    scopes += [
+        ("groups", "group", g)
+        for g in GroupNode.objects.filter(generation=generation).values_list("external_id", flat=True)
+    ]
+    rows, calls = [], 0
+    for route, scope_type, scope_id in scopes[:SCOPE_FIELD_CALL_CAP]:
+        calls += 1
+        try:
+            items = adapter.list_scope_custom_fields(route, str(scope_id))
+        except Exception:  # one scope failing must not stop the others; the field stays absent
+            logger.warning("scope_custom_fields_unavailable", extra={"scope": scope_type, "scope_id": str(scope_id)})
+            continue
+        for item in items:
+            name = str(item.get("Name") or "")[:120]
+            if name.casefold() in approved:
+                rows.append(
+                    ScopeCustomField(
+                        generation=generation,
+                        customer_id=run.customer_id,
+                        scope_type=scope_type,
+                        scope_external_id=str(scope_id)[:20],
+                        name=name,
+                        value=str(item.get("Value") or "")[:500],
+                        type=str(item.get("Type") or "")[:16],
+                    )
+                )
+    ScopeCustomField.objects.filter(generation=generation).delete()
+    ScopeCustomField.objects.bulk_create(rows)
+    return calls

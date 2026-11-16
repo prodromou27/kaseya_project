@@ -30,6 +30,7 @@ Trust boundaries: user/browser ↔ portal; portal ↔ IdP; portal ↔ workers/st
 - Resolve DNS safely, block unsafe redirects/destination IPs unless explicitly approved, and reject URL userinfo, unusual schemes and TLS bypass.
 - Require certificate validation against trusted CA; install internal CA into containers if needed; do not use `verify=False` or `curl -k`.
 - Integrations use read-only access with least privilege. Where vendor token privileges cannot be restricted, limit network egress and exposed query fields; record residual risk.
+- **Single exception (ADR-029, VSA5-EXEC):** executing an *approved* VSA X group move (`PUT /api/v3/devices/{id}/move`). It lives in its own module (`apps/integrations/vsa/writer.py`), never in the read client, and is off unless all three are set: server switch `VSA_GROUP_MOVE_EXECUTION_ENABLED=true`, the integration's "execute approved moves" switch (super admin, audited, cleared when the base URL changes) and a separate write token referenced as `env:VSA_WRITE_<NAME>` (Docker secret; refused if it is the read token). One attempt per proposal, committed before sending; no retries; timeouts/5xx are recorded as unknown and resolved only by reading the device back. Use a VSA X token whose permissions are limited to device moves where VSA X allows it.
 
 ## 4. Web/API protections
 

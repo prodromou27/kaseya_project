@@ -41,7 +41,7 @@ def test_propose_independent_review_and_safe_replay(world, synced):  # noqa: F81
     assert reviewer.post(url, decision).status_code == 200
     assert reviewer.post(url, decision).status_code == 200
     assert AuditEvent.objects.filter(action="group_move.approved", customer=world.customer_a).count() == 1
-    assert reviewer.post(f"{base(world.customer_a)}{proposal['id']}/execute/").status_code == 404
+    assert reviewer.post(f"{base(world.customer_a)}{proposal['id']}/execute/").status_code == 400  # switched off
     assert GroupMoveRequest.objects.get(pk=proposal["id"]).state == "approved"
 
 

@@ -52,6 +52,36 @@ class GroupMoveRequest(models.Model):
         return f"Group move proposal {self.id} ({self.state})"
 
 
+class GroupMoveExecution(models.Model):
+    """VSA5-EXEC: the single attempt to execute an approved move in VSA X. One per proposal (no second PUT).
+
+    ``sending`` is committed *before* the request, so a crash mid-request leaves a visible unknown outcome instead of a
+    silent retry. ``unknown``/``unverified`` are resolved only by reading the device back, never by sending again.
+    """
+
+    class State(models.TextChoices):
+        SENDING = "sending", "Sending to VSA X"
+        SUCCEEDED = "succeeded", "Moved and confirmed"
+        UNVERIFIED = "unverified", "VSA X accepted; not confirmed yet"
+        UNKNOWN = "unknown", "Outcome unknown - verify"
+        FAILED = "failed", "Not moved"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    proposal = models.OneToOneField(GroupMoveRequest, on_delete=models.PROTECT, related_name="execution")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    executed_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="+")
+    state = models.CharField(max_length=16, choices=State.choices, default=State.SENDING)
+    started_at = models.DateTimeField()
+    finished_at = models.DateTimeField(null=True, blank=True)
+    http_status = models.IntegerField(null=True, blank=True)
+    error_code = models.CharField(max_length=64, blank=True)
+    observed_group_id = models.CharField(max_length=20, blank=True, help_text="GroupId read back from VSA X.")
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"Group move execution {self.proposal_id} ({self.state})"
+
+
 class Asset(models.Model):
     """Stable identity of a source device. Descriptive data lives in per-generation ``AssetObservation`` rows.
 
@@ -524,3 +554,28 @@ class DeviceCustomField(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class ScopeCustomField(models.Model):
+    """CF-02: an approved organisation/site/group custom field value from VSA X, per published generation."""
+
+    class ScopeType(models.TextChoices):
+        ORGANIZATION = "organization", "Organisation"
+        SITE = "site", "Site"
+        GROUP = "group", "Group"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    generation = models.ForeignKey("integrations.DatasetGeneration", on_delete=models.CASCADE, related_name="+")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="+")
+    scope_type = models.CharField(max_length=16, choices=ScopeType.choices)
+    scope_external_id = models.CharField(max_length=20)
+    name = models.CharField(max_length=120)
+    value = models.CharField(max_length=500, blank=True)
+    type = models.CharField(max_length=16, blank=True)
+
+    class Meta:
+        ordering = ["scope_type", "scope_external_id", "name"]
+        indexes = [models.Index(fields=["customer", "generation"], name="inventory_scopecf_cust_gen")]
+
+    def __str__(self) -> str:
+        return f"{self.scope_type}:{self.scope_external_id}:{self.name}"

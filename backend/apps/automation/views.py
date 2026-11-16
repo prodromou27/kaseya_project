@@ -19,7 +19,14 @@ from apps.accounts.permissions import IsSystemAdmin
 from apps.accounts.roles import Cap
 from apps.customers.views import CustomerScopedMixin
 
-from .models import AutomationCollection, AutomationTask, AutomationWorkflow, WorkflowExecution
+from .models import (
+    AutomationCollection,
+    AutomationScope,
+    AutomationTask,
+    AutomationWorkflow,
+    PatchGlobalRules,
+    WorkflowExecution,
+)
 
 TASK_LIMITATION = (
     "VSA X does not offer a read-only way to list scheduled task runs, so task results are not shown; "
@@ -137,6 +144,26 @@ class CustomerAutomationViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
         )
 
 
+def _scopes(workflows: Any, tasks: Any) -> list[dict[str, Any]]:
+    """Scopes with criteria, device count and the named tasks/workflows that use them."""
+    names = {("Workflow", w.integration_instance_id, w.external_id): w.name for w in workflows}
+    names |= {("Task", t.integration_instance_id, t.external_id): t.name for t in tasks}
+    return [
+        {
+            "integration": s.integration_instance.name,
+            "id": s.external_id,
+            "name": s.name,
+            "description": s.description,
+            "criteria": s.criteria,
+            "total_devices": s.total_devices,
+            "used_by": [
+                {**u, "name": names.get((u.get("type"), s.integration_instance_id, u.get("id")), "")} for u in s.used_by
+            ],
+        }
+        for s in AutomationScope.objects.select_related("integration_instance").order_by("name")
+    ]
+
+
 class AutomationCatalogView(APIView):
     """``GET /automation/catalog/`` - tenant-wide workflows and tasks (super admin). Definitions only."""
 
@@ -176,6 +203,16 @@ class AutomationCatalogView(APIView):
                         "updated": t.updated_at_raw,
                     }
                     for t in tasks
+                ],
+                "scopes": _scopes(wf, tasks),
+                "global_rules": [
+                    {
+                        "integration": g.integration_instance.name,
+                        "os_rules": g.os_rules,
+                        "software_rules": g.software_rules,
+                        "fetched_at": g.fetched_at,
+                    }
+                    for g in PatchGlobalRules.objects.select_related("integration_instance")
                 ],
                 "collection": _collections(
                     set(AutomationCollection.objects.values_list("integration_instance_id", flat=True))

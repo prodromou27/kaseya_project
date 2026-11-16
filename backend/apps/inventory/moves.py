@@ -1,4 +1,4 @@
-"""Internal propose/review workflow. Approval never executes a VSA write."""
+"""Internal propose/review workflow. Approval never executes a VSA write; execution is a separate gated step."""
 
 from datetime import timedelta
 from typing import Any
@@ -16,7 +16,8 @@ POLICY_IMPACT = (
     "Moving a device may change inherited patch, security and automation policies. "
     "Destination effective policy inheritance cannot be established from this inventory. "
     "A reviewer must assess it in VSA before any separately authorized execution. "
-    "Approval here records a proposal only; execution and vendor write credentials are disabled."
+    "Approval records a decision only. Executing it in VSA X is a separate step that is switched off unless an "
+    "administrator enabled it with a separate write token."
 )
 
 

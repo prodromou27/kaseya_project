@@ -184,3 +184,41 @@ class DeviceScriptValue(models.Model):
 
     def __str__(self) -> str:
         return f"{self.collector_id}:{self.asset_id}:{self.state}"
+
+
+class PatchGlobalRules(models.Model):
+    """GR-01: tenant-wide patch global rules (configuration, applies to every device; never deployment state)."""
+
+    integration_instance = models.OneToOneField(
+        "integrations.IntegrationInstance", on_delete=models.CASCADE, related_name="patch_global_rules"
+    )
+    os_rules = models.JSONField(default=list)
+    software_rules = models.JSONField(default=list)
+    fetched_at = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"global rules {self.integration_instance_id}"
+
+
+class AutomationScope(models.Model):
+    """GR-01: automation scope with its matching criteria, device count and the tasks/workflows using it."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    integration_instance = models.ForeignKey(
+        "integrations.IntegrationInstance", on_delete=models.CASCADE, related_name="+"
+    )
+    external_id = models.CharField(max_length=20)
+    name = models.CharField(max_length=255)
+    description = models.CharField(max_length=500, blank=True)
+    criteria = models.JSONField(default=list, help_text="[{type, identifier}] (custom-field values are not kept)")
+    total_devices = models.IntegerField(null=True)
+    used_by = models.JSONField(default=list, help_text="[{type: Task|Workflow, id}]")
+    seen_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["integration_instance", "external_id"], name="automation_scope_unique")
+        ]
+
+    def __str__(self) -> str:
+        return self.name

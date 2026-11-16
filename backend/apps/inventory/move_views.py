@@ -1,10 +1,10 @@
-"""Customer-scoped proposal API. There is deliberately no execute action or vendor write client."""
+"""Customer-scoped proposal API. Execution in VSA X (VSA5-EXEC) is a separate, gated action; see move_execution."""
 
 from typing import Any
 
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_field
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -13,8 +13,26 @@ from rest_framework.response import Response
 from apps.accounts.roles import Cap
 from apps.customers.views import CustomerScopedMixin
 
-from . import moves
-from .models import GroupMoveRequest
+from . import move_execution, moves
+from .models import GroupMoveExecution, GroupMoveRequest
+
+
+class ExecutionSerializer(serializers.ModelSerializer):
+    executed_by = serializers.SlugRelatedField(slug_field="email", read_only=True)
+
+    class Meta:
+        model = GroupMoveExecution
+        fields = [
+            "state",
+            "executed_by",
+            "started_at",
+            "finished_at",
+            "http_status",
+            "error_code",
+            "observed_group_id",
+            "verified_at",
+        ]
+        read_only_fields = fields
 
 
 class MoveSerializer(serializers.ModelSerializer):
@@ -24,6 +42,8 @@ class MoveSerializer(serializers.ModelSerializer):
     target_group_external_id = serializers.CharField(source="target_group.external_id")
     expired = serializers.SerializerMethodField()
     execution_enabled = serializers.SerializerMethodField()
+    execution_blocked_reason = serializers.SerializerMethodField()
+    execution = serializers.SerializerMethodField()
 
     class Meta:
         model = GroupMoveRequest
@@ -48,6 +68,8 @@ class MoveSerializer(serializers.ModelSerializer):
             "reviewed_at",
             "expired",
             "execution_enabled",
+            "execution_blocked_reason",
+            "execution",
         ]
         read_only_fields = fields
 
@@ -55,7 +77,15 @@ class MoveSerializer(serializers.ModelSerializer):
         return obj.expires_at <= timezone.now()
 
     def get_execution_enabled(self, obj: GroupMoveRequest) -> bool:
-        return False
+        return move_execution.execution_status(obj)[0]
+
+    def get_execution_blocked_reason(self, obj: GroupMoveRequest) -> str:
+        return move_execution.execution_status(obj)[1]
+
+    @extend_schema_field(ExecutionSerializer(allow_null=True))
+    def get_execution(self, obj: GroupMoveRequest) -> dict[str, Any] | None:
+        execution = getattr(obj, "execution", None)
+        return ExecutionSerializer(execution).data if execution else None
 
 
 class ProposalInput(serializers.Serializer):
@@ -76,6 +106,8 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         self.customer_capability = {
             "create": Cap.CUSTOMER_PROPOSE_MOVE,
             "review": Cap.CUSTOMER_APPROVE_MOVE,
+            "execute": Cap.CUSTOMER_APPROVE_MOVE,
+            "verify": Cap.CUSTOMER_APPROVE_MOVE,
         }.get(self.action, Cap.CUSTOMER_READ)
         return super().get_customer()
 
@@ -83,7 +115,7 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         if getattr(self, "swagger_fake_view", False):
             return GroupMoveRequest.objects.none()
         return GroupMoveRequest.objects.filter(customer=self.get_customer()).select_related(
-            "requested_by", "reviewed_by", "target_group"
+            "requested_by", "reviewed_by", "target_group", "asset__integration_instance", "execution__executed_by"
         )
 
     @extend_schema(request=ProposalInput, responses={201: MoveSerializer})
@@ -113,6 +145,24 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         )
         return Response(MoveSerializer(proposal).data)
 
+    @extend_schema(request=None, responses={200: MoveSerializer})
+    @action(detail=True, methods=["post"])
+    def execute(self, request: Any, pk: str | None = None, **kwargs: Any) -> Response:
+        """Send the approved move to VSA X once (gated; see VSA5-EXEC). Re-sending is impossible; use verify."""
+        customer = self.get_customer()
+        original = self.get_object()
+        move_execution.execute(customer, request.user, original.id, request)
+        return Response(MoveSerializer(self.get_queryset().get(pk=original.pk)).data)
+
+    @extend_schema(request=None, responses={200: MoveSerializer})
+    @action(detail=True, methods=["post"])
+    def verify(self, request: Any, pk: str | None = None, **kwargs: Any) -> Response:
+        """Read the device back from VSA X (GET) to confirm an unknown/unconfirmed execution."""
+        customer = self.get_customer()
+        original = self.get_object()
+        move_execution.verify(customer, request.user, original.id, request)
+        return Response(MoveSerializer(self.get_queryset().get(pk=original.pk)).data)
+
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"])
     def options(self, request: Any, **kwargs: Any) -> Response:
@@ -132,7 +182,7 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
                 "asset": str(observation.asset_id),
                 "source_group": observation.group_name,
                 "policy_impact": moves.POLICY_IMPACT,
-                "execution_enabled": False,
+                "execution_enabled": move_execution.availability(observation.asset.integration_instance)[0],
                 "groups": [
                     {"id": str(g.id), "external_id": g.external_id, "name": g.name, "site": g.site_external_id}
                     for g in groups

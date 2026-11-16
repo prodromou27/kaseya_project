@@ -202,3 +202,20 @@ Apply reporting migration 0003_saved_view_layout before the new backend. Existin
 ## Investigation lists and coverage exports (LIST-02)
 
 No additional migration is required. The new os_update_coverage report uses existing read/export capabilities, protected artifacts, audit and retention; its rows distinguish collection evidence from update records. Pinned source identity/timestamps are included. Before application rollback to an older report registry, pause coverage schedules and archive/manage coverage definitions while retaining artifacts and audit. See INTELLIGENCE_LISTS.md for verified scope and evidence. Named saved layouts remain a Devices feature.
+
+## Enabling execution of approved group moves (VSA5-EXEC)
+
+Off by default. All three are required; removing any one switches execution off again.
+
+1. Create a **separate** VSA X API token for moves (not the read token), with the narrowest permissions VSA X allows.
+2. Store it on the host as a Docker secret / environment value named `VSA_WRITE_<NAME>` in the form
+   `TOKEN_ID:TOKEN_SECRET` (for example `VSA_WRITE_PROD`, or `VSA_WRITE_PROD_FILE` pointing at the secret file).
+3. Set `VSA_GROUP_MOVE_EXECUTION_ENABLED=true` in the server environment and restart the web and worker containers.
+4. In **Settings → Integrations → Edit**, tick *Allow approved moves to be executed for this integration* and enter the
+   write token reference `env:VSA_WRITE_<NAME>`. The change is audited. Changing the integration's base URL clears the
+   switch.
+
+Optional: `GROUP_MOVE_EXECUTION_WINDOW_HOURS` (default 24) limits how old an approval may be when executed. Audit
+events: `group_move.execute_started`, `group_move.execute_succeeded|unverified|unknown|failed`, `group_move.verified`.
+Validate on one test device first (live behaviour has not been verified yet).
+

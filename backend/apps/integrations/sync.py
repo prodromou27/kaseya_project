@@ -27,7 +27,7 @@ from apps.accounts import scope
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
 from apps.customers.models import Customer, CustomerSourceMapping
-from apps.inventory.ingest import collect_hierarchy, record_details
+from apps.inventory.ingest import collect_hierarchy, collect_scope_custom_fields, record_details
 from apps.patching.ingest import (
     carry_forward,
     pending_installed,
@@ -197,6 +197,12 @@ def execute(run_id: str, *, adapter_factory: AdapterFactory = default_adapter_fa
             except DetailsAbandoned as exc:
                 _details_incomplete(run, exc.kind)
         collect_hierarchy(run, generation, adapter)
+        try:
+            SyncRun.objects.filter(pk=run.pk).update(
+                api_requests=F("api_requests") + collect_scope_custom_fields(run, generation, adapter)
+            )
+        except Exception:  # best effort: scope custom fields never block publishing
+            logger.exception("scope_custom_fields_failed", extra={"sync_run_id": str(run.id)})
         _finalize(run, generation)
         _collect_tenant_context(run, adapter)
     except VendorAuthError:

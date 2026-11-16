@@ -33,6 +33,7 @@
 | ADR-026 | `InstalledAt` stored verbatim, never converted | The documented example has no timezone | Implemented (P2) |
 | ADR-027 | Schedules deliver in-portal only; owner and recipients re-authorised per run; `(schedule, slot)` DB-unique | DEC-09 (no e-mail yet); duplicate and revocation safety | Implemented (P2) |
 | ADR-028 | Regeneration re-pins to the original generation/evaluation IDs, constrained to the run's customer | Reproducible historical reports without cross-tenant pin forgery | Implemented (P2) |
+| ADR-029 | One gated vendor write: approved group moves via `PUT /devices/{id}/move` (VSA5-EXEC) | Product owner chose to execute approved moves (2026-11-16). Off unless the server switch `VSA_GROUP_MOVE_EXECUTION_ENABLED`, the per-integration switch and a separate `env:VSA_WRITE_*` token are all set; requester cannot execute; approval must be recent and inventory unchanged; one attempt per proposal committed before sending, no retries; timeouts are "unknown" and resolved only by GET read-back; every step audited. The read-only client stays GET-only | Implemented (VSA5-EXEC); live validation pending |
 | ADR-017 | Frontend pinned to proven majors (React Router 7, TanStack Table 8, Vite 7, TypeScript 5.9, ESLint 9) instead of the newest majors | Avoids building on APIs that are not yet verified; upgrade deliberately later | Implemented (P0) |
 
 ## Open decisions requiring authorized owners
