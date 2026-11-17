@@ -156,6 +156,7 @@ fixture-verified only (no live VSA X validation).
 - [x] **SRV-01** Servers & owners (portal-only): servers detected from the OS name or marked by hand, owner groups with contact, per-server patching/upgrade needs, report per owner, email-owner summary.
 - [x] **CAT-01** Reference versions from the VSA 10 Application Catalog: pasted table matched to installed programs, reviewed through the existing catalog import (no API endpoint exists; nothing fetched).
 - [x] **CAT-02** Automatic daily update from the VSA application catalog page: version increases for approved products apply automatically (ADR-030); new products/decreases/warnings wait for approval; status and Check now in Settings.
+- [x] **CAT-03** Catalog matching keeps version-series lines and bracketed editions apart (127 of 303 live entries were being skipped); coverage of the last check shown in Settings.
 - [x] **SRV-02** Server owner follow-ups: monthly report schedule per owner, owner pick-list on Reports, Servers card on the customer summary, Servers section on the monthly scorecard.
 - [ ] **CRM-04** Live validation of the new modules on the operator's tenant after `vsa_probe` confirms the needed sections (InstalledSoftware, LocalIpAddresses masks, appliedpolicies, patch policy SoftwareRules).
 

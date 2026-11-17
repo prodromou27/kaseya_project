@@ -20,7 +20,12 @@ const result = {
 const check = (over: Record<string, unknown> = {}) => ({
   id: "c1", started_at: "2026-11-17T04:00:00Z", trigger: "schedule", triggered_by: null, outcome: "updated", error_code: "",
   catalog_last_updated: "November 11, 2026", applied: 2, pending_import: "imp-9",
-  stats: { matched_programs: 3, applied: 2, waiting_for_review: 1 }, ...over,
+  stats: {
+    matched_programs: 3, applied: 2, waiting_for_review: 1, catalog_programs: 193, not_installed: 150,
+    skipped_list: [{ application: "WinRAR (32-bit) / WinRAR (64-bit)", reason: "Catalog versions differ by architecture (32/64-bit)" },
+      { application: "Old Viewer (discontinued)", reason: "Discontinued in the VSA catalog" }],
+    not_installed_list: ["3CXPhone", "AnyDesk"],
+  }, ...over,
 });
 
 function catalogRoutes(extra: Record<string, unknown> = {}) {
@@ -44,6 +49,9 @@ describe("VSA application catalog import", () => {
     expect(await screen.findByText(/Automatic daily update/)).toBeInTheDocument();
     expect(await screen.findByText(/2 version updates applied automatically; 1 waiting for approval below\./)).toBeInTheDocument();
     expect(screen.getByText(/catalog updated November 11, 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/are installed on your devices and used here/)).toHaveTextContent("The catalog lists 193 programs: 43 are installed on your devices and used here, 150 are not installed on any device (not needed), 1 could not be used automatically.");
+    expect(screen.getByText("Not installed on any device (2)")).toBeInTheDocument();
+    expect(screen.getByText("WinRAR (32-bit) / WinRAR (64-bit)")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Check now" }));
     expect(await screen.findByText(/by super@example.test/)).toBeInTheDocument();
     expect(screen.getByText(/No change: every installed catalog program is already current\./)).toBeInTheDocument();

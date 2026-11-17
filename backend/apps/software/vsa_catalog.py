@@ -45,6 +45,83 @@ def display_name(name: str) -> str:
     return " ".join(text.split())
 
 
+_SERIES = re.compile(r"(?<![\d.])(\d+\.\d+)(?![\d.]*\d)")
+_CHANNEL = re.compile(r"\((?:current|monthly|semiannual)\)", re.I)
+_DOTTED_ANY = re.compile(r"\d+(?:\.\d+)+")
+_QUALIFIER_DROP = re.compile(r"\b(?:x64|x86|amd64|arm64|(?:32|64|86) ?bit|bit)\b")
+
+
+def series(name: str) -> str | None:
+    """'ASP.NET Core Runtime 8.0' -> '8.0'; 'PowerShell 7.4 (64-bit)' -> '7.4'; '7-zip (64-bit)' -> None."""
+    found = _SERIES.findall(name)
+    return found[0] if len(found) == 1 else None
+
+
+def qualified_key(name: str) -> str:
+    """Like :func:`key` but keeps words in brackets: 'Microsoft Teams (work or school)' stays distinct."""
+    text = _DOTTED_ANY.sub(" ", name.casefold())
+    text = re.sub(r"[^0-9a-z]+", " ", text)
+    return " ".join(_QUALIFIER_DROP.sub(" ", text).split())
+
+
+def _starts_with(version: str, prefix: str) -> bool:
+    a, b = parse_dotted(version), parse_dotted(prefix)
+    return a is not None and b is not None and a[: len(b)] == b
+
+
+def _split(
+    group: list[dict[str, str]], seen: list[tuple[str, str, str, int]]
+) -> tuple[list[tuple[list[dict[str, str]], list[tuple[str, str, str, int]]]], str]:
+    """Separate catalog lines that share a base name: by version series ('.NET 6.0' / '8.0') or by a qualifier in
+    brackets ('Teams' / 'Teams (work or school)'). Returns (units, reason-if-unresolved)."""
+    if len({e["version"] for e in group}) == 1:
+        return [(group, seen)], ""
+    units: dict[str, list[dict[str, str]]] = defaultdict(list)
+    serieses = [series(e["application"]) for e in group]
+    if all(serieses):
+        for e, s_ in zip(group, serieses, strict=True):
+            units[s_].append(e)  # type: ignore[index]
+
+        def owner(item: tuple[str, str, str, int]) -> str | None:
+            name, _, version, _ = item
+            hits = [s_ for s_ in units if _starts_with(version, s_)]
+            if len(hits) != 1:
+                hits = [s_ for s_ in units if any(_starts_with(n, s_) for n in _DOTTED_ANY.findall(name))]
+            return hits[0] if len(hits) == 1 else None
+
+        how = "version series"
+    else:
+        for e in group:
+            units[qualified_key(e["application"])].append(e)
+
+        def owner(item: tuple[str, str, str, int]) -> str | None:
+            k = qualified_key(item[0])
+            return k if k in units else None
+
+        how = "edition"
+    if any(len({e["version"] for e in members}) > 1 for members in units.values()):
+        if how == "edition" and all(
+            re.search(r"\((?:current|monthly|semiannual)\)", e["application"], re.I) for e in group
+        ):
+            return [], "Office update channels have different versions and VSA X does not report the channel"
+        return [], "Catalog versions differ by architecture (32/64-bit), which VSA X does not report; add it manually"
+    assigned: dict[str, list[tuple[str, str, str, int]]] = defaultdict(list)
+    for item in seen:
+        unit = owner(item)
+        if unit is not None:
+            assigned[unit].append(item)
+    if not assigned:
+        if all(_CHANNEL.search(e["application"]) for e in group):
+            return [], "Office update channels have different versions and VSA X does not report the channel"
+        return [], f"The installed program name matches none of the catalog's {how}s exactly; add it manually"
+    # The same installed name in two units would match both products (aliases are by name): refuse instead.
+    names_per_unit = [{(n, p) for n, p, _, _ in items} for items in assigned.values()]
+    all_names: set[tuple[str, str]] = set().union(*names_per_unit)
+    if sum(len(n) for n in names_per_unit) != len(all_names):
+        return [], f"The installed program name does not tell the catalog's {how}s apart; add it manually"
+    return [(units[u], items) for u, items in assigned.items()], ""
+
+
 def _cells(line: str) -> list[str]:
     if "\t" in line:
         cells = line.split("\t")
@@ -125,24 +202,19 @@ def build(text: str) -> dict[str, Any]:
             by_key[k].append(e)
     installed = _installed()
     now = timezone.now().replace(microsecond=0)
-    rows, matched = [], []
+    units = []
     for k, group in sorted(by_key.items()):
         seen = installed.get(k)
         if not seen:
             continue
-        versions = sorted({e["version"] for e in group})
+        resolved, reason = _split(group, seen)
+        if reason:
+            skipped.append({"application": " / ".join(e["application"] for e in group), "reason": reason})
+        units.extend(resolved)
+    rows, matched = [], []
+    for group, seen in units:
         names = [e["application"] for e in group]
-        if len(versions) > 1:
-            skipped.append(
-                {
-                    "application": " / ".join(names),
-                    "reason": "Catalog versions differ between its entries ("
-                    + ", ".join(versions)
-                    + "); VSA X does not report architecture, so add this one manually",
-                }
-            )
-            continue
-        reference = versions[0]
+        reference = group[0]["version"]
         entry = group[0]
         aliases = sorted({(name, publisher) for name, publisher, _, _ in seen})
         by_version: Counter[str] = Counter()
@@ -206,12 +278,16 @@ def build(text: str) -> dict[str, Any]:
             "catalog_entries": len(entries),
             "matched_programs": len(rows),
             "already_current": len(unchanged),
+            "catalog_programs": len(by_key),
             "not_installed": sum(1 for k in by_key if k not in installed),
             "skipped": len(skipped),
         },
         "rows": rows,
         "matched": matched,
         "skipped": skipped[:200],
+        "not_installed_programs": sorted(
+            {display_name(g[0]["application"]) for k, g in by_key.items() if k not in installed}, key=str.casefold
+        )[:400],
         "preview": preview,
         "valid": valid,
     }

@@ -198,7 +198,13 @@ def run(*, trigger: str = "schedule", user: Any = None, transport: Any = None, r
             check.applied = len(auto)
             schedule_reevaluation()
         check.pending_import = _pending([r for r, _ in review], [p for _, p in review], actor)
-        check.stats = {**result["stats"], "applied": len(auto), "waiting_for_review": len(review)}
+        check.stats = {
+            **result["stats"],
+            "applied": len(auto),
+            "waiting_for_review": len(review),
+            "skipped_list": result["skipped"][:200],
+            "not_installed_list": result["not_installed_programs"],
+        }
         outcome = VsaCatalogCheck.Outcome.UPDATED if auto or review else VsaCatalogCheck.Outcome.NO_CHANGE
         _finish(check, outcome)
     record_event(

@@ -76,6 +76,7 @@ def test_only_installed_programs_become_reviewed_reference_versions(
         "catalog_entries": 5,
         "matched_programs": 1,
         "already_current": 0,
+        "catalog_programs": 3,
         "not_installed": 1,
         "skipped": 3,
     }
@@ -120,3 +121,48 @@ def test_catalog_paste_is_system_admin_only(world, synced):  # noqa: F811
     for user in (world.admin_a, world.engineer_a, world.viewer_a):
         assert world.client(user).post(URL, {"text": TABLE}, format="json").status_code == 403
     assert world.client(world.super_admin).post(URL, {"text": "nothing useful"}, format="json").status_code == 400
+
+
+def _entry(application, version):
+    return {"application": application, "vendor": "V", "tier": "3", "version": version, "release_date": ""}
+
+
+def test_version_series_lines_become_separate_products():
+    from apps.software.vsa_catalog import _split, series
+
+    assert series("ASP.NET Core Runtime 8.0") == "8.0" and series("7-zip (64-bit)") is None
+    group = [_entry("ASP.NET Core Runtime 6.0", "6.0.36.24516"), _entry("ASP.NET Core Runtime 8.0", "8.0.33.26523")]
+    seen = [
+        ("ASP.NET Core Runtime 8.0.11 (x64)", "Microsoft", "8.0.11.24521", 5),
+        ("ASP.NET Core Runtime 6.0.36 (x64)", "Microsoft", "6.0.36.24516", 2),
+        ("ASP.NET Core Runtime 9.0.1 (x64)", "Microsoft", "9.0.1.0", 1),  # no catalog line: left out
+    ]
+    units, reason = _split(group, seen)
+    assert reason == ""
+    by_line = {g[0]["application"]: [i[0] for i in items] for g, items in units}
+    assert by_line == {
+        "ASP.NET Core Runtime 8.0": ["ASP.NET Core Runtime 8.0.11 (x64)"],
+        "ASP.NET Core Runtime 6.0": ["ASP.NET Core Runtime 6.0.36 (x64)"],
+    }
+
+
+def test_editions_in_brackets_stay_apart_and_unresolvable_groups_say_why():
+    from apps.software.vsa_catalog import _split
+
+    teams = [_entry("Microsoft Teams", "1.8.0.27654"), _entry("Microsoft Teams (work or school)", "26288")]
+    units, reason = _split(teams, [("Microsoft Teams (work or school)", "Microsoft", "26100.1", 9)])
+    assert reason == "" and [g[0]["application"] for g, _ in units] == ["Microsoft Teams (work or school)"]
+
+    winrar = [_entry("WinRAR (32-bit)", "7.01.0"), _entry("WinRAR (64-bit)", "7.23.0")]
+    assert "architecture" in _split(winrar, [("WinRAR 7.01 (64-bit)", "win.rar GmbH", "7.01.0", 4)])[1]
+    office = [
+        _entry("Microsoft Office 365 Business (Current)", "16.0.2"),
+        _entry("Microsoft Office 365 Business (Monthly)", "16.0.1"),
+    ]
+    assert "channel" in _split(office, [("Microsoft Office 365 Business", "Microsoft", "16.0.1", 1)])[1]
+
+    # One installed name that would fit two series is refused rather than matched to both products.
+    ps = [_entry("PowerShell 7.4", "7.4.22"), _entry("PowerShell 7.5", "7.5.13")]
+    shared = [("PowerShell 7.4 7.5", "Microsoft", "x", 1), ("PowerShell 7.4 7.5", "Microsoft", "7.5.1", 1)]
+    units, reason = _split(ps, shared)
+    assert reason or len(units) == 1

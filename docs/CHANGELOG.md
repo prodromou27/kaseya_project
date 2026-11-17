@@ -1,5 +1,12 @@
 # Changelog
 
+## CAT-03 - 2026-11-17 - more catalog programs matched; coverage shown
+
+- Operator report: only 33 rows appeared although the catalog lists many more. Two causes: (1) name matching ignores versions and words in brackets, so catalog lines such as *.NET Desktop Runtime 5.0 ... 10.0*, *ASP.NET Core Runtime*, *.NET SDK*, *PowerShell 7.4/7.5* and *Microsoft Teams / Teams (work or school)* collapsed into one name with several versions and were all skipped - 127 of the 303 live entries; (2) catalog programs not installed on any device are left out by design, and the screen did not say so.
+- Lines sharing a base name are now separated by **version series** (installed version or the version in the installed name must start with the series, e.g. 8.0.11 → *8.0*) or by **edition in brackets** (exact name). An installed name that would fit two lines is refused rather than matched to both. Still not automatic, with the reason shown: 32/64-bit lines with different versions (VSA X does not report architecture) and Office update channels (VSA X does not report the channel).
+- Settings → Software catalog shows the coverage of the last check: catalog programs, how many are installed and used, how many are not on any device (list), and which could not be used automatically (list with reasons).
+- Verified: 2 new backend tests (series and edition splitting, unresolvable cases), updated frontend test; simulated against the live page (303 entries): ASP.NET 6.0/8.0, PowerShell 7.4 and both Teams editions now match separately. Not yet run against the operator's installed software.
+
 ## CAT-02 - 2026-11-17 - the VSA application catalog updates automatically
 
 - Product owner: the catalog import must be automatic. A daily worker job (`apps.software.tasks.update_vsa_catalog`, beat `vsa-application-catalog`) reads the public [VSA 10 application catalog](https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm) page (fixed URL; HTTPS, verified TLS, no redirects, 5 MB cap, public destination only, no credentials), parses its table and matches it to installed programs exactly like the paste import.

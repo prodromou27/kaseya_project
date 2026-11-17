@@ -19,7 +19,10 @@ type Result = {
 type Check = {
   id: string; started_at: string; trigger: string; triggered_by: string | null; outcome: string; error_code: string;
   catalog_last_updated: string; applied: number; pending_import: string | null;
-  stats: { matched_programs?: number; applied?: number; waiting_for_review?: number };
+  stats: {
+    matched_programs?: number; applied?: number; waiting_for_review?: number; catalog_programs?: number; not_installed?: number;
+    already_current?: number; skipped_list?: { application: string; reason: string }[]; not_installed_list?: string[];
+  };
 };
 type Status = { enabled: boolean; checks: Check[] };
 
@@ -28,6 +31,31 @@ const ERRORS: Record<string, string> = {
   egress_blocked: "the catalog address resolved to a blocked network",
   page_format_changed: "the page layout has changed and no catalog table was found",
 };
+
+function Coverage({ stats }: { stats: Check["stats"] }) {
+  const total = stats.catalog_programs ?? 0;
+  const absent = stats.not_installed ?? 0;
+  const skipped = (stats.skipped_list ?? []).filter((x) => !x.reason.startsWith("Discontinued"));
+  return (
+    <div className="mt-1 space-y-1">
+      <p>
+        The catalog lists <strong>{total}</strong> programs: <strong>{total - absent}</strong> are installed on your devices and used here,{" "}
+        {absent} are not installed on any device (not needed){skipped.length ? `, ${skipped.length} could not be used automatically` : ""}.
+      </p>
+      {skipped.length ? (
+        <details><summary className="cursor-pointer">Could not be used automatically ({skipped.length})</summary>
+          <ul className="mt-1 space-y-0.5 text-xs">{skipped.map((x) => <li key={x.application}><strong>{x.application}</strong>: {x.reason}</li>)}</ul>
+        </details>
+      ) : null}
+      {stats.not_installed_list?.length ? (
+        <details><summary className="cursor-pointer">Not installed on any device ({stats.not_installed_list.length})</summary>
+          <p className="mt-1 text-xs text-slate-600">{stats.not_installed_list.join(" · ")}</p>
+          <p className="mt-1 text-xs text-slate-500">If one of these is installed under a different name, use <strong>Add to catalog</strong> on Software → Installed programs.</p>
+        </details>
+      ) : null}
+    </div>
+  );
+}
 
 function AutoUpdateStatus() {
   const queryClient = useQueryClient();
@@ -61,6 +89,7 @@ function AutoUpdateStatus() {
           {last.catalog_last_updated ? ` (catalog updated ${last.catalog_last_updated})` : ""}: {describe(last)}
         </p>
       ) : status.isSuccess ? <p className="mt-1">Not checked yet.</p> : null}
+      {last?.stats.catalog_programs !== undefined ? <Coverage stats={last.stats} /> : null}
       <button type="button" className="btn-secondary mt-2" disabled={checkNow.isPending} onClick={() => checkNow.mutate()}>
         {checkNow.isPending ? "Checking…" : "Check now"}
       </button>
