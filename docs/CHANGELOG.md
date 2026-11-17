@@ -1,5 +1,12 @@
 # Changelog
 
+## CAT-01 - 2026-11-17 - reference versions from the VSA application catalog
+
+- Operator request: use the VSA software catalog to judge installed versions. The [VSA 10 application catalog](https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm) lists, per program, vendor, tier and the version VSA's 3rd-Party Patching deploys. The VSA X API documents no endpoint for it (checked api.vsax.net), so it is pasted, not fetched.
+- **Settings → Software catalog → Import from the VSA application catalog:** paste the copied table (tab-separated, CSV or pipe table) → `POST /api/v1/catalog/imports/from-vsa-catalog/` (system administrators, dry run) matches catalog names to installed programs across current snapshots after removing editions/architecture markers, builds one import row per installed program (architecture "any", exact aliases for the installed names, evidence = catalog page, new source type `vsa_application_catalog`) and shows installed versions with older/newer counts. Skipped: discontinued entries, non-numeric versions, programs whose 32/64-bit catalog versions differ; unchanged references are left out. Submission and approval use the existing catalog import (different reviewer, immutable revisions, compliance re-evaluation). The JSON form is kept under *advanced*.
+- Software page hint now points to this import.
+- Verified: 9 backend tests (name matching, parsing, end-to-end import → approval → Chrome outdated count, version-format warning, admin-only), 1 frontend test; browser catalog scenario updated. Catalog sample read from the public page on 2026-11-17; not validated against the live tenant's installed software.
+
 ## P5-06 - 2026-11-16 - performance at 100k devices with related data
 
 - `benchmark_inventory --related` now also generates installed software, OS update rows, patch status, applied patch policy and a server population (100k devices → 2.3 M observation rows) and measures the Servers page, patch-policy, software and OS-update summaries, the scorecard and large report exports (`--skip-reports` for API paths only). Development-only, `bench_*` databases only, as before.

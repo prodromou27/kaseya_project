@@ -17,7 +17,7 @@ from .comparator import compare_versions, parse_dotted
 from .models import CatalogImport, CatalogRevision, ReviewStatus, SoftwareAlias, SoftwareProduct
 
 MAX_ROWS = 500
-SOURCE_TYPES = ["vendor_release_notes", "vendor_feed", "manual_verification"]
+SOURCE_TYPES = ["vendor_release_notes", "vendor_feed", "manual_verification", "vsa_application_catalog"]
 
 
 class AliasInputSerializer(serializers.Serializer):

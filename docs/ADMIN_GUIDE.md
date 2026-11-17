@@ -70,6 +70,8 @@ Configure API-only resource credentials and integration code; discover correct z
 5. Approve/reject and publish with named reviewer and audit record.
 6. Re-run compliance calculations asynchronously for affected approved customers only; preserve older reports and catalog revision links.
 
+**From the VSA application catalog (CAT-01).** Settings → Software catalog → *Import from the VSA application catalog*: open the [VSA 10 application catalog](https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm), select and copy the whole table, paste it and choose *Match installed programs*. The portal keeps only catalog programs installed on monitored devices (names matched after removing editions such as "(64-bit)"/"x64"), skips discontinued entries, non-numeric versions and programs whose 32-bit and 64-bit catalog versions differ, and leaves out programs whose published reference is already that version. Check *Installed versions* against the catalog version (a warning appears when most installs report a higher version, which usually means a different version format), submit, and have a **different** administrator approve. The evidence link is the catalog page and the source type `vsa_application_catalog`. Re-paste after the catalog's monthly update to move references forward. The catalog version is what VSA's 3rd-Party Patching deploys, which can trail the vendor's newest release. The VSA X API offers no catalog endpoint, so nothing is fetched automatically.
+
 A catalog update never means the portal is deploying a patch.
 
 ## 8. Manage schedules and reports
@@ -106,7 +108,7 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
    and a super admin approves it under Administration → Mapping review. Unmapped organisations are never collected.
 4. **Sync:** Assets → "Sync now (read-only)". Check freshness under Data sources. Investigate quarantined records under
    Administration → Sync quarantine.
-5. **Catalog:** Administration → Software catalog. Paste the JSON rows, run the dry-run preview, then submit. A **different**
+5. **Catalog:** Administration → Software catalog. Paste the VSA application catalog table and match installed programs (section 7), or paste JSON rows under *advanced*; run the preview, then submit. A **different**
    administrator approves. Published revisions are immutable.
 6. **Exceptions:** customer admins add time-limited, justified exceptions on the Software versions page.
 

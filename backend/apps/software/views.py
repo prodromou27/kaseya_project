@@ -461,6 +461,14 @@ class ImportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
         preview, valid = build_preview(request.data.get("rows"))
         return Response({"valid": valid, "rows": preview})
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"], url_path="from-vsa-catalog")
+    def from_vsa_catalog(self, request: Request) -> Response:
+        """Dry run: match a pasted VSA 10 Application Catalog table to installed programs; saves nothing."""
+        from .vsa_catalog import build
+
+        return Response(build(request.data.get("text")))
+
     def perform_create(self, serializer: ImportSerializer) -> None:
         preview, valid = build_preview(serializer.validated_data.get("rows"))
         if not valid:

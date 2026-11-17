@@ -90,6 +90,8 @@ test("catalog import cannot be approved by its own submitter", async ({ page }) 
   await login(page, "demo.superadmin@demo.invalid");
   await openNav(page, "Settings");
   await page.getByRole("tab", { name: "Software catalog" }).click();
+  await expect(page.getByRole("heading", { name: "Import from the VSA application catalog" })).toBeVisible();
+  await page.getByText("Import reference versions as JSON (advanced)").click();
   await page.getByRole("button", { name: "Preview (dry run)" }).click();
   await expect(page.getByText(/Row 1:/).first()).toBeVisible();
   await page.getByRole("button", { name: "Submit for review" }).click();

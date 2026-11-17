@@ -8,6 +8,7 @@ import { api, describeError } from "../../lib/api";
 import { useMe } from "../../lib/auth";
 import { formatUtc } from "../../lib/format";
 import type { CatalogAlias, CatalogImport, CatalogProduct, Paginated } from "../../lib/types";
+import { VsaCatalogImport } from "./VsaCatalogImport";
 
 const EXAMPLE = JSON.stringify(
   [
@@ -102,7 +103,11 @@ export function CatalogPanel() {
         administrator. Published revisions are immutable; retire and re-import to change one. This is version comparison only —
         not patch applicability.
       </Notice>
-      <ImportForm />
+      <VsaCatalogImport />
+      <details>
+        <summary className="cursor-pointer text-sm font-medium">Import reference versions as JSON (advanced)</summary>
+        <div className="mt-2"><ImportForm /></div>
+      </details>
       {review.isError ? <p role="alert" className="text-sm text-red-700">{describeError(review.error)}</p> : null}
       <section aria-labelledby="imports-h">
         <h3 id="imports-h" className="mb-2 text-sm font-semibold">Imports</h3>

@@ -90,7 +90,7 @@ function NoCatalog({ onShowInstalled }: { onShowInstalled: () => void }) {
   return (
     <EmptyState title="No catalogued products yet, so versions are not compared.">
       <span className="block">Installed software is still collected. <button type="button" className="font-medium text-sky-800 underline" onClick={onShowInstalled}>See installed programs</button>.</span>
-      {me.is_super_admin ? <span className="mt-1 block">To flag outdated versions, open <button type="button" className="font-medium text-sky-800 underline" onClick={onShowInstalled}>Installed programs</button> and use <strong>Add to catalog</strong> on the programs you care about (or import many under <Link className="font-medium text-sky-800 underline" to="/admin?tab=catalog">Settings → Software catalog</Link>).</span> : null}
+      {me.is_super_admin ? <span className="mt-1 block">To flag outdated versions, open <button type="button" className="font-medium text-sky-800 underline" onClick={onShowInstalled}>Installed programs</button> and use <strong>Add to catalog</strong> on the programs you care about, or import the versions VSA deploys from the VSA application catalog under <Link className="font-medium text-sky-800 underline" to="/admin?tab=catalog">Settings → Software catalog</Link>.</span> : null}
     </EmptyState>
   );
 }
