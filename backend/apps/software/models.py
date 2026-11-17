@@ -347,3 +347,34 @@ class LifecycleEntry(models.Model):
     def __str__(self) -> str:
         target = self.os_family or str(self.product_id)
         return f"{target} {self.release_label}: end {self.end_of_support} ({self.state})"
+
+
+class VsaCatalogCheck(models.Model):
+    """One automatic (or on-demand) read of the public VSA 10 Application Catalog page (CAT-02)."""
+
+    class Outcome(models.TextChoices):
+        UPDATED = "updated", "Updated"
+        NO_CHANGE = "no_change", "No change"
+        FAILED = "failed", "Failed"
+        DISABLED = "disabled", "Automatic updates are switched off"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    trigger = models.CharField(max_length=10, default="schedule")  # schedule | manual
+    triggered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    outcome = models.CharField(max_length=10, choices=Outcome.choices, blank=True)
+    error_code = models.CharField(max_length=40, blank=True)
+    catalog_last_updated = models.CharField(max_length=40, blank=True, help_text="As stated on the page.")
+    stats = models.JSONField(default=dict, blank=True)
+    applied = models.PositiveIntegerField(default=0)
+    applied_import = models.ForeignKey(CatalogImport, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    pending_import = models.ForeignKey(CatalogImport, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self) -> str:
+        return f"vsa catalog check {self.started_at:%Y-%m-%d %H:%M} {self.outcome}"

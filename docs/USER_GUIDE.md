@@ -179,7 +179,7 @@ is changed in VSA X.
 catalog) and, for each, whether the device's VSA patch policy has a software rule for it. *No rule in policy* and
 *No patch policy* are the gaps to act on. *Rule in patch policy* only means the policy is configured to handle the
 program: the VSA X API does not report whether the update was actually deployed, so the portal never shows it as
-done. Programs without a catalog entry are not compared; a super administrator adds them under Settings → Software catalog, most quickly by importing the VSA application catalog (the versions VSA's 3rd-Party Patching deploys).
+done. Programs without a catalog entry are not compared; a super administrator adds them under Settings → Software catalog, most quickly from the VSA application catalog (the versions VSA's 3rd-Party Patching deploys). Once a program is approved, the portal keeps its version current automatically every day.
 
 ## Subnets
 

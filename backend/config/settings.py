@@ -229,6 +229,14 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TASK_ROUTES["apps.reporting.tasks.purge_expired_artifacts"] = {"queue": "maintenance"}
 CELERY_TASK_ROUTES["apps.reporting.tasks.dispatch_schedules"] = {"queue": "maintenance"}
+# CAT-02: daily read of the public VSA 10 Application Catalog page (needs outbound HTTPS to help.vsa10.kaseya.com).
+# Version increases for already-approved products apply automatically; everything else waits for approval.
+VSA_APP_CATALOG_AUTO_UPDATE = env_bool("VSA_APP_CATALOG_AUTO_UPDATE", default=True)
+CELERY_BEAT_SCHEDULE["vsa-application-catalog"] = {
+    "task": "apps.software.tasks.update_vsa_catalog",
+    "schedule": 24 * 3600.0,
+}
+CELERY_TASK_ROUTES["apps.software.tasks.update_vsa_catalog"] = {"queue": "maintenance"}
 SYNC_MAX_DROP_RATIO = float(env_str("SYNC_MAX_DROP_RATIO", "0.5"))
 # Approving a source mapping creates a sync schedule with this interval (editable under Admin -> Sync schedules).
 SYNC_DEFAULT_INTERVAL_HOURS = env_int("SYNC_DEFAULT_INTERVAL_HOURS", 24)

@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, describeError } from "../../lib/api";
+import { formatUtc } from "../../lib/format";
 
 export const VSA_CATALOG_URL = "https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm";
 
@@ -14,6 +15,59 @@ type Result = {
   stats: { catalog_entries: number; matched_programs: number; already_current: number; not_installed: number; skipped: number };
   rows: unknown[]; matched: Matched[]; skipped: { application: string; reason: string }[]; valid: boolean;
 };
+
+type Check = {
+  id: string; started_at: string; trigger: string; triggered_by: string | null; outcome: string; error_code: string;
+  catalog_last_updated: string; applied: number; pending_import: string | null;
+  stats: { matched_programs?: number; applied?: number; waiting_for_review?: number };
+};
+type Status = { enabled: boolean; checks: Check[] };
+
+const ERRORS: Record<string, string> = {
+  unreachable: "the catalog page could not be reached from the server",
+  egress_blocked: "the catalog address resolved to a blocked network",
+  page_format_changed: "the page layout has changed and no catalog table was found",
+};
+
+function AutoUpdateStatus() {
+  const queryClient = useQueryClient();
+  const status = useQuery({ queryKey: ["catalog", "vsa-status"], queryFn: () => api.get<Status>("/catalog/imports/vsa-catalog-status/") });
+  const checkNow = useMutation({
+    mutationFn: () => api.post<Status>("/catalog/imports/vsa-catalog-status/"),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["catalog", "vsa-status"], data);
+      // Refresh imports/products/aliases; the status just returned is already current.
+      void queryClient.invalidateQueries({ queryKey: ["catalog"], predicate: (q) => q.queryKey[1] !== "vsa-status" });
+    },
+  });
+  const last = status.data?.checks[0];
+  const describe = (c: Check) => {
+    if (c.outcome === "failed") return `Failed: ${ERRORS[c.error_code] ?? c.error_code.replace(/_/g, " ")}.`;
+    if (c.outcome === "disabled") return "Automatic updates are switched off on the server.";
+    if (c.outcome === "no_change") return "No change: every installed catalog program is already current.";
+    const waiting = c.stats.waiting_for_review ?? 0;
+    return `${c.applied} version update${c.applied === 1 ? "" : "s"} applied automatically; ${waiting} waiting for approval below.`;
+  };
+  return (
+    <div className="rounded bg-slate-50 p-2 text-sm" aria-live="polite">
+      <p>
+        <strong>Automatic daily update {status.data && !status.data.enabled ? "(switched off)" : "(on)"}.</strong>{" "}
+        Higher versions for programs you have approved apply automatically; new programs, lower versions and anything with a
+        warning wait for approval.
+      </p>
+      {last ? (
+        <p className="mt-1">
+          Last checked {formatUtc(last.started_at)}{last.trigger === "manual" && last.triggered_by ? ` by ${last.triggered_by}` : ""}
+          {last.catalog_last_updated ? ` (catalog updated ${last.catalog_last_updated})` : ""}: {describe(last)}
+        </p>
+      ) : status.isSuccess ? <p className="mt-1">Not checked yet.</p> : null}
+      <button type="button" className="btn-secondary mt-2" disabled={checkNow.isPending} onClick={() => checkNow.mutate()}>
+        {checkNow.isPending ? "Checking…" : "Check now"}
+      </button>
+      {checkNow.isError ? <p role="alert" className="text-red-700">{describeError(checkNow.error)}</p> : null}
+    </div>
+  );
+}
 
 /** Paste the VSA 10 Application Catalog table; programs installed on monitored devices become a reviewed import. */
 export function VsaCatalogImport() {
@@ -29,15 +83,19 @@ export function VsaCatalogImport() {
   return (
     <section aria-labelledby="vsa-catalog-h" className="space-y-2 rounded border border-slate-200 bg-white p-3">
       <h3 id="vsa-catalog-h" className="text-sm font-semibold">Import from the VSA application catalog</h3>
+      <p className="text-xs text-slate-500">
+        Reference versions come from the <a className="text-sky-800 underline" href={VSA_CATALOG_URL} target="_blank" rel="noopener noreferrer">VSA 10 application catalog</a>:
+        the version VSA’s 3rd-Party Patching deploys, which can trail the vendor’s newest release. Only programs installed on your devices are used.
+      </p>
+      <AutoUpdateStatus />
+      <details>
+      <summary className="cursor-pointer text-sm font-medium">Paste the table instead (if the server cannot reach the page)</summary>
+      <div className="mt-2 space-y-2">
       <ol className="list-decimal space-y-0.5 pl-5 text-sm text-slate-700">
-        <li>Open the <a className="text-sky-800 underline" href={VSA_CATALOG_URL} target="_blank" rel="noopener noreferrer">VSA 10 application catalog</a>, select the whole table and copy it.</li>
+        <li>Open the VSA 10 application catalog, select the whole table and copy it.</li>
         <li>Paste it below and choose <strong>Match installed programs</strong>. Only programs installed on your devices are kept.</li>
         <li>Check the versions, submit, and have a different administrator approve the import.</li>
       </ol>
-      <p className="text-xs text-slate-500">
-        The catalog version is the version VSA’s 3rd-Party Patching deploys, which can trail the vendor’s newest release. The VSA X API
-        offers no catalog endpoint, so it is copied by hand; nothing is fetched.
-      </p>
       <label htmlFor="vsa-catalog-text" className="sr-only">VSA application catalog table</label>
       <textarea id="vsa-catalog-text" className="input h-32 w-full font-mono text-xs" value={text}
                 placeholder={"Application\tVendor\tTier\tVersion\tRelease Date\n7-zip (64-bit)\tIgor Pavlov\t2\t26.06\t2026-11-09"}
@@ -88,6 +146,8 @@ export function VsaCatalogImport() {
           <ul className="mt-1 space-y-0.5 text-xs">{result.skipped.map((x, i) => <li key={i}>{x.application}: {x.reason}</li>)}</ul>
         </details>
       ) : null}
+      </div>
+      </details>
     </section>
   );
 }

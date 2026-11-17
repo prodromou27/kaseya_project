@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -468,6 +469,40 @@ class ImportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
         from .vsa_catalog import build
 
         return Response(build(request.data.get("text")))
+
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get", "post"], url_path="vsa-catalog-status")
+    def vsa_catalog_status(self, request: Request) -> Response:
+        """GET: the latest automatic checks. POST: check the VSA application catalog now (CAT-02)."""
+        from .models import VsaCatalogCheck
+        from .vsa_catalog_sync import run
+
+        if request.method == "POST":
+            run(trigger="manual", user=request.user)
+        checks = list(VsaCatalogCheck.objects.select_related("triggered_by")[:5])
+        return Response(
+            {
+                "enabled": settings.VSA_APP_CATALOG_AUTO_UPDATE,
+                "source_url": "https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm",
+                "checks": [
+                    {
+                        "id": str(c.id),
+                        "started_at": c.started_at,
+                        "finished_at": c.finished_at,
+                        "trigger": c.trigger,
+                        "triggered_by": c.triggered_by.email if c.triggered_by else None,
+                        "outcome": c.outcome,
+                        "error_code": c.error_code,
+                        "catalog_last_updated": c.catalog_last_updated,
+                        "stats": c.stats,
+                        "applied": c.applied,
+                        "applied_import": str(c.applied_import_id) if c.applied_import_id else None,
+                        "pending_import": str(c.pending_import_id) if c.pending_import_id else None,
+                    }
+                    for c in checks
+                ],
+            }
+        )
 
     def perform_create(self, serializer: ImportSerializer) -> None:
         preview, valid = build_preview(serializer.validated_data.get("rows"))

@@ -17,20 +17,48 @@ const result = {
   preview: [], valid: true,
 };
 
+const check = (over: Record<string, unknown> = {}) => ({
+  id: "c1", started_at: "2026-11-17T04:00:00Z", trigger: "schedule", triggered_by: null, outcome: "updated", error_code: "",
+  catalog_last_updated: "November 11, 2026", applied: 2, pending_import: "imp-9",
+  stats: { matched_programs: 3, applied: 2, waiting_for_review: 1 }, ...over,
+});
+
+function catalogRoutes(extra: Record<string, unknown> = {}) {
+  return mockFetch({
+    "GET /api/v1/auth/me/": { body: makeMe({ is_super_admin: true, global_capabilities: ["system.manage", "system.cross_customer"] }) },
+    "GET /api/v1/customers/": { body: page([]) },
+    "GET /api/v1/catalog/imports/": { body: page([]) },
+    "GET /api/v1/catalog/products/": { body: page([]) },
+    "GET /api/v1/catalog/aliases/": { body: page([]) },
+    "GET /api/v1/catalog/imports/vsa-catalog-status/": { body: { enabled: true, checks: [check()] } },
+    ...extra,
+  } as never);
+}
+
 describe("VSA application catalog import", () => {
+  it("shows the automatic daily update and checks now on request", async () => {
+    const { calls } = catalogRoutes({
+      "POST /api/v1/catalog/imports/vsa-catalog-status/": { body: { enabled: true, checks: [check({ trigger: "manual", triggered_by: "super@example.test", outcome: "no_change", applied: 0 })] } },
+    });
+    renderApp("/admin?tab=catalog");
+    expect(await screen.findByText(/Automatic daily update/)).toBeInTheDocument();
+    expect(await screen.findByText(/2 version updates applied automatically; 1 waiting for approval below\./)).toBeInTheDocument();
+    expect(screen.getByText(/catalog updated November 11, 2026/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Check now" }));
+    expect(await screen.findByText(/by super@example.test/)).toBeInTheDocument();
+    expect(screen.getByText(/No change: every installed catalog program is already current\./)).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "POST" && c.url === "/api/v1/catalog/imports/vsa-catalog-status/")).toBe(true);
+  });
+
   it("matches a pasted table to installed programs and submits it for review", async () => {
-    const { calls } = mockFetch({
-      "GET /api/v1/auth/me/": { body: makeMe({ is_super_admin: true, global_capabilities: ["system.manage", "system.cross_customer"] }) },
-      "GET /api/v1/customers/": { body: page([]) },
-      "GET /api/v1/catalog/imports/": { body: page([]) },
-      "GET /api/v1/catalog/products/": { body: page([]) },
-      "GET /api/v1/catalog/aliases/": { body: page([]) },
+    const { calls } = catalogRoutes({
       "POST /api/v1/catalog/imports/from-vsa-catalog/": { body: result },
       "POST /api/v1/catalog/imports/": { status: 201, body: { id: "imp-1" } },
-    } as never);
+    });
     renderApp("/admin?tab=catalog");
     expect(await screen.findByRole("heading", { name: "Import from the VSA application catalog" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "VSA 10 application catalog" })).toHaveAttribute("href", expect.stringContaining("application-catalog.htm"));
+    await userEvent.click(screen.getByText(/Paste the table instead/));
     await userEvent.type(screen.getByLabelText("VSA application catalog table"), "Google Chrome (64-bit)\tGoogle LLC\t1\t131.0.6778.86");
     await userEvent.click(screen.getByRole("button", { name: "Match installed programs" }));
     expect(await screen.findByText(/1 installed program to add or update/)).toBeInTheDocument();

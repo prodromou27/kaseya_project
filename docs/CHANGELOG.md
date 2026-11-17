@@ -1,5 +1,13 @@
 # Changelog
 
+## CAT-02 - 2026-11-17 - the VSA application catalog updates automatically
+
+- Product owner: the catalog import must be automatic. A daily worker job (`apps.software.tasks.update_vsa_catalog`, beat `vsa-application-catalog`) reads the public [VSA 10 application catalog](https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm) page (fixed URL; HTTPS, verified TLS, no redirects, 5 MB cap, public destination only, no credentials), parses its table and matches it to installed programs exactly like the paste import.
+- **Applied automatically:** a higher version for a product that already has an approved reference and no warning - published as an approved import by the inactive "VSA catalog (automatic)" account, audited (`catalog.vsa_auto_update`), compliance re-evaluated (ADR-030). **Waits for approval:** new products, lower versions, version-format warnings (one pending import, replaced by the next check rather than duplicated) and new installed-name aliases (proposed).
+- New `software.0006` (`VsaCatalogCheck`: when, trigger, outcome, error, catalog "Last updated" date, counts). `GET/POST /api/v1/catalog/imports/vsa-catalog-status/` (system admins): last checks / check now. Settings → Software catalog shows the status and **Check now**; pasting stays available as a fallback.
+- `VSA_APP_CATALOG_AUTO_UPDATE` (default true). **Operator action:** allow outbound HTTPS from the worker to `help.vsa10.kaseya.com`, then approve the first pending import once.
+- Verified: 9 new backend tests (auto-apply only after one human approval, decreases/warnings wait, supersede, proposed aliases, HTTP/format failures recorded, private destination refused, switch off, admin-only status), 1 new frontend test; the parser was run against the live public page on 2026-11-17 (303 programs, 17 discontinued skipped, "Last updated" read).
+
 ## CAT-01 - 2026-11-17 - reference versions from the VSA application catalog
 
 - Operator request: use the VSA software catalog to judge installed versions. The [VSA 10 application catalog](https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm) lists, per program, vendor, tier and the version VSA's 3rd-Party Patching deploys. The VSA X API documents no endpoint for it (checked api.vsax.net), so it is pasted, not fetched.
