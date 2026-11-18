@@ -76,6 +76,12 @@ export type Integration = {
   group_move_execution_enabled?: boolean;
   write_credential_configured?: boolean;
   group_move_execution_server_enabled?: boolean;
+  /** CFA: custom field assignment (also needs the server switch, a validated route and, for live VSA, a write token). */
+  custom_field_writes_enabled?: boolean;
+  custom_field_write_route?: string;
+  custom_field_route_validated_at?: string | null;
+  custom_field_approval_threshold?: number;
+  custom_field_writes_server_enabled?: boolean;
   verify_tls: boolean;
   max_rps: string;
   installed_updates_budget: number;
@@ -159,7 +165,38 @@ export const CAP = {
   proposeMappings: "customer.propose_mappings",
   sync: "customer.sync",
   manageExceptions: "customer.manage_exceptions",
+  cfAssign: "customer.custom_field.assign",
+  cfBulk: "customer.custom_field.bulk_assign",
+  cfApprove: "customer.custom_field.approve",
 } as const;
+
+// ---------------------------------------------------------------- CFA: VSA X custom field assignment
+
+export type CustomFieldDef = {
+  id: string; external_id: string; name: string; description: string; type: "Text" | "Number" | "Boolean" | "Date" | string;
+  default_value: string; is_read_only: boolean; contexts: string[]; expiration_date: string | null; present: boolean;
+  fetched_at: string; portal_writable: boolean; requires_approval: boolean; integration: string; editable: boolean;
+  device_capable: boolean; reason: string;
+};
+export type CfJobState = "draft" | "previewing" | "previewed" | "awaiting_approval" | "queued" | "running" | "completed" | "cancelled" | "failed" | "rejected";
+export type CfJob = {
+  id: string; field: string; field_name: string; field_type: string; field_external_id: string; integration: string;
+  value: string; per_device_values: boolean; source: string; source_label: string; source_filename: string; retry_of: string | null;
+  state: CfJobState; state_label: string; created_by: string; created_at: string; previewed_at: string | null;
+  confirmed_by: string | null; confirmed_at: string | null; approval_required: boolean; approved_by: string | null;
+  approved_at: string | null; cancel_requested: boolean; started_at: string | null; finished_at: string | null; error_code: string;
+  counts: { items?: number; match?: Record<string, number>; action?: Record<string, number>; result?: Record<string, number>; to_change?: number; updates?: number };
+  writes: { available: boolean; reason: string };
+};
+export type CfCandidate = { asset_id: string; device_id: string; hostname: string; site: string; group: string };
+export type CfItem = {
+  id: string; position: number; input_identifier: string; input_kind: string; input_row: number | null;
+  match_status: string; match_label: string; match_note: string; candidates: CfCandidate[]; asset: string | null;
+  device_external_id: string; hostname: string; site: string; group: string; requested_value: string; included: boolean;
+  current_value: string | null; current_source: string; device_assigned: boolean | null; action: string; action_label: string;
+  action_note: string; result: string; result_label: string; final_value: string | null; http_status: number | null;
+  error_code: string; finished_at: string | null;
+};
 
 // ---------------------------------------------------------------- P1: inventory, sync, software
 

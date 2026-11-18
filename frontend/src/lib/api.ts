@@ -88,9 +88,10 @@ export async function apiRequest<T>(
 }
 
 /** Multipart upload (one file). The browser sets the multipart boundary; CSRF is sent as for JSON writes. */
-export async function apiUpload<T>(path: string, file: File, field = "file"): Promise<T> {
+export async function apiUpload<T>(path: string, file: File, field = "file", extra: Record<string, string> = {}): Promise<T> {
   const form = new FormData();
   form.append(field, file);
+  for (const [key, value] of Object.entries(extra)) form.append(key, value);
   const headers: Record<string, string> = { Accept: "application/json" };
   const csrf = readCookie(CSRF_COOKIE);
   if (csrf) headers["X-CSRFToken"] = csrf;

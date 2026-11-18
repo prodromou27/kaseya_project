@@ -19,6 +19,8 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
   });
   const [executeMoves, setExecuteMoves] = useState(Boolean(integration.group_move_execution_enabled));
   const [writeRef, setWriteRef] = useState("");
+  const [cfWrites, setCfWrites] = useState(Boolean(integration.custom_field_writes_enabled));
+  const [cfThreshold, setCfThreshold] = useState(String(integration.custom_field_approval_threshold ?? 0));
   const urlChanged = baseUrl.trim().replace(/\/$/, "") !== integration.base_url;
   const save = useMutation({
     mutationFn: () =>
@@ -27,7 +29,9 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
         base_url: baseUrl.trim(),
         max_rps: maxRps,
         ...Object.fromEntries(Object.entries(budgets).map(([k, v]) => [k, Number(v)])),
-        ...(integration.provider === "vsa_x" ? { group_move_execution_enabled: executeMoves } : {}),
+        ...(integration.provider === "vsa_x"
+          ? { group_move_execution_enabled: executeMoves, custom_field_writes_enabled: cfWrites, custom_field_approval_threshold: Number(cfThreshold) }
+          : {}),
         ...(writeRef.trim() ? { write_credential_ref: writeRef.trim() } : {}),
       }),
     onSuccess: () => {
@@ -85,6 +89,25 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
               {(id, h) => <input id={id} aria-describedby={h} className="input w-64" pattern="env:VSA_WRITE_[A-Z0-9_]{1,50}" value={writeRef} onChange={(e) => setWriteRef(e.target.value)} />}
             </Field>
           ) : null}
+        </fieldset>
+      ) : null}
+      {integration.provider === "vsa_x" ? (
+        <fieldset className="space-y-2 rounded border border-amber-200 bg-amber-50/50 p-3">
+          <legend className="px-1 text-sm font-semibold">Assign custom fields in VSA X</legend>
+          <p className="text-xs text-slate-600">
+            Lets engineers set editable custom fields on workstations (Custom fields page). It needs the server switch
+            (<code>VSA_CUSTOM_FIELD_WRITES_ENABLED</code>, currently <strong>{integration.custom_field_writes_server_enabled ? "on" : "off"}</strong>),
+            this switch, the separate write token above and, for a live server, a route confirmed on a test workstation
+            (<strong>{integration.is_fixture ? "not needed for fixtures" : integration.custom_field_write_route
+              ? `/api/v3/${integration.custom_field_write_route}/…` : "not validated yet: run manage.py vsa_custom_field_validate"}</strong>).
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={cfWrites} onChange={(e) => setCfWrites(e.target.checked)} />
+            Allow confirmed custom field assignments for this integration
+          </label>
+          <Field label="Second approval above (devices)" hint="Jobs changing more devices than this need another administrator. 0 = never.">
+            {(id, h) => <input id={id} aria-describedby={h} className="input w-28" type="number" min={0} max={100000} value={cfThreshold} onChange={(e) => setCfThreshold(e.target.value)} />}
+          </Field>
         </fieldset>
       ) : null}
       {save.isError ? <p role="alert" className="text-sm text-red-700">{describeError(save.error)}</p> : null}

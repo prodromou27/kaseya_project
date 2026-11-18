@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 // WCAG 2.1 A/AA automated checks (axe-core) on the main pages, at desktop and phone widths. Automated rules find
 // only part of the issues (contrast, names, roles, labels); keyboard and screen-reader reviews stay manual.
 const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
-const PAGES = ["/", "/compliance", "/all-customers", "/assets", "/device-health", "/windows-updates", "/software", "/patch-policies", "/servers", "/lifecycle",
+const PAGES = ["/", "/compliance", "/all-customers", "/assets", "/device-health", "/windows-updates", "/software", "/patch-policies", "/servers", "/custom-fields", "/lifecycle",
   "/notifications", "/changes", "/cleanup", "/alerts", "/automation", "/groups", "/onboarding", "/reports", "/customers", "/admin", "/admin?tab=status"];
 
 async function violations(page: Page): Promise<string[]> {

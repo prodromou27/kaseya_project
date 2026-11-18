@@ -10,6 +10,7 @@ import { Badge, Notice, PageHeader, statusTone } from "../../components/ui";
 import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { useCustomers } from "../../lib/customerContext";
+import { DeviceCustomFields } from "../customfields/DeviceCustomFields";
 import { api } from "../../lib/api";
 import { AdapterList } from "../groups/GroupNetworkPage";
 import { ProposeGroupMove } from "../groups/GroupMovesPage";
@@ -306,6 +307,8 @@ export function AssetDetailPage() {
             { id: "notifications", label: "Notifications", content: <DeviceNotifications detail={detail} /> },
             { id: "hardware", label: "Hardware & security", content: <HardwareSecurity detail={detail} /> },
             ...(detail.customer ? [{ id: "scripts", label: "Script data", content: <DeviceScriptData customerId={detail.customer.id} assetId={detail.id} /> }] : []),
+            ...(selected && detail.customer?.id === selected.id && detail.in_current_dataset
+              ? [{ id: "custom-fields", label: "Custom fields", content: <DeviceCustomFields customer={selected} assetId={detail.id} /> }] : []),
             { id: "history", label: "Observation history", content: (
               <DataTable caption="Observation history" getRowId={(h) => h.generation_id} rows={detail.history} columns={[
                 { header: "Dataset published", cell: ({ row }) => formatUtc(row.original.published_at) },
