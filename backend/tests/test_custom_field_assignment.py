@@ -1,0 +1,574 @@
+"""CFA: VSA X custom field assignment - discovery, matching, import, preview, gated writes, read-back, RBAC, audit."""
+
+from __future__ import annotations
+
+import io
+
+import pytest
+from openpyxl import Workbook, load_workbook
+
+from apps.audit.models import AuditEvent
+from apps.customfields import jobs
+from apps.customfields.models import AssignmentItem, AssignmentJob, CustomFieldDefinition
+from apps.integrations.vsa import fixtures
+from apps.integrations.vsa.cf_writer import VsaCustomFieldWriter
+from apps.inventory.queries import current_observations
+
+from .test_automation import demo  # noqa: F401
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def _clean(monkeypatch):
+    fixtures.FIXTURE_CUSTOM_FIELDS.clear()
+    monkeypatch.setattr(jobs, "sleep", lambda s: None)
+    yield
+    fixtures.FIXTURE_CUSTOM_FIELDS.clear()
+
+
+def base(world):
+    return f"/api/v1/customers/{world.customer_a.id}"
+
+
+@pytest.fixture
+def ready(world, demo, settings, django_capture_on_commit_callbacks):  # noqa: F811
+    """Writes switched on, definitions read, PatchRing/Cost Center/Encryption Exempt editable."""
+    settings.VSA_CUSTOM_FIELD_WRITES_ENABLED = True
+    demo.custom_field_writes_enabled = True
+    demo.save()
+    assert world.client(world.engineer_a).post(f"{base(world)}/custom-fields/refresh/").status_code == 200
+    admin = world.client(world.super_admin)
+    for name in ("PatchRing", "Cost Center", "Encryption Exempt"):
+        d = CustomFieldDefinition.objects.get(name=name)
+        assert admin.patch(f"/api/v1/custom-field-definitions/{d.id}/", {"portal_writable": True}).status_code == 200
+    return demo
+
+
+def ring(world):
+    return CustomFieldDefinition.objects.get(name="PatchRing")
+
+
+def workstations(world, n=None):
+    rows = [
+        o
+        for o in current_observations(world.customer_a.id).order_by("hostname")
+        if "server" not in o.os_name.casefold()
+    ]
+    return rows[:n] if n else rows
+
+
+def run_job(world, client, payload, capture, *, ack=False):
+    """Create -> preview -> confirm (eager Celery). Returns the job body after execution."""
+    resp = client.post(f"{base(world)}/custom-field-jobs/", payload, format="json")
+    assert resp.status_code == 201, resp.content
+    job = resp.json()
+    with capture(execute=True):
+        assert client.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/").status_code == 200
+    with capture(execute=True):
+        resp = client.post(
+            f"{base(world)}/custom-field-jobs/{job['id']}/confirm/",
+            {"confirm": True, "acknowledge_overwrite": ack},
+            format="json",
+        )
+    assert resp.status_code == 200, resp.content
+    return client.get(f"{base(world)}/custom-field-jobs/{job['id']}/").json()
+
+
+def items(world, client, job_id, **params):
+    return client.get(f"{base(world)}/custom-field-jobs/{job_id}/items/", params).json()["results"]
+
+
+# ------------------------------------------------------------------------------------------------ discovery
+
+
+def test_definitions_are_read_and_only_eligible_fields_can_be_made_editable(world, ready):
+    fields = {f["name"]: f for f in world.client(world.viewer_a).get(f"{base(world)}/custom-fields/").json()}
+    assert fields["PatchRing"]["editable"] and fields["PatchRing"]["contexts"] == ["Organization", "Device"]
+    assert fields["PatchRing"]["default_value"] == "Ring 2" and fields["Cost Center"]["type"] == "Number"
+    assert fields["Rack"]["reason"] == "Not enabled for editing in the portal"
+    assert fields["Script Managed Tag"]["reason"] == "Read-only in VSA X"
+    assert fields["Contract tier"]["reason"] == "Not available for devices"
+    assert fields["Old Project Code"]["reason"] == "Expired"
+    assert fields["Local Admin Password"]["reason"].startswith("Credential-like")
+    admin = world.client(world.super_admin)
+    for name in ("Script Managed Tag", "Contract tier", "Old Project Code", "Local Admin Password"):
+        d = CustomFieldDefinition.objects.get(name=name)
+        assert admin.patch(f"/api/v1/custom-field-definitions/{d.id}/", {"portal_writable": True}).status_code == 400
+    # Only system administrators change field settings.
+    d = CustomFieldDefinition.objects.get(name="Rack")
+    for user in (world.admin_a, world.engineer_a):
+        assert (
+            world.client(user).patch(f"/api/v1/custom-field-definitions/{d.id}/", {"portal_writable": True}).status_code
+            == 403
+        )
+
+
+# ------------------------------------------------------------------------------------------------ end to end
+
+
+def test_selected_devices_assign_update_skip_with_read_back(world, ready, django_capture_on_commit_callbacks):
+    ws = workstations(world, 6)
+    eng = world.client(world.engineer_a)
+    body = run_job(
+        world,
+        eng,
+        {"field": str(ring(world).id), "value": "Ring 0", "assets": [str(o.asset_id) for o in ws]},
+        django_capture_on_commit_callbacks,
+        ack=True,
+    )
+    assert body["state"] == "completed", body
+    rows = items(world, eng, body["id"])
+    by_host = {r["hostname"]: r for r in rows}
+    # Index 0 (divisible by 5) had a device-level "Ring 1": update; the others inherit "Ring 2": assign.
+    preset = [r for r in rows if r["current_source"] == "device"]
+    assert preset and all(r["action"] == "update" and r["current_value"] == "Ring 1" for r in preset)
+    inherited = [r for r in rows if r["current_source"] == "inherited"]
+    assert inherited and all(r["action"] == "assign" and r["current_value"] == "Ring 2" for r in inherited)
+    assert all(r["result"] == "verified" and r["final_value"] == "Ring 0" for r in by_host.values())
+    # VSA X (fixture) now holds the value on exactly these devices.
+    assert {k[2] for k in fixtures.FIXTURE_CUSTOM_FIELDS} == {r["device_external_id"] for r in rows}
+
+    # Same request again: everything is already correct and nothing is written.
+    resp = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 0", "assets": [str(o.asset_id) for o in ws]},
+        format="json",
+    )
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{resp.json()['id']}/preview/")
+    again = eng.get(f"{base(world)}/custom-field-jobs/{resp.json()['id']}/").json()
+    assert again["counts"]["action"] == {"skip": 6} and again["counts"]["to_change"] == 0
+    assert (
+        eng.post(
+            f"{base(world)}/custom-field-jobs/{again['id']}/confirm/", {"confirm": True}, format="json"
+        ).status_code
+        == 400
+    )
+
+    events = set(AuditEvent.objects.filter(action__startswith="custom_field.").values_list("action", flat=True))
+    assert {
+        "custom_field.job_created",
+        "custom_field.previewed",
+        "custom_field.confirmed",
+        "custom_field.assignment",
+        "custom_field.execution_finished",
+    } <= events
+    one = AuditEvent.objects.filter(action="custom_field.assignment").first()
+    assert one.metadata["requested_value"] == "Ring 0" and one.metadata["field"] == "PatchRing"
+    assert one.actor == world.engineer_a
+
+
+def test_overwrite_needs_acknowledgement(world, ready, django_capture_on_commit_callbacks):
+    ws = workstations(world, 1)
+    fixtures.FIXTURE_CUSTOM_FIELDS[(str(ready.id), "901", str(ws[0].asset.external_id))] = "Ring 1"  # set on the device
+    eng = world.client(world.engineer_a)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 3", "assets": [str(ws[0].asset_id)]},
+        format="json",
+    ).json()
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    resp = eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json")
+    assert resp.status_code == 400 and "acknowledge_overwrite" in resp.json()["error"]["details"]
+
+
+def test_pasted_list_matching_classes(world, ready):
+    ws = workstations(world, 3)
+    server = next(o for o in current_observations(world.customer_a.id) if "server" in o.os_name.casefold())
+    text = "\n".join(
+        [
+            ws[0].hostname,
+            ws[0].hostname.lower(),  # duplicate input
+            f"{ws[1].hostname}, {server.hostname}",
+            "NO-SUCH-PC",
+            "bad name!",
+            str(ws[2].asset.external_id),
+        ]
+    )
+    job = (
+        world.client(world.engineer_a)
+        .post(
+            f"{base(world)}/custom-field-jobs/",
+            {"field": str(ring(world).id), "value": "Ring 0", "source": "list", "text": text},
+            format="json",
+        )
+        .json()
+    )
+    got = [(r["input_identifier"], r["match_status"]) for r in items(world, world.client(world.engineer_a), job["id"])]
+    assert got == [
+        (ws[0].hostname, "matched"),
+        (ws[0].hostname.lower(), "duplicate"),
+        (ws[1].hostname, "matched"),
+        (server.hostname, "unsupported"),
+        ("NO-SUCH-PC", "not_found"),
+        ("bad name!", "invalid"),
+        (str(ws[2].asset.external_id), "matched"),
+    ]
+    assert job["counts"]["match"]["matched"] == 3
+
+
+def test_ambiguous_hostname_needs_a_choice(world, ready):
+    ws = workstations(world, 2)
+    a, b = ws
+    b.hostname = a.hostname  # two devices with the same name
+    b.save(update_fields=["hostname"])
+    eng = world.client(world.engineer_a)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 0", "source": "list", "text": a.hostname},
+        format="json",
+    ).json()
+    (item,) = items(world, eng, job["id"])
+    assert item["match_status"] == "multiple" and len(item["candidates"]) == 2 and not item["included"]
+    assert eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/").status_code == 400  # nothing included
+    other = str(
+        current_observations(world.customer_a.id).exclude(asset_id__in=[a.asset_id, b.asset_id]).first().asset_id
+    )
+    bad = eng.post(
+        f"{base(world)}/custom-field-jobs/{job['id']}/resolve/", {"item": item["id"], "asset": other}, format="json"
+    )
+    assert bad.status_code == 400
+    ok = eng.post(
+        f"{base(world)}/custom-field-jobs/{job['id']}/resolve/",
+        {"item": item["id"], "asset": str(b.asset_id)},
+        format="json",
+    )
+    assert ok.json()["match_status"] == "matched" and ok.json()["included"]
+
+
+def test_xlsx_csv_and_txt_imports_with_column_mapping(world, ready):
+    ws = workstations(world, 2)
+    eng = world.client(world.engineer_a)
+    wb = Workbook()
+    sheet = wb.active
+    sheet.append(["Computer Name", "Serial", "New value"])
+    sheet.append([ws[0].hostname, "", "Ring 1"])
+    sheet.append(['=HYPERLINK("http://evil.invalid")', "", "Ring 1"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    inspect = eng.post(
+        f"{base(world)}/custom-field-jobs/inspect-file/",
+        {"file": _upload("devices.xlsx", buf.getvalue())},
+        format="multipart",
+    ).json()
+    assert inspect["columns"] == ["Computer Name", "Serial", "New value"] and inspect["rows"] == 2
+    assert inspect["mapping"] == {"hostname": 0, "serial": 1, "value": 2}
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {
+            "field": str(ring(world).id),
+            "file": _upload("devices.xlsx", buf.getvalue()),
+            "mapping": '{"hostname": 0, "value": 2}',
+        },
+        format="multipart",
+    ).json()
+    rows = items(world, eng, job["id"])
+    assert job["per_device_values"] and job["source"] == "import" and job["source_filename"] == "devices.xlsx"
+    assert [r["match_status"] for r in rows] == ["matched", "invalid"]  # the formula cell is never evaluated
+    assert rows[0]["requested_value"] == "Ring 1"
+
+    csv_job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {
+            "field": str(ring(world).id),
+            "value": "Ring 0",
+            "file": _upload("d.csv", f"hostname\n{ws[1].hostname}\n{ws[1].hostname}\n".encode()),
+            "mapping": '{"hostname": 0}',
+        },
+        format="multipart",
+    ).json()
+    assert [r["match_status"] for r in items(world, eng, csv_job["id"])] == ["matched", "duplicate"]
+    txt = eng.post(
+        f"{base(world)}/custom-field-jobs/inspect-file/",
+        {"file": _upload("d.txt", f"{ws[0].hostname}\r\n\r\n{ws[1].hostname}\r\n".encode())},
+        format="multipart",
+    ).json()
+    assert txt["rows"] == 2 and txt["mapping"] == {"hostname": 0}
+    macro = eng.post(
+        f"{base(world)}/custom-field-jobs/inspect-file/",
+        {"file": _upload("x.xlsm", b"PK\x03\x04junk")},
+        format="multipart",
+    )
+    assert macro.status_code == 400
+
+
+def _upload(name, data):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    return SimpleUploadedFile(name, data)
+
+
+# ------------------------------------------------------------------------------------------------ safety
+
+
+def test_writes_are_off_unless_every_gate_is_set(world, demo, settings, django_capture_on_commit_callbacks):  # noqa: F811
+    eng = world.client(world.engineer_a)
+    world.client(world.engineer_a).post(f"{base(world)}/custom-fields/refresh/")
+    d = CustomFieldDefinition.objects.get(name="PatchRing")
+    resp = eng.post(
+        f"{base(world)}/custom-field-jobs/", {"field": str(d.id), "value": "Ring 0", "assets": []}, format="json"
+    )
+    assert resp.status_code == 400  # field not editable yet
+    d.portal_writable = True
+    d.save()
+    ws = workstations(world, 1)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(d.id), "value": "Ring 0", "assets": [str(ws[0].asset_id)]},
+        format="json",
+    ).json()
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    confirm = eng.post(
+        f"{base(world)}/custom-field-jobs/{job['id']}/confirm/",
+        {"confirm": True, "acknowledge_overwrite": True},
+        format="json",
+    )
+    assert confirm.status_code == 400 and "switched off on this server" in str(confirm.json())
+    settings.VSA_CUSTOM_FIELD_WRITES_ENABLED = True
+    confirm = eng.post(
+        f"{base(world)}/custom-field-jobs/{job['id']}/confirm/",
+        {"confirm": True, "acknowledge_overwrite": True},
+        format="json",
+    )
+    assert "not enabled for this VSA X integration" in str(confirm.json())
+    assert not fixtures.FIXTURE_CUSTOM_FIELDS
+    # A live integration also needs a validated route and a separate write token.
+    from apps.integrations.vsa.cf_writer import availability
+
+    demo.is_fixture, demo.custom_field_writes_enabled = False, True
+    assert availability(demo) == (False, "The custom field route has not been validated on a test workstation yet.")
+    demo.custom_field_write_route = "automation/customfields"
+    assert availability(demo)[1] == "No separate VSA X write token is configured for this integration."
+
+
+def test_only_documented_routes_and_body(world, ready):
+    from apps.integrations.vsa.cf_writer import path_for
+
+    assert path_for("customfields", "901", "assign") == "/api/v3/customfields/901/assign"
+    assert (
+        path_for("automation/customfields", "901", "updateAssigned")
+        == "/api/v3/automation/customfields/901/updateAssigned"
+    )
+    for bad in (("customfields", "901", "unassign"), ("other", "901", "assign"), ("customfields", "9/../1", "assign")):
+        with pytest.raises(ValueError):
+            path_for(*bad)
+    transport = fixtures.FixtureCustomFieldWriteTransport(ready)
+    writer = VsaCustomFieldWriter(ready, transport=transport)
+    device = str(workstations(world, 2)[1].asset.external_id)
+    writer.write("901", device, "Ring 5", update=False)
+    assert transport.calls == [
+        (
+            "POST",
+            "/api/v3/customfields/901/assign",
+            {"ContextType": "Device", "ContextItemId": device, "UseDefaultValue": False, "Value": "Ring 5"},
+        )
+    ]
+    with pytest.raises(ValueError):
+        writer.write("901", "../x", "Ring 5", update=False)
+
+
+def test_failures_timeouts_and_rate_limits(world, ready, django_capture_on_commit_callbacks):
+    import requests
+
+    from apps.integrations.vsa.cf_writer import WriteOutcomeUnknown, WriteRejected
+
+    ws = workstations(world, 4)
+    eng = world.client(world.engineer_a)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 9", "assets": [str(o.asset_id) for o in ws[1:4]]},
+        format="json",
+    ).json()
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    jobs.confirm(AssignmentJob.objects.get(pk=job["id"]), world.engineer_a, acknowledge_overwrite=True)
+
+    real = fixtures.FixtureCustomFieldWriteTransport(ready)
+    script = iter(["429", "ok", "400", "timeout_applied"])
+
+    class Flaky:
+        calls = 0
+
+        def send(self, method, url, **kw):
+            Flaky.calls += 1
+            step = next(script)
+            if step == "429":
+                return fixtures.FakeResponse(429)
+            if step == "400":
+                return fixtures.FakeResponse(400)
+            if step == "timeout_applied":
+                real.send(method, url, **kw)  # applied, but the answer is lost
+                raise requests.Timeout()
+            return real.send(method, url, **kw)
+
+    writer = VsaCustomFieldWriter(ready, transport=Flaky())
+    done = jobs.execute(job["id"], writer=writer)
+    assert done.state == "completed"
+    results = [r["result"] for r in items(world, eng, job["id"])]
+    assert results == ["verified", "failed", "verified"]  # 429 backed off then succeeded; 400 failed; timeout read back
+    failed = items(world, eng, job["id"], result="failed")[0]
+    assert failed["error_code"] == "vsa_rejected_400" and failed["http_status"] == 400
+    lost = items(world, eng, job["id"])[2]
+    assert lost["error_code"].startswith("confirmed_after_timeout")
+    assert Flaky.calls == 4
+    assert WriteOutcomeUnknown and WriteRejected
+
+
+def test_concurrent_change_and_interrupted_run_are_never_resent(world, ready, django_capture_on_commit_callbacks):
+    ws = workstations(world, 3)
+    eng = world.client(world.engineer_a)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 7", "assets": [str(o.asset_id) for o in ws[1:3]]},
+        format="json",
+    ).json()
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    jobs.confirm(AssignmentJob.objects.get(pk=job["id"]), world.engineer_a, acknowledge_overwrite=True)
+    first, second = AssignmentItem.objects.filter(job_id=job["id"]).order_by("position")
+    # Someone sets the first device in VSA X after the preview; the second was mid-send when a worker died.
+    fixtures.FIXTURE_CUSTOM_FIELDS[(str(ready.id), "901", first.device_external_id)] = "Ring 4"
+    second.result = AssignmentItem.Result.SENDING
+    second.save()
+    AssignmentJob.objects.filter(pk=job["id"]).update(state="running", heartbeat_at=None)
+    transport = fixtures.FixtureCustomFieldWriteTransport(ready)
+    jobs.execute(job["id"], writer=VsaCustomFieldWriter(ready, transport=transport))
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert (first.result, first.error_code, first.final_value) == ("skipped", "changed_since_preview", "Ring 4")
+    assert second.result == "unknown"  # not resent; read-back shows it was not applied
+    assert transport.calls == []
+
+
+def test_cancel_and_duplicate_delivery(world, ready, django_capture_on_commit_callbacks):
+    ws = workstations(world, 3)
+    eng = world.client(world.engineer_a)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 7", "assets": [str(o.asset_id) for o in ws[1:3]]},
+        format="json",
+    ).json()
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    jobs.confirm(AssignmentJob.objects.get(pk=job["id"]), world.engineer_a, acknowledge_overwrite=True)
+    assert eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/cancel/").json()["cancel_requested"]
+    done = jobs.execute(job["id"])
+    assert done.state == "cancelled" and not fixtures.FIXTURE_CUSTOM_FIELDS
+    assert set(AssignmentItem.objects.filter(job_id=job["id"]).values_list("result", flat=True)) == {"cancelled"}
+    assert jobs.execute(job["id"]).state == "cancelled"  # a second delivery does nothing
+    retry = eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/retry/")
+    assert retry.status_code == 201 and retry.json()["state"] == "draft" and retry.json()["counts"]["items"] == 2
+
+
+def test_permissions_bulk_limit_approval_and_tenant_isolation(
+    world, ready, settings, django_capture_on_commit_callbacks
+):
+    settings.CUSTOM_FIELD_ENGINEER_MAX_DEVICES = 1
+    ws = workstations(world, 3)
+    payload = {"field": str(ring(world).id), "value": "Ring 0", "assets": [str(o.asset_id) for o in ws[1:3]]}
+    assert (
+        world.client(world.viewer_a).post(f"{base(world)}/custom-field-jobs/", payload, format="json").status_code
+        == 404
+    )
+    assert world.client(world.engineer_b).get(f"{base(world)}/custom-field-jobs/").status_code == 404
+    eng = world.client(world.engineer_a)
+    job = eng.post(f"{base(world)}/custom-field-jobs/", payload, format="json").json()
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    over = eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json")
+    assert over.status_code == 403  # more devices than an engineer may change
+
+    # A customer administrator may; above the approval threshold a different administrator approves.
+    ready.custom_field_approval_threshold = 1
+    ready.save()
+    admin = world.client(world.admin_a)
+    with django_capture_on_commit_callbacks(execute=True):
+        body = admin.post(
+            f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json"
+        ).json()
+    assert body["state"] == "awaiting_approval" and not fixtures.FIXTURE_CUSTOM_FIELDS
+    assert admin.post(f"{base(world)}/custom-field-jobs/{job['id']}/approve/").status_code == 403  # own job
+    assert eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/approve/").status_code == 404  # engineers cannot
+    with django_capture_on_commit_callbacks(execute=True):
+        approved = world.client(world.super_admin).post(f"{base(world)}/custom-field-jobs/{job['id']}/approve/")
+    assert approved.status_code == 200
+    assert AssignmentJob.objects.get(pk=job["id"]).state == "completed" and len(fixtures.FIXTURE_CUSTOM_FIELDS) == 2
+
+    # Another customer's devices or field cannot be used, even by ID.
+    foreign = world.client(world.engineer_b).post(
+        f"/api/v1/customers/{world.customer_b.id}/custom-field-jobs/", payload, format="json"
+    )
+    assert foreign.status_code == 400
+
+
+def test_report_has_all_sheets_and_neutralised_cells(world, ready, django_capture_on_commit_callbacks):
+    ws = workstations(world, 2)
+    eng = world.client(world.engineer_a)
+    body = run_job(
+        world,
+        eng,
+        {"field": str(ring(world).id), "value": "=cmd|' /C calc'!A0", "assets": [str(o.asset_id) for o in ws[1:2]]},
+        django_capture_on_commit_callbacks,
+    )
+    resp = eng.get(f"{base(world)}/custom-field-jobs/{body['id']}/report/", {"type": "xlsx"})
+    wb = load_workbook(io.BytesIO(resp.content))
+    assert wb.sheetnames == ["Summary", "Successful", "Skipped", "Failed", "Not found", "Ambiguous"]
+    success = list(wb["Successful"].values)
+    assert len(success) == 2 and success[1][11].startswith("'=")
+    csv = eng.get(f"{base(world)}/custom-field-jobs/{body['id']}/report/", {"type": "csv"}).content.decode("utf-8-sig")
+    assert "'=cmd" in csv and "Verified success" in csv
+    assert world.client(world.viewer_a).get(f"{base(world)}/custom-field-jobs/{body['id']}/report/").status_code == 404
+
+
+def test_typed_values_are_validated(world, ready):
+    from apps.customfields.definitions import ValueInvalid, normalise, same
+
+    assert normalise("Number", " 42 ") == "42" and normalise("Boolean", "Yes") == "true"
+    assert normalise("Date", "2026-12-31") == "2026-12-31" and same("Number", "42.0", "42")
+    for ftype, bad in (
+        ("Number", "4x"),
+        ("Boolean", "maybe"),
+        ("Date", "31/12/2026"),
+        ("Text", ""),
+        ("Text", "x" * 256),
+    ):
+        with pytest.raises(ValueInvalid):
+            normalise(ftype, bad)
+    cost = CustomFieldDefinition.objects.get(name="Cost Center")
+    resp = world.client(world.engineer_a).post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(cost.id), "value": "abc", "assets": [str(workstations(world, 1)[0].asset_id)]},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+def test_device_page_shows_editable_fields_with_current_values(world, ready):
+    ws = workstations(world, 2)
+    body = world.client(world.viewer_a).get(f"{base(world)}/custom-fields/device/{ws[1].asset_id}/").json()
+    assert body["workstation"] is True
+    values = {f["name"]: f["value"] for f in body["fields"]}
+    assert values == {"PatchRing": "Ring 2", "Cost Center": None, "Encryption Exempt": None}
+
+
+def test_select_all_matching_filters_becomes_a_fixed_list(world, ready):
+    ws = workstations(world, 1)[0]
+    eng = world.client(world.engineer_a)
+    body = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 0", "filters": {"search": ws.hostname}},
+        format="json",
+    ).json()
+    rows = items(world, eng, body["id"])
+    assert [r["hostname"] for r in rows] == [ws.hostname] and body["source"] == "selection"
+    # Later inventory changes do not alter the job's device list.
+    assert AssignmentItem.objects.filter(job_id=body["id"]).count() == 1
+    bad = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 0", "filters": {"offline_days": "9999"}},
+        format="json",
+    )
+    assert bad.status_code == 400

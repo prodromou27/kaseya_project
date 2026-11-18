@@ -62,6 +62,7 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
     write_credential_ref = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=80)
     write_credential_configured = serializers.SerializerMethodField()
     group_move_execution_server_enabled = serializers.SerializerMethodField()
+    custom_field_writes_server_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = IntegrationInstance
@@ -81,6 +82,11 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "write_credential_ref",
             "write_credential_configured",
             "group_move_execution_server_enabled",
+            "custom_field_writes_enabled",
+            "custom_field_write_route",
+            "custom_field_route_validated_at",
+            "custom_field_approval_threshold",
+            "custom_field_writes_server_enabled",
             "installed_updates_budget",
             "applied_policies_budget",
             "notifications_budget",
@@ -103,7 +109,13 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "updated_at",
             "credential_configured",
             "credential_set_at",
+            # Set only by manage.py vsa_custom_field_validate on a test workstation.
+            "custom_field_write_route",
+            "custom_field_route_validated_at",
         ]
+
+    def get_custom_field_writes_server_enabled(self, obj: IntegrationInstance) -> bool:
+        return bool(getattr(settings, "VSA_CUSTOM_FIELD_WRITES_ENABLED", False))
 
     def get_credential_configured(self, obj: IntegrationInstance) -> bool:
         return bool(obj.credential_ref or obj.credential_ciphertext)
@@ -194,10 +206,20 @@ class IntegrationInstanceViewSet(
             SyncSchedule.objects.filter(
                 mapping__integration_instance=inst, mapping__mapping_status="approved", enabled=True
             ).update(next_run_at=timezone.now())
-        if inst.base_url != old_url and inst.group_move_execution_enabled:
-            # A new server must be re-approved for writes.
-            inst.group_move_execution_enabled = False
-            inst.save(update_fields=["group_move_execution_enabled"])
+        if inst.base_url != old_url and (
+            inst.group_move_execution_enabled or inst.custom_field_writes_enabled or inst.custom_field_write_route
+        ):
+            # A new server must be re-approved (and the custom field route re-validated) for writes.
+            inst.group_move_execution_enabled = inst.custom_field_writes_enabled = False
+            inst.custom_field_write_route, inst.custom_field_route_validated_at = "", None
+            inst.save(
+                update_fields=[
+                    "group_move_execution_enabled",
+                    "custom_field_writes_enabled",
+                    "custom_field_write_route",
+                    "custom_field_route_validated_at",
+                ]
+            )
         if inst.base_url != old_url and inst.credential_ciphertext:
             # Never send a token entered for one server to another: the admin must enter it again.
             _clear_portal_credential(inst)

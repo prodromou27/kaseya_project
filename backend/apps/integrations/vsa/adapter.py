@@ -52,6 +52,10 @@ ALLOWED_PATHS = [
     re.compile(r"/api/v3/scopes/[0-9]{1,18}/usage"),
     # CF-02 (docs-verified 2026-11-16): organisation/site/group custom field values.
     re.compile(r"/api/v3/(organizations|sites|groups)/[0-9]{1,18}/customfields"),
+    # CFA (docs-verified 2026-11-18, https://api.vsax.net/): custom field definitions and where a field is assigned.
+    re.compile(r"/api/v3/customFields"),
+    re.compile(r"/api/v3/customfields/[0-9]{1,18}"),
+    re.compile(r"/api/v3/customfields/[0-9]{1,18}/usage"),
     re.compile(r"/api/v3/automation/scripts/[A-Za-z0-9-]{1,64}/device/[A-Za-z0-9-]{1,64}/executions"),
     re.compile(
         r"/api/v3/automation/scripts/[A-Za-z0-9-]{1,64}/device/[A-Za-z0-9-]{1,64}/executions/[A-Za-z0-9-]{1,64}"
@@ -231,6 +235,55 @@ class VsaXAdapter:
         ):
             rows.extend(page.records)
         return rows
+
+    # ------------------------------------------------------------------------------------ custom fields (CFA)
+
+    def list_custom_field_definitions(self) -> list[dict[str, Any]]:
+        """``GET /api/v3/customFields`` - every definition the token can see (Id, Name, Type, Contexts, ...)."""
+        rows: list[dict[str, Any]] = []
+        for page in self._paged("/api/v3/customFields", {"$orderby": "Id asc"}, 100, max_pages=50):
+            rows.extend(page.records)
+        return rows
+
+    def custom_field_device_usage(
+        self, field_id: str, device_id: str | None = None, max_pages: int = 100
+    ) -> list[dict]:
+        """``GET /api/v3/customfields/:id/usage`` filtered to device-level assignments (one device, or all).
+
+        Returns ``[{UsageContextType, ContextItemId, Value}]``. Identifiers are validated, so the OData filter cannot
+        be injected.
+        """
+        if not _ORG_ID.fullmatch(str(field_id or "")):
+            raise ValueError("Unsafe custom field identifier.")
+        flt = "UsageContextType eq 'Device'"
+        if device_id is not None:
+            if not _DEVICE_ID.fullmatch(device_id or ""):
+                raise ValueError("Unsafe device identifier.")
+            flt += f" and ContextItemId eq '{device_id}'"
+        rows: list[dict[str, Any]] = []
+        for page in self._paged(
+            f"/api/v3/customfields/{field_id}/usage",
+            {"$filter": flt},
+            100,
+            max_pages=max_pages,
+            max_retries=DETAIL_RETRIES,
+        ):
+            rows.extend(page.records)
+        return rows
+
+    def device_custom_field_value(self, device_id: str, field_id: str) -> dict[str, Any] | None:
+        """``GET /api/v3/devices/:id/customfields?$filter=Id eq N`` - the value VSA X reports for the device."""
+        if not _DEVICE_ID.fullmatch(device_id or "") or not _ORG_ID.fullmatch(str(field_id or "")):
+            raise ValueError("Unsafe identifier.")
+        result = self.client.get_json(
+            f"/api/v3/devices/{device_id}/customfields",
+            {"$filter": f"Id eq {int(field_id)}", "$top": "100", "$skip": "0"},
+            max_retries=DETAIL_RETRIES,
+        )
+        for row in parse_page(result.json).records:
+            if str(row.get("Id")) == str(field_id):
+                return row
+        return None
 
     def get_device_group(self, device_id: str) -> tuple[str, str]:
         """``GET /api/v3/devices/{id}`` -> (GroupId, GroupName), used only to read back a group move."""

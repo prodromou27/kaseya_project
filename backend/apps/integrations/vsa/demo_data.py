@@ -151,6 +151,8 @@ def _asset(rng: random.Random, org_id: int, site_id: int, index: int, prefix: st
         {"Id": 124, "Name": "Local Admin Password", "Value": "should-never-be-stored", "Type": "Text"},
         {"Id": 125, "Name": "Rack", "Value": f"R{index % 4}", "Type": "Text"},
     ]
+    if kind == "Workstations" and index % 5 == 0:  # CFA: some devices already carry a device-level patch ring
+        asset["_CustomFields"].append({"Id": 901, "Name": "PatchRing", "Value": "Ring 1", "Type": "Text"})
     _add_network_and_hardware(rng, asset, org_id, index)
     if asset["Type"] == "windows" and index % 37 != 0:  # every 37th Windows device omits OS update sections
         available = [u for u in _DEMO_UPDATES if rng.random() < u["_p"]]
@@ -539,6 +541,9 @@ def _automation(rng: random.Random, assets: list[dict[str, Any]]) -> dict[str, A
             ],
             "72": [{"UsageContextType": "Task", "ContextItemId": 602}],
         },
+        # CFA: custom field definitions (documented GET /api/v3/customFields shape). "_OrgValue" is fixture-only:
+        # an organisation-level value devices inherit when they have no device-level assignment.
+        "custom_field_definitions": CUSTOM_FIELD_DEFINITIONS,
         # CF-02: organisation/site custom fields (the credential-like one must never be stored).
         "scope_custom_fields": {
             "organizations:1001": [
@@ -549,6 +554,44 @@ def _automation(rng: random.Random, assets: list[dict[str, Any]]) -> dict[str, A
             "sites:2001": [{"Id": 21, "Name": "Site contact", "Value": "Front desk (fixture)", "Type": "Text"}],
         },
     }
+
+
+def _definition(fid: int, name: str, ftype: str, contexts: list[str], **extra: Any) -> dict[str, Any]:
+    return {
+        "Id": fid,
+        "Name": name,
+        "Description": extra.pop("Description", ""),
+        "Type": ftype,
+        "DefaultValue": extra.pop("DefaultValue", None),
+        "GlobalValue": None,
+        "IsReadOnly": extra.pop("IsReadOnly", False),
+        "Contexts": contexts,
+        "ExpirationDate": extra.pop("ExpirationDate", None),
+        "CreatedAt": "2026-01-05T09:00:00Z",
+        **extra,
+    }
+
+
+CUSTOM_FIELD_DEFINITIONS = [
+    _definition(123, "Asset Owner Department", "Text", ["Device"], Description="Owning department (fixture)"),
+    _definition(124, "Local Admin Password", "Text", ["Device"]),
+    _definition(125, "Rack", "Text", ["Device"]),
+    _definition(
+        901,
+        "PatchRing",
+        "Text",
+        ["Organization", "Device"],
+        Description="Patch deployment ring (fixture)",
+        DefaultValue="Ring 2",
+        _OrgValue="Ring 2",
+    ),
+    _definition(902, "Cost Center", "Number", ["Device"], Description="Finance cost centre number (fixture)"),
+    _definition(903, "Encryption Exempt", "Boolean", ["Device"]),
+    _definition(904, "Warranty Expires", "Date", ["Device"]),
+    _definition(905, "Script Managed Tag", "Text", ["Device"], IsReadOnly=True),
+    _definition(906, "Contract tier", "Text", ["Organization"]),
+    _definition(907, "Old Project Code", "Text", ["Device"], ExpirationDate="2025-01-01T00:00:00Z"),
+]
 
 
 def demo_tenant() -> dict[str, Any]:

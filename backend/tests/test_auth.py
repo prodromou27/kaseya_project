@@ -43,6 +43,7 @@ def _concrete(path: str) -> str:
     path = re.sub(r"\(\?P<pk>\[\^/\.\]\+\)", "22222222-2222-2222-2222-222222222222", path)
     path = re.sub(r"\(\?P<pk>\[0-9\]\{1,18\}\)", "123", path)  # numeric VSA IDs (e.g. groups)
     path = re.sub(r"\(\?P<result_pk>[^)]*\)", "33333333-3333-3333-3333-333333333333", path)  # onboarding review
+    path = re.sub(r"\(\?P<asset_id>[^)]*\)", "44444444-4444-4444-4444-444444444444", path)  # custom field device values
     path = re.sub(r"\(\?P<format>[^)]*\)", "", path)
     return "/" + path.replace("^", "").replace("$", "").replace("\\.", ".").replace("\\", "")
 

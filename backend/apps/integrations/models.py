@@ -53,6 +53,22 @@ class IntegrationInstance(models.Model):
         validators=[RegexValidator(r"^(env:VSA_WRITE_[A-Z0-9_]{1,50})?$", "Use env:VSA_WRITE_<NAME> (server secret).")],
         help_text="Separate VSA X write token (TOKEN_ID:TOKEN_SECRET) as a server secret reference; never stored here.",
     )
+    # CFA (ADR-031): custom field assignment. Needs the server switch VSA_CUSTOM_FIELD_WRITES_ENABLED as well.
+    custom_field_writes_enabled = models.BooleanField(
+        default=False, help_text="Allow confirmed custom field assignments to be written to VSA X (super admin)."
+    )
+    custom_field_write_route = models.CharField(
+        max_length=24,
+        blank=True,
+        choices=[("customfields", "/api/v3/customfields/{id}/…"), ("automation/customfields", "/api/v3/automation/…")],
+        help_text="Documented route form confirmed on a test workstation (vsa_custom_field_validate). Blank = none.",
+    )
+    custom_field_route_validated_at = models.DateTimeField(null=True, blank=True)
+    custom_field_approval_threshold = models.PositiveIntegerField(
+        default=0,
+        validators=[MaxValueValidator(100000)],
+        help_text="Jobs changing more devices than this need a second administrator's approval (0 = never).",
+    )
     verify_tls = models.BooleanField(default=True, editable=False)
     max_rps = models.DecimalField(
         max_digits=6,

@@ -990,6 +990,53 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/custom-field-definitions/:
+    get:
+      operationId: custom_field_definitions_list
+      description: '``/custom-field-definitions/`` - system administrators choose
+        which fields the portal may edit.'
+      tags:
+      - custom-field-definitions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Definition'
+          description: ''
+  /api/v1/custom-field-definitions/{id}/:
+    patch:
+      operationId: custom_field_definitions_partial_update
+      description: '``/custom-field-definitions/`` - system administrators choose
+        which fields the portal may edit.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom field definition.
+        required: true
+      tags:
+      - custom-field-definitions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDefinition'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Definition'
+          description: ''
   /api/v1/customers/:
     get:
       operationId: customers_list
@@ -1640,6 +1687,561 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CustomFieldAllowlist'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/:
+    get:
+      operationId: customers_custom_field_jobs_list
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJobList'
+          description: ''
+    post:
+      operationId: customers_custom_field_jobs_create
+      description: JSON ``{field, value, source, assets?, text?}`` or multipart ``file``
+        + ``mapping``.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/:
+    get:
+      operationId: customers_custom_field_jobs_retrieve
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/approve/:
+    post:
+      operationId: customers_custom_field_jobs_approve_create
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/cancel/:
+    post:
+      operationId: customers_custom_field_jobs_cancel_create
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/confirm/:
+    post:
+      operationId: customers_custom_field_jobs_confirm_create
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/include/:
+    post:
+      operationId: customers_custom_field_jobs_include_create
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/items/:
+    get:
+      operationId: customers_custom_field_jobs_items_list
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedItemList'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/preview/:
+    post:
+      operationId: customers_custom_field_jobs_preview_create
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/reject/:
+    post:
+      operationId: customers_custom_field_jobs_reject_create
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/report/:
+    get:
+      operationId: customers_custom_field_jobs_report_retrieve
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/resolve/:
+    post:
+      operationId: customers_custom_field_jobs_resolve_create
+      description: '``/customers/{id}/custom-field-jobs/`` - create, review, preview,
+        confirm, approve, cancel, report.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/retry/:
+    post:
+      operationId: customers_custom_field_jobs_retry_create
+      description: New draft job for the devices that did not end verified (preview
+        and confirm again).
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/inspect-file/:
+    post:
+      operationId: customers_custom_field_jobs_inspect_file_create
+      description: Columns and the first rows of an uploaded TXT/CSV/XLSX, with a
+        suggested column mapping. Saves nothing.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-fields/:
+    get:
+      operationId: customers_custom_fields_list
+      description: '``/customers/{id}/custom-fields/`` - definitions of the customer''s
+        VSA X integrations; refresh; device values.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Definition'
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-fields/device/{asset_id}/:
+    get:
+      operationId: customers_custom_fields_device_retrieve
+      description: Editable fields with the value VSA X reports now for one device
+        (device page).
+      parameters:
+      - in: path
+        name: asset_id
+        schema:
+          type: string
+          pattern: ^[0-9a-f-]{36}$
+        required: true
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/custom-fields/refresh/:
+    post:
+      operationId: customers_custom_fields_refresh_create
+      description: Re-read the field list from VSA X (read-only).
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/customers/{customer_pk}/custom-reports/preview/:
     post:
@@ -5831,6 +6433,21 @@ paths:
           description: ''
 components:
   schemas:
+    ActionEnum:
+      enum:
+      - assign
+      - update
+      - skip
+      - blocked
+      - review
+      type: string
+      description: |-
+        * `` - Not previewed
+        * `assign` - Assign
+        * `update` - Update
+        * `skip` - Skip - already correct
+        * `blocked` - Blocked
+        * `review` - Requires review
     Alert:
       type: object
       properties:
@@ -6144,6 +6761,9 @@ components:
       - name
       - rules
       - updated_at
+    BlankEnum:
+      enum:
+      - ''
     Collector:
       type: object
       properties:
@@ -6301,6 +6921,14 @@ components:
       - reviewed_at
       - reviewed_by
       - state
+    CustomFieldWriteRouteEnum:
+      enum:
+      - customfields
+      - automation/customfields
+      type: string
+      description: |-
+        * `customfields` - /api/v3/customfields/{id}/…
+        * `automation/customfields` - /api/v3/automation/…
     Customer:
       type: object
       properties:
@@ -6358,6 +6986,78 @@ components:
         * `active` - Active
         * `suspended` - Suspended
         * `archived` - Archived
+    Definition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        external_id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        type:
+          type: string
+          readOnly: true
+        default_value:
+          type: string
+          readOnly: true
+        is_read_only:
+          type: boolean
+          readOnly: true
+        contexts:
+          readOnly: true
+        expiration_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        present:
+          type: boolean
+          readOnly: true
+          description: False once VSA X no longer lists the field.
+        fetched_at:
+          type: string
+          format: date-time
+          readOnly: true
+        portal_writable:
+          type: boolean
+        requires_approval:
+          type: boolean
+        integration:
+          type: string
+          readOnly: true
+        editable:
+          type: boolean
+          readOnly: true
+        device_capable:
+          type: boolean
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+      required:
+      - contexts
+      - default_value
+      - description
+      - device_capable
+      - editable
+      - expiration_date
+      - external_id
+      - fetched_at
+      - id
+      - integration
+      - is_read_only
+      - name
+      - present
+      - reason
+      - type
     DesignateInput:
       type: object
       properties:
@@ -6948,6 +7648,33 @@ components:
         group_move_execution_server_enabled:
           type: boolean
           readOnly: true
+        custom_field_writes_enabled:
+          type: boolean
+          description: Allow confirmed custom field assignments to be written to VSA
+            X (super admin).
+        custom_field_write_route:
+          allOf:
+          - $ref: '#/components/schemas/CustomFieldWriteRouteEnum'
+          readOnly: true
+          description: |-
+            Documented route form confirmed on a test workstation (vsa_custom_field_validate). Blank = none.
+
+            * `customfields` - /api/v3/customfields/{id}/…
+            * `automation/customfields` - /api/v3/automation/…
+        custom_field_route_validated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        custom_field_approval_threshold:
+          type: integer
+          maximum: 100000
+          minimum: 0
+          description: Jobs changing more devices than this need a second administrator's
+            approval (0 = never).
+        custom_field_writes_server_enabled:
+          type: boolean
+          readOnly: true
         installed_updates_budget:
           type: integer
           maximum: 3000
@@ -7011,6 +7738,9 @@ components:
       - credential_set_at
       - credential_set_by
       - credential_source
+      - custom_field_route_validated_at
+      - custom_field_write_route
+      - custom_field_writes_server_enabled
       - group_move_execution_server_enabled
       - id
       - name
@@ -7057,6 +7787,238 @@ components:
       - id
       - name
       - provider
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        position:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        input_identifier:
+          type: string
+          maxLength: 255
+        input_kind:
+          type: string
+          maxLength: 16
+        input_row:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        match_status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        match_label:
+          type: string
+          readOnly: true
+        match_note:
+          type: string
+          maxLength: 255
+        candidates: {}
+        asset:
+          type: string
+          format: uuid
+          nullable: true
+        device_external_id:
+          type: string
+          maxLength: 64
+        hostname:
+          type: string
+          maxLength: 255
+        site:
+          type: string
+          maxLength: 255
+        group:
+          type: string
+          maxLength: 255
+        requested_value:
+          type: string
+          maxLength: 255
+        included:
+          type: boolean
+        current_value:
+          type: string
+          nullable: true
+          maxLength: 255
+        current_source:
+          type: string
+          maxLength: 12
+        device_assigned:
+          type: boolean
+          nullable: true
+        action:
+          oneOf:
+          - $ref: '#/components/schemas/ActionEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        action_label:
+          type: string
+          readOnly: true
+        action_note:
+          type: string
+          maxLength: 255
+        result:
+          $ref: '#/components/schemas/ResultEnum'
+        result_label:
+          type: string
+          readOnly: true
+        final_value:
+          type: string
+          nullable: true
+          maxLength: 255
+        http_status:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        error_code:
+          type: string
+          maxLength: 40
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - action_label
+      - id
+      - match_label
+      - match_status
+      - position
+      - result_label
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        field:
+          type: string
+          format: uuid
+        field_name:
+          type: string
+          readOnly: true
+        field_type:
+          type: string
+          readOnly: true
+        field_external_id:
+          type: string
+          readOnly: true
+        integration:
+          type: string
+          readOnly: true
+        value:
+          type: string
+          description: Requested value (unless set per device).
+          maxLength: 255
+        per_device_values:
+          type: boolean
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+        source_label:
+          type: string
+          readOnly: true
+        source_filename:
+          type: string
+          maxLength: 255
+        retry_of:
+          type: string
+          format: uuid
+          nullable: true
+        state:
+          $ref: '#/components/schemas/JobStateEnum'
+        state_label:
+          type: string
+          readOnly: true
+        created_by:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        previewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        confirmed_by:
+          type: string
+          nullable: true
+          readOnly: true
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+        approval_required:
+          type: boolean
+        approved_by:
+          type: string
+          nullable: true
+          readOnly: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_requested:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_code:
+          type: string
+          maxLength: 40
+        counts: {}
+        writes:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+      required:
+      - approved_by
+      - confirmed_by
+      - created_at
+      - created_by
+      - field
+      - field_external_id
+      - field_name
+      - field_type
+      - id
+      - integration
+      - source
+      - source_label
+      - state_label
+      - writes
+    JobStateEnum:
+      enum:
+      - draft
+      - previewing
+      - previewed
+      - awaiting_approval
+      - queued
+      - running
+      - completed
+      - cancelled
+      - failed
+      - rejected
+      type: string
+      description: |-
+        * `draft` - Draft (review matches)
+        * `previewing` - Reading current values
+        * `previewed` - Preview ready
+        * `awaiting_approval` - Waiting for approval
+        * `queued` - Queued
+        * `running` - Running
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `failed` - Failed
+        * `rejected` - Approval rejected
     LifecycleEntry:
       type: object
       properties:
@@ -7228,6 +8190,24 @@ components:
         * `server` - server
         * `not_server` - not_server
         * `auto` - auto
+    MatchStatusEnum:
+      enum:
+      - matched
+      - not_found
+      - multiple
+      - duplicate
+      - invalid
+      - other_customer
+      - unsupported
+      type: string
+      description: |-
+        * `matched` - Matched
+        * `not_found` - Not found
+        * `multiple` - Multiple matches
+        * `duplicate` - Duplicate input
+        * `invalid` - Invalid identifier
+        * `other_customer` - Outside the selected customer
+        * `unsupported` - Unsupported device
     MatchTypeEnum:
       enum:
       - exact
@@ -7819,6 +8799,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/IntegrationInstance'
+    PaginatedItemList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+    PaginatedJobList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
     PaginatedLifecycleEntryList:
       type: object
       required:
@@ -8342,6 +9368,62 @@ components:
           items:
             type: string
           readOnly: true
+    PatchedDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        external_id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        type:
+          type: string
+          readOnly: true
+        default_value:
+          type: string
+          readOnly: true
+        is_read_only:
+          type: boolean
+          readOnly: true
+        contexts:
+          readOnly: true
+        expiration_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        present:
+          type: boolean
+          readOnly: true
+          description: False once VSA X no longer lists the field.
+        fetched_at:
+          type: string
+          format: date-time
+          readOnly: true
+        portal_writable:
+          type: boolean
+        requires_approval:
+          type: boolean
+        integration:
+          type: string
+          readOnly: true
+        editable:
+          type: boolean
+          readOnly: true
+        device_capable:
+          type: boolean
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
     PatchedIntegrationInstance:
       type: object
       description: '``credential_ref`` is write-only: responses only say whether one
@@ -8397,6 +9479,33 @@ components:
           type: boolean
           readOnly: true
         group_move_execution_server_enabled:
+          type: boolean
+          readOnly: true
+        custom_field_writes_enabled:
+          type: boolean
+          description: Allow confirmed custom field assignments to be written to VSA
+            X (super admin).
+        custom_field_write_route:
+          allOf:
+          - $ref: '#/components/schemas/CustomFieldWriteRouteEnum'
+          readOnly: true
+          description: |-
+            Documented route form confirmed on a test workstation (vsa_custom_field_validate). Blank = none.
+
+            * `customfields` - /api/v3/customfields/{id}/…
+            * `automation/customfields` - /api/v3/automation/…
+        custom_field_route_validated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        custom_field_approval_threshold:
+          type: integer
+          maximum: 100000
+          minimum: 0
+          description: Jobs changing more devices than this need a second administrator's
+            approval (0 = never).
+        custom_field_writes_server_enabled:
           type: boolean
           readOnly: true
         installed_updates_budget:
@@ -9396,6 +10505,32 @@ components:
         * `software_compliance` - software_compliance
         * `software_distribution` - software_distribution
         * `stale_devices` - stale_devices
+    ResultEnum:
+      enum:
+      - pending
+      - sending
+      - verified
+      - already_correct
+      - failed
+      - verification_pending
+      - verification_failed
+      - unknown
+      - skipped
+      - cancelled
+      - not_run
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `sending` - Sending
+        * `verified` - Verified success
+        * `already_correct` - Already correct
+        * `failed` - Failed
+        * `verification_pending` - Verification pending
+        * `verification_failed` - Verification failed
+        * `unknown` - Unknown outcome
+        * `skipped` - Skipped
+        * `cancelled` - Cancelled
+        * `not_run` - Not run
     Review:
       type: object
       properties:
@@ -9663,6 +10798,20 @@ components:
       description: |-
         * `collected` - Collected
         * `not_collected` - Not collected (section absent)
+    SourceEnum:
+      enum:
+      - selection
+      - list
+      - import
+      - device
+      - retry
+      type: string
+      description: |-
+        * `selection` - Selected devices
+        * `list` - Pasted list
+        * `import` - Imported file
+        * `device` - Device page
+        * `retry` - Retry of failed devices
     SourceMapping:
       type: object
       properties:

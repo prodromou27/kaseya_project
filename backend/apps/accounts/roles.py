@@ -19,6 +19,10 @@ class Cap:
     CUSTOMER_MANAGE_EXCEPTIONS: Final = "customer.manage_exceptions"
     CUSTOMER_PROPOSE_MOVE: Final = "customer.group_move.propose"
     CUSTOMER_APPROVE_MOVE: Final = "customer.group_move.approve"
+    # CFA: VSA X custom field assignment (ADR-031).
+    CUSTOMER_CF_ASSIGN: Final = "customer.custom_field.assign"
+    CUSTOMER_CF_BULK: Final = "customer.custom_field.bulk_assign"
+    CUSTOMER_CF_APPROVE: Final = "customer.custom_field.approve"
     # Global-only capabilities (never granted by a customer membership):
     SYSTEM_MANAGE: Final = "system.manage"  # customers, users, integrations, mapping approval
     SYSTEM_CROSS_CUSTOMER: Final = "system.cross_customer"  # multi-customer analysis
@@ -46,6 +50,9 @@ ROLE_DEFINITIONS: Final[dict[str, dict[str, object]]] = {
                 Cap.CUSTOMER_MANAGE_EXCEPTIONS,
                 Cap.CUSTOMER_PROPOSE_MOVE,
                 Cap.CUSTOMER_APPROVE_MOVE,
+                Cap.CUSTOMER_CF_ASSIGN,
+                Cap.CUSTOMER_CF_BULK,
+                Cap.CUSTOMER_CF_APPROVE,
                 Cap.SYSTEM_MANAGE,
                 Cap.SYSTEM_CROSS_CUSTOMER,
                 Cap.SYSTEM_AUDIT_READ,
@@ -67,6 +74,9 @@ ROLE_DEFINITIONS: Final[dict[str, dict[str, object]]] = {
                 Cap.CUSTOMER_MANAGE_EXCEPTIONS,
                 Cap.CUSTOMER_PROPOSE_MOVE,
                 Cap.CUSTOMER_APPROVE_MOVE,
+                Cap.CUSTOMER_CF_ASSIGN,
+                Cap.CUSTOMER_CF_BULK,
+                Cap.CUSTOMER_CF_APPROVE,
             }
         ),
     },
@@ -75,7 +85,13 @@ ROLE_DEFINITIONS: Final[dict[str, dict[str, object]]] = {
         "description": "Read, report and start read-only syncs for an assigned customer.",
         "is_global": False,
         "capabilities": frozenset(
-            {Cap.CUSTOMER_READ, Cap.CUSTOMER_EXPORT, Cap.CUSTOMER_SYNC, Cap.CUSTOMER_PROPOSE_MOVE}
+            {
+                Cap.CUSTOMER_READ,
+                Cap.CUSTOMER_EXPORT,
+                Cap.CUSTOMER_SYNC,
+                Cap.CUSTOMER_PROPOSE_MOVE,
+                Cap.CUSTOMER_CF_ASSIGN,
+            }
         ),
     },
     VIEWER: {

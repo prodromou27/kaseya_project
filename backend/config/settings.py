@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.alerts",
     "apps.automation",
     "apps.servers",
+    "apps.customfields",
 ]
 
 MIDDLEWARE = [
@@ -229,6 +230,14 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TASK_ROUTES["apps.reporting.tasks.purge_expired_artifacts"] = {"queue": "maintenance"}
 CELERY_TASK_ROUTES["apps.reporting.tasks.dispatch_schedules"] = {"queue": "maintenance"}
+# CFA (ADR-031): assigning VSA X custom fields to workstations. Off unless true; also needs the integration switch,
+# a validated route (manage.py vsa_custom_field_validate) and the separate write token used for group moves.
+VSA_CUSTOM_FIELD_WRITES_ENABLED = env_bool("VSA_CUSTOM_FIELD_WRITES_ENABLED", default=False)
+# Engineers may change at most this many devices per job; larger jobs need customer.custom_field.bulk_assign.
+CUSTOM_FIELD_ENGINEER_MAX_DEVICES = env_int("CUSTOM_FIELD_ENGINEER_MAX_DEVICES", 10)
+CUSTOM_FIELD_MAX_JOB_ITEMS = env_int("CUSTOM_FIELD_MAX_JOB_ITEMS", 5000)
+# A confirmed preview must be at most this old.
+CUSTOM_FIELD_PREVIEW_VALID_MINUTES = env_int("CUSTOM_FIELD_PREVIEW_VALID_MINUTES", 30)
 # CAT-02: daily read of the public VSA 10 Application Catalog page (needs outbound HTTPS to help.vsa10.kaseya.com).
 # Version increases for already-approved products apply automatically; everything else waits for approval.
 VSA_APP_CATALOG_AUTO_UPDATE = env_bool("VSA_APP_CATALOG_AUTO_UPDATE", default=True)
@@ -237,6 +246,7 @@ CELERY_BEAT_SCHEDULE["vsa-application-catalog"] = {
     "schedule": 24 * 3600.0,
 }
 CELERY_TASK_ROUTES["apps.software.tasks.update_vsa_catalog"] = {"queue": "maintenance"}
+CELERY_TASK_ROUTES["apps.customfields.tasks.*"] = {"queue": "sync_vsa"}
 SYNC_MAX_DROP_RATIO = float(env_str("SYNC_MAX_DROP_RATIO", "0.5"))
 # Approving a source mapping creates a sync schedule with this interval (editable under Admin -> Sync schedules).
 SYNC_DEFAULT_INTERVAL_HOURS = env_int("SYNC_DEFAULT_INTERVAL_HOURS", 24)

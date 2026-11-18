@@ -71,6 +71,57 @@ DOC_RATE_LIMITS: dict[str, Any] = {
 # VSA5-EXEC fixture state: (integration id, device id) -> (group id, group name). In-process only (demo/tests); a
 # fixture move is visible to later fixture reads of the same integration so read-back and the next sync agree.
 FIXTURE_MOVES: dict[tuple[str, str], tuple[str, str]] = {}
+# CFA fixture state: (integration id, field id, device id) -> device-level value written through the portal.
+FIXTURE_CUSTOM_FIELDS: dict[tuple[str, str, str], str] = {}
+_USAGE_FILTER = re.compile(r"UsageContextType eq 'Device'(?: and ContextItemId eq '([A-Za-z0-9-]{1,64})')?")
+_ID_FILTER = re.compile(r"Id eq ([0-9]{1,18})")
+
+
+def _definitions(automation: Mapping[str, Any]) -> list[dict[str, Any]]:
+    return list(automation.get("custom_field_definitions", []))
+
+
+def _public(definition: Mapping[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in definition.items() if not k.startswith("_")}
+
+
+def device_level_fields(instance_id: str, asset: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Field id -> {Id, Name, Value, Type} assigned on the device itself (fixture data + portal writes)."""
+    rows = {str(r.get("Id")): dict(r) for r in asset.get("_CustomFields", [])}
+    for (iid, fid, did), value in FIXTURE_CUSTOM_FIELDS.items():
+        if iid == instance_id and did == str(asset.get("Identifier")):
+            rows.setdefault(fid, {"Id": int(fid), "Name": "", "Type": "Text"})["Value"] = value
+    return rows
+
+
+class FixtureCustomFieldWriteTransport:
+    """Answers the documented assign/updateAssigned calls for a fixture integration. Never touches the network."""
+
+    def __init__(self, instance: Any, status: int | None = None, read: Any = None):
+        self.instance_id = str(instance.id)
+        self.status = status
+        self.read = read or FixtureVsaTransport.for_instance(instance)
+        self.calls: list[tuple[str, str, dict[str, Any]]] = []
+
+    def send(self, method: str, url: str, *, json: Mapping[str, Any], headers: Mapping[str, str], auth: Any) -> Any:
+        path = re.sub(r"^https://[^/]+", "", url)
+        self.calls.append((method, path, dict(json)))
+        if self.status is not None:
+            return FakeResponse(self.status)
+        match = re.fullmatch(r"/api/v3/(?:automation/)?customfields/([0-9]+)/(assign|updateAssigned)", path)
+        if not match or (method, match.group(2)) not in (("POST", "assign"), ("PUT", "updateAssigned")):
+            return FakeResponse(404)
+        fid, device = match.group(1), str(json.get("ContextItemId"))
+        definition = next((d for d in _definitions(self.read.automation) if str(d["Id"]) == fid), None)
+        asset = next((a for a in self.read.assets if str(a.get("Identifier")) == device), None)
+        if definition is None or asset is None or json.get("ContextType") != "Device":
+            return FakeResponse(400)
+        exists = fid in device_level_fields(self.instance_id, asset)
+        if exists != (match.group(2) == "updateAssigned"):
+            return FakeResponse(400)  # documented: assign on an existing / update on a missing assignment
+        FIXTURE_CUSTOM_FIELDS[(self.instance_id, fid, device)] = str(json.get("Value"))
+        data = {"ContextType": "Device", "ContextItemId": device, "Id": int(fid), "Name": definition["Name"]}
+        return FakeResponse(200, {"Data": {**data, "Value": str(json.get("Value")), "Type": definition["Type"]}})
 
 
 class FixtureWriteTransport:
@@ -121,6 +172,7 @@ class FixtureVsaTransport:
         self.on_request = on_request
         # AUT-01: tenant-wide workflows/tasks/executions (synthetic, documented shapes); empty unless provided.
         self.automation = automation or {}
+        self.instance_id = ""
         self.calls: list[tuple[str, dict[str, str]]] = []
 
     @classmethod
@@ -134,6 +186,7 @@ class FixtureVsaTransport:
             patch_policies=tenant.get("patch_policies"),
             automation=tenant.get("automation"),
         )
+        transport.instance_id = str(instance.id)
         moved = {d: g for (i, d), g in FIXTURE_MOVES.items() if i == str(instance.id)}
         for device in transport.devices:
             if str(device.get("Identifier")) in moved:
@@ -243,6 +296,20 @@ class FixtureVsaTransport:
             if key == "executions" and params.get("$orderby") != "CreatedAt desc":
                 return FakeResponse(400)
             return self._list(list(self.automation.get(key, [])), skip, min(top, 100))
+        if path == "/api/v3/customFields":
+            return self._list([_public(d) for d in _definitions(self.automation)], skip, min(top, 100))
+        usage = re.fullmatch(r"/api/v3/customfields/([0-9]+)/usage", path)
+        if usage:
+            flt = _USAGE_FILTER.fullmatch(params.get("$filter", ""))
+            if not flt:
+                return FakeResponse(400)
+            rows = [
+                {"UsageContextType": "Device", "ContextItemId": str(a["Identifier"]), "Value": f["Value"]}
+                for a in self.assets
+                for fid, f in device_level_fields(self.instance_id, a).items()
+                if fid == usage.group(1) and (flt.group(1) is None or flt.group(1) == str(a["Identifier"]))
+            ]
+            return self._list(rows, skip, min(top, 100))
         detail = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)/(notifications|customfields)", path)
         if detail:
             dev = next((a for a in self.assets if str(a.get("Identifier")) == detail.group(1)), None)
@@ -253,7 +320,24 @@ class FixtureVsaTransport:
                     return FakeResponse(400)
                 rows = sorted(dev.get("_Notifications", []), key=lambda r: str(r.get("DateTime")), reverse=True)
                 return self._list(rows, skip, top)
-            return self._list(list(dev.get("_CustomFields", [])), skip, min(top, 100))
+            fields = device_level_fields(self.instance_id, dev)
+            for d in _definitions(self.automation):  # inherited organisation values (fixture-only "_OrgValue")
+                if d.get("_OrgValue") is not None and str(d["Id"]) not in fields:
+                    fields[str(d["Id"])] = {
+                        "Id": d["Id"],
+                        "Name": d["Name"],
+                        "Value": d["_OrgValue"],
+                        "Type": d["Type"],
+                    }
+            for fid, row in fields.items():
+                row["Name"] = row.get("Name") or next(
+                    (d["Name"] for d in _definitions(self.automation) if str(d["Id"]) == fid), ""
+                )
+            rows = list(fields.values())
+            only = _ID_FILTER.fullmatch(params.get("$filter", ""))
+            if only:
+                rows = [r for r in rows if str(r.get("Id")) == only.group(1)]
+            return self._list(rows, skip, min(top, 100))
         one = re.fullmatch(r"/api/v3/devices/([A-Za-z0-9-]+)", path)
         if one:
             device = next((d for d in self.devices if str(d.get("Identifier")) == one.group(1)), None)
