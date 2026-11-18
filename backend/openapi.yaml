@@ -5721,6 +5721,90 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/integrations/{id}/validate-custom-field-route/:
+    post:
+      operationId: integrations_validate_custom_field_route_create
+      description: Write ONE value to ONE authorised test workstation, read it back,
+        record the working route. Super admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteValidation'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/integrations/{id}/write-credential/:
+    post:
+      operationId: integrations_write_credential_create
+      description: Set (POST) or remove (DELETE) the separate VSA X write token. Write-only,
+        encrypted; super admin only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WriteCredential'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
+    delete:
+      operationId: integrations_write_credential_destroy
+      description: Set (POST) or remove (DELETE) the separate VSA X write token. Write-only,
+        encrypted; super admin only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration instance.
+        required: true
+      tags:
+      - integrations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationInstance'
+          description: ''
   /api/v1/integrations/connect/:
     post:
       operationId: integrations_connect_create
@@ -7645,6 +7729,20 @@ components:
         write_credential_configured:
           type: boolean
           readOnly: true
+        write_credential_source:
+          type: string
+          description: '``portal`` (entered in the portal, encrypted), ``server``
+            (env/file reference) or ``none``.'
+          readOnly: true
+        write_credential_set_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        write_credential_set_by:
+          type: string
+          nullable: true
+          readOnly: true
         group_move_execution_server_enabled:
           type: boolean
           readOnly: true
@@ -7749,6 +7847,9 @@ components:
       - updated_at
       - verify_tls
       - write_credential_configured
+      - write_credential_set_at
+      - write_credential_set_by
+      - write_credential_source
     IntegrationInstanceStatusEnum:
       enum:
       - idle
@@ -9478,6 +9579,20 @@ components:
         write_credential_configured:
           type: boolean
           readOnly: true
+        write_credential_source:
+          type: string
+          description: '``portal`` (entered in the portal, encrypted), ``server``
+            (env/file reference) or ``none``.'
+          readOnly: true
+        write_credential_set_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        write_credential_set_by:
+          type: string
+          nullable: true
+          readOnly: true
         group_move_execution_server_enabled:
           type: boolean
           readOnly: true
@@ -10697,6 +10812,27 @@ components:
       - capabilities
       - key
       - name
+    RouteValidation:
+      type: object
+      properties:
+        device:
+          type: string
+          description: Test workstation hostname or VSA X device ID.
+          maxLength: 255
+        field_id:
+          type: string
+          description: VSA X custom field ID.
+          pattern: ^[0-9]{1,18}$
+        value:
+          type: string
+          maxLength: 255
+        confirm_test_device:
+          type: boolean
+      required:
+      - confirm_test_device
+      - device
+      - field_id
+      - value
     Rule:
       type: object
       properties:
@@ -11227,6 +11363,22 @@ components:
         * `assets` - Assets
         * `software` - Software versions
         * `os_updates` - Windows updates
+    WriteCredential:
+      type: object
+      description: The separate VSA X write token. Write-only; encrypted; never echoed,
+        logged or audited.
+      properties:
+        token_id:
+          type: string
+          writeOnly: true
+          maxLength: 200
+        token_secret:
+          type: string
+          writeOnly: true
+          maxLength: 500
+      required:
+      - token_id
+      - token_secret
   securitySchemes:
     sessionAuth:
       type: apiKey

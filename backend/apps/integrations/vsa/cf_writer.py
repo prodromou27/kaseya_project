@@ -4,9 +4,11 @@ Deliberately separate from the read-only adapter/client (which stay GET-only), m
 
 * **Off by default, three gates.** ``settings.VSA_CUSTOM_FIELD_WRITES_ENABLED`` (server environment), the integration's
   ``custom_field_writes_enabled`` (super admin) and a route confirmed on a test workstation
-  (``custom_field_write_route``, set only by ``manage.py vsa_custom_field_validate``). Fixture integrations skip the
+  (``custom_field_write_route``, set only by the test-workstation validation in the portal or
+  ``manage.py vsa_custom_field_validate``). Fixture integrations skip the
   route gate (their writes go to an in-process fake).
-* **Separate write credential** (``env:VSA_WRITE_*``, never the read token) - shared with group moves.
+* **Separate write credential** (entered encrypted in the portal or ``env:VSA_WRITE_*``; never the read token),
+  shared with group moves.
 * **Documented routes only**: ``POST /api/v3/[automation/]customfields/{id}/assign`` and
   ``PUT /api/v3/[automation/]customfields/{id}/updateAssigned`` with body
   ``{ContextType: "Device", ContextItemId, UseDefaultValue: false, Value}``. ``unassign`` is never called.
@@ -25,7 +27,12 @@ from django.conf import settings
 
 from apps.integrations.http import DEFAULT_TIMEOUT, check_egress, default_resolver
 from apps.integrations.models import IntegrationInstance
-from apps.integrations.secrets import WRITE_REF, CredentialUnavailable, resolve_basic, resolve_instance_basic
+from apps.integrations.secrets import (
+    CredentialUnavailable,
+    has_write_credential,
+    resolve_instance_basic,
+    resolve_instance_write,
+)
 
 ROUTES = ("customfields", "automation/customfields")
 WRITE_PATH = re.compile(r"/api/v3/(?:automation/)?customfields/[0-9]{1,18}/(?:assign|updateAssigned)")
@@ -90,7 +97,7 @@ def availability(instance: IntegrationInstance) -> tuple[bool, str]:
         return True, ""
     if instance.custom_field_write_route not in ROUTES:
         return False, "The custom field route has not been validated on a test workstation yet."
-    if not WRITE_REF.fullmatch(instance.write_credential_ref or ""):
+    if not has_write_credential(instance):
         return False, "No separate VSA X write token is configured for this integration."
     return True, ""
 
@@ -129,9 +136,9 @@ class VsaCustomFieldWriter:
             return
         self.transport = transport or RequestsTransport()
         try:
-            write = resolve_basic(instance.write_credential_ref)
+            write = resolve_instance_write(instance)
         except CredentialUnavailable as exc:
-            raise WriteNotAvailable("The VSA X write token could not be read on the server.") from exc
+            raise WriteNotAvailable("The VSA X write token could not be read.") from exc
         try:
             read = resolve_instance_basic(instance)
         except CredentialUnavailable:

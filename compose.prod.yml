@@ -35,7 +35,7 @@ x-app: &app
     CONNECTOR_ENCRYPTION_KEY_FILE: /run/secrets/connector_encryption_key
     # Vendor write switches (off unless set to true in .env.prod) and the separate VSA X write token (secret file).
     VSA_GROUP_MOVE_EXECUTION_ENABLED: ${VSA_GROUP_MOVE_EXECUTION_ENABLED:-false}
-    VSA_CUSTOM_FIELD_WRITES_ENABLED: ${VSA_CUSTOM_FIELD_WRITES_ENABLED:-false}
+    VSA_CUSTOM_FIELD_WRITES_ENABLED: ${VSA_CUSTOM_FIELD_WRITES_ENABLED:-true}
     VSA_APP_CATALOG_AUTO_UPDATE: ${VSA_APP_CATALOG_AUTO_UPDATE:-true}
     VSA_WRITE_TOKEN_FILE: /run/secrets/vsa_write_token
   secrets: [django_secret_key, postgres_password, oidc_client_secret, connector_encryption_key, vsa_write_token]
@@ -116,7 +116,7 @@ services:
       CONNECTOR_APPROVED_PRIVATE_CIDRS: ${CONNECTOR_APPROVED_PRIVATE_CIDRS:-}
       CONNECTOR_ENCRYPTION_KEY_FILE: /run/secrets/connector_encryption_key
       VSA_GROUP_MOVE_EXECUTION_ENABLED: ${VSA_GROUP_MOVE_EXECUTION_ENABLED:-false}
-      VSA_CUSTOM_FIELD_WRITES_ENABLED: ${VSA_CUSTOM_FIELD_WRITES_ENABLED:-false}
+      VSA_CUSTOM_FIELD_WRITES_ENABLED: ${VSA_CUSTOM_FIELD_WRITES_ENABLED:-true}
       VSA_APP_CATALOG_AUTO_UPDATE: ${VSA_APP_CATALOG_AUTO_UPDATE:-true}
       VSA_WRITE_TOKEN_FILE: /run/secrets/vsa_write_token
       RUN_MIGRATIONS: "1"

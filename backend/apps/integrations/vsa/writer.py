@@ -4,8 +4,8 @@ Deliberately separate from the read-only adapter and client (which stay GET-only
 
 * **Off by default, two switches.** ``settings.VSA_GROUP_MOVE_EXECUTION_ENABLED`` (server environment; cannot be set
   from the portal) AND ``IntegrationInstance.group_move_execution_enabled`` (super admin, audited).
-* **Separate write credential.** ``IntegrationInstance.write_credential_ref`` must be ``env:VSA_WRITE_*`` (a Docker
-  secret on the host, never stored in the database) and must not be the read token.
+* **Separate write credential.** Entered in the portal (Fernet-encrypted, bound to the integration and the purpose
+  "write") or ``write_credential_ref = env:VSA_WRITE_*`` (a Docker secret); never the read token.
 * **One fixed route.** Exactly ``/api/v3/devices/{identifier}/move`` with body ``{"GroupId": <int>}``.
 * **No retries, ever.** A timeout, connection error or 5xx is reported as *outcome unknown*; the caller verifies by
   reading the device back instead of sending the PUT again.
@@ -25,7 +25,12 @@ from django.conf import settings
 
 from apps.integrations.http import DEFAULT_TIMEOUT, check_egress, default_resolver
 from apps.integrations.models import IntegrationInstance
-from apps.integrations.secrets import WRITE_REF, CredentialUnavailable, resolve_basic, resolve_instance_basic
+from apps.integrations.secrets import (
+    CredentialUnavailable,
+    has_write_credential,
+    resolve_instance_basic,
+    resolve_instance_write,
+)
 
 MOVE_PATH = re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/move")
 _DEVICE_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
@@ -81,7 +86,7 @@ def availability(instance: IntegrationInstance) -> tuple[bool, str]:
         return False, "The VSA X integration is not enabled."
     if not instance.group_move_execution_enabled:
         return False, "Executing moves is not enabled for this VSA X integration."
-    if not instance.is_fixture and not WRITE_REF.fullmatch(instance.write_credential_ref or ""):
+    if not instance.is_fixture and not has_write_credential(instance):
         return False, "No separate VSA X write token is configured for this integration."
     return True, ""
 
@@ -103,9 +108,9 @@ class VsaMoveWriter:
                 transport = RequestsWriteTransport()
             self.transport = transport
             try:
-                write = resolve_basic(instance.write_credential_ref)
+                write = resolve_instance_write(instance)
             except CredentialUnavailable as exc:
-                raise MoveNotAvailable("The VSA X write token could not be read on the server.") from exc
+                raise MoveNotAvailable("The VSA X write token could not be read.") from exc
             try:
                 read = resolve_instance_basic(instance)
             except CredentialUnavailable:

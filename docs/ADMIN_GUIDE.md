@@ -209,27 +209,32 @@ No additional migration is required. The new os_update_coverage report uses exis
 
 ## Enabling custom field assignment (CFA)
 
-Off by default. Engineers can only assign fields after all of the following:
+Everything is done in the portal by a **super admin**; nothing is written to VSA X until all steps are complete.
+Engineers can prepare and preview jobs; only customer administrators (and super admins) apply them.
 
-1. The separate write token: put `TOKEN_ID:TOKEN_SECRET` of a second VSA X API token (not the read token) into
-   `/opt/okp/secrets/vsa_write_token` (created empty, mode 0640, by `prepare-secrets.sh`), then in **Settings →
-   Integrations → Edit** enter the write token reference `env:VSA_WRITE_TOKEN`. Shared with group moves.
-2. `VSA_CUSTOM_FIELD_WRITES_ENABLED=true` in `/opt/okp/.env.prod`, then `sudo ./install.sh -y` (or `docker compose -f
-   compose.prod.yml --env-file .env.prod up -d`) so backend, worker and beat restart with it.
-3. **Validate the route on one authorised test workstation** (the VSA X documentation gives two route forms):
-   `docker compose -f compose.prod.yml --env-file .env.prod exec backend python manage.py vsa_custom_field_validate
-   --integration <integration id> --device <test device GUID> --field <field id> --value "<test value>"
-   --confirm-test-device`. It writes that value once, reads it back and records the route that worked. Until then live
-   writes are refused with "route has not been validated".
-4. **Settings → Integrations → Edit → Assign custom fields in VSA X**: tick the switch; optionally set *Second approval
-   above (devices)*.
-5. **Custom fields → Field overview**: *Read fields from VSA X*, then tick *Editable in the portal* for each field the
-   portal may change (only device fields that are not read-only or expired; credential-like names never). *Always needs
-   approval* makes every job for that field wait for a second administrator.
+1. **Settings → Integrations → Edit** (VSA X integration) → **Write token**: enter the ID and secret of a *second*
+   VSA X API token (not the read token) and *Save write token*. It is stored encrypted and never shown again; it can be
+   replaced or removed. Shared with group moves. (Alternative for server-managed secrets: put `TOKEN_ID:TOKEN_SECRET`
+   in `/opt/okp/secrets/vsa_write_token` and set the server reference `env:VSA_WRITE_TOKEN`; a portal token wins.)
+2. **Custom fields → Field overview → Read fields from VSA X** to see the field IDs.
+3. Back in **Settings → Integrations → Edit** → **Validate on a test workstation**: enter the test workstation
+   (hostname or VSA X device ID), the custom field ID and a test value, tick *This is an authorised test workstation*
+   and click *Write test value and verify*. The portal writes that value once, reads it back and records the route that
+   worked (the VSA X documentation gives two route forms). Until then live writes are refused with "route has not been
+   validated". The same check exists as `manage.py vsa_custom_field_validate` for operators.
+4. Same form, **Assign custom fields in VSA X**: tick the switch and *Save*; optionally set *Second approval above
+   (devices)*.
+5. **Custom fields → Field overview**: tick *Editable in the portal* for each field the portal may change (only device
+   fields that are not read-only or expired; credential-like names never). *Always needs approval* makes every job for
+   that field wait for a second administrator.
 
-Limits: engineers change at most `CUSTOM_FIELD_ENGINEER_MAX_DEVICES` (10) devices per job; customer administrators
-more, up to `CUSTOM_FIELD_MAX_JOB_ITEMS` (5000). A preview must be confirmed within
-`CUSTOM_FIELD_PREVIEW_VALID_MINUTES` (30). Changing an integration's base URL clears the switch and the validated route.
+Emergency stop: `VSA_CUSTOM_FIELD_WRITES_ENABLED=false` in `/opt/okp/.env.prod` followed by `sudo ./install.sh -y`
+blocks every custom field write on the server (default `true`, so the portal settings above decide).
+
+Limits: engineers prepare and preview but cannot apply; administrators apply jobs of up to `CUSTOM_FIELD_MAX_JOB_ITEMS`
+(5000) devices. A preview must be confirmed within
+`CUSTOM_FIELD_PREVIEW_VALID_MINUTES` (30). Changing an integration's base URL clears the switch, the validated route and the portal write token.
+Integration audit events: `integration.write_credential_set|write_credential_cleared`.
 Audit events: `custom_field.job_created|previewed|confirmed|approved|rejected|cancel_requested|execution_started|
 assignment|execution_finished|report_exported|settings_changed|definitions_refreshed|route_validated`.
 Plan and API findings: `CUSTOM_FIELD_ASSIGNMENT_IMPLEMENTATION.md`.

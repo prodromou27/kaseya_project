@@ -1,5 +1,11 @@
 # Changelog
 
+## CFA-10 - 2026-11-18 - custom field writes set up in the portal; only administrators apply
+
+- **Settings → Integrations → Edit** (super admin) now has *Write token* (a separate VSA X API token entered in the portal, Fernet-encrypted, bound to the integration and the purpose "write", never shown again, refused if it is the read token, cleared when the base URL changes; audited `integration.write_credential_set|cleared`) and *Validate on a test workstation* (writes one value to one confirmed test device, reads it back, records the route; same logic as `manage.py vsa_custom_field_validate`, which now also accepts a hostname). New endpoints `POST|DELETE /integrations/{id}/write-credential/`, `POST /integrations/{id}/validate-custom-field-route/`; migration `integrations.0015`. Group moves use the portal write token too.
+- `VSA_CUSTOM_FIELD_WRITES_ENABLED` now defaults to **true** and is only a server emergency stop; nothing is written until the portal setup (token, validation, switch, editable fields) is complete.
+- **Only administrators apply**: confirming and retrying a custom field job needs `customer.custom_field.approve` (customer administrators, super admins). Engineers still read fields, prepare, import and preview; the job panel tells them an administrator applies it.
+
 ## FIX-COMPOSE - 2026-11-18 - write switches and write token reach the containers
 
 - `compose.prod.yml` passed only a fixed list of settings into backend/worker/beat, so `VSA_GROUP_MOVE_EXECUTION_ENABLED`, `VSA_CUSTOM_FIELD_WRITES_ENABLED`, `VSA_APP_CATALOG_AUTO_UPDATE` and any `VSA_WRITE_*` token set in `.env.prod` never took effect. They are now passed through (writes still default to off), and the write token is a Docker secret file `secrets/vsa_write_token` (`VSA_WRITE_TOKEN_FILE`), created empty by `prepare-secrets.sh`; reference it as `env:VSA_WRITE_TOKEN`.

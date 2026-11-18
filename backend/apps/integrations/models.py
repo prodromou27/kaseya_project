@@ -114,6 +114,14 @@ class IntegrationInstance(models.Model):
     credential_set_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", editable=False
     )
+    # Separate VSA X WRITE token entered in the portal (super admin): same Fernet encryption, bound to this integration
+    # AND the purpose "write", so the read blob can never be used as the write token or vice versa. Takes precedence
+    # over ``write_credential_ref``. Cleared when the base URL changes.
+    write_credential_ciphertext = models.TextField(blank=True, default="", editable=False)
+    write_credential_set_at = models.DateTimeField(null=True, blank=True, editable=False)
+    write_credential_set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", editable=False
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

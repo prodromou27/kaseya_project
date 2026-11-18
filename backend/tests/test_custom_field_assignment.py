@@ -58,15 +58,15 @@ def workstations(world, n=None):
     return rows[:n] if n else rows
 
 
-def run_job(world, client, payload, capture, *, ack=False):
-    """Create -> preview -> confirm (eager Celery). Returns the job body after execution."""
+def run_job(world, client, payload, capture, *, ack=False, applier=None):
+    """Create + preview as ``client``, confirm as an administrator (eager Celery). Returns the job after execution."""
     resp = client.post(f"{base(world)}/custom-field-jobs/", payload, format="json")
     assert resp.status_code == 201, resp.content
     job = resp.json()
     with capture(execute=True):
         assert client.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/").status_code == 200
     with capture(execute=True):
-        resp = client.post(
+        resp = (applier or world.client(world.admin_a)).post(
             f"{base(world)}/custom-field-jobs/{job['id']}/confirm/",
             {"confirm": True, "acknowledge_overwrite": ack},
             format="json",
@@ -140,9 +140,9 @@ def test_selected_devices_assign_update_skip_with_read_back(world, ready, django
     again = eng.get(f"{base(world)}/custom-field-jobs/{resp.json()['id']}/").json()
     assert again["counts"]["action"] == {"skip": 6} and again["counts"]["to_change"] == 0
     assert (
-        eng.post(
-            f"{base(world)}/custom-field-jobs/{again['id']}/confirm/", {"confirm": True}, format="json"
-        ).status_code
+        world.client(world.admin_a)
+        .post(f"{base(world)}/custom-field-jobs/{again['id']}/confirm/", {"confirm": True}, format="json")
+        .status_code
         == 400
     )
 
@@ -156,7 +156,9 @@ def test_selected_devices_assign_update_skip_with_read_back(world, ready, django
     } <= events
     one = AuditEvent.objects.filter(action="custom_field.assignment").first()
     assert one.metadata["requested_value"] == "Ring 0" and one.metadata["field"] == "PatchRing"
-    assert one.actor == world.engineer_a
+    assert one.actor == world.admin_a  # the administrator who applied it
+    job = AssignmentJob.objects.get(pk=body["id"])
+    assert job.created_by == world.engineer_a and job.confirmed_by == world.admin_a
 
 
 def test_overwrite_needs_acknowledgement(world, ready, django_capture_on_commit_callbacks):
@@ -170,7 +172,9 @@ def test_overwrite_needs_acknowledgement(world, ready, django_capture_on_commit_
     ).json()
     with django_capture_on_commit_callbacks(execute=True):
         eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
-    resp = eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json")
+    resp = world.client(world.admin_a).post(
+        f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json"
+    )
     assert resp.status_code == 400 and "acknowledge_overwrite" in resp.json()["error"]["details"]
 
 
@@ -321,14 +325,16 @@ def test_writes_are_off_unless_every_gate_is_set(world, demo, settings, django_c
     ).json()
     with django_capture_on_commit_callbacks(execute=True):
         eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
-    confirm = eng.post(
+    admin = world.client(world.admin_a)
+    settings.VSA_CUSTOM_FIELD_WRITES_ENABLED = False  # the server emergency stop
+    confirm = admin.post(
         f"{base(world)}/custom-field-jobs/{job['id']}/confirm/",
         {"confirm": True, "acknowledge_overwrite": True},
         format="json",
     )
     assert confirm.status_code == 400 and "switched off on this server" in str(confirm.json())
     settings.VSA_CUSTOM_FIELD_WRITES_ENABLED = True
-    confirm = eng.post(
+    confirm = admin.post(
         f"{base(world)}/custom-field-jobs/{job['id']}/confirm/",
         {"confirm": True, "acknowledge_overwrite": True},
         format="json",
@@ -459,7 +465,8 @@ def test_cancel_and_duplicate_delivery(world, ready, django_capture_on_commit_ca
     assert done.state == "cancelled" and not fixtures.FIXTURE_CUSTOM_FIELDS
     assert set(AssignmentItem.objects.filter(job_id=job["id"]).values_list("result", flat=True)) == {"cancelled"}
     assert jobs.execute(job["id"]).state == "cancelled"  # a second delivery does nothing
-    retry = eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/retry/")
+    assert eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/retry/").status_code == 404  # administrators only
+    retry = world.client(world.admin_a).post(f"{base(world)}/custom-field-jobs/{job['id']}/retry/")
     assert retry.status_code == 201 and retry.json()["state"] == "draft" and retry.json()["counts"]["items"] == 2
 
 
@@ -478,8 +485,10 @@ def test_permissions_bulk_limit_approval_and_tenant_isolation(
     job = eng.post(f"{base(world)}/custom-field-jobs/", payload, format="json").json()
     with django_capture_on_commit_callbacks(execute=True):
         eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
-    over = eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json")
-    assert over.status_code == 403  # more devices than an engineer may change
+    # Engineers prepare and preview; only administrators apply.
+    applied = eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json")
+    assert applied.status_code == 404 and not fixtures.FIXTURE_CUSTOM_FIELDS
+    assert AssignmentJob.objects.get(pk=job["id"]).state == "previewed"
 
     # A customer administrator may; above the approval threshold a different administrator approves.
     ready.custom_field_approval_threshold = 1

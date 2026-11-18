@@ -75,6 +75,10 @@ export type Integration = {
   /** VSA5-EXEC: approved group moves may be executed (also needs the server switch and a write token). */
   group_move_execution_enabled?: boolean;
   write_credential_configured?: boolean;
+  /** portal = entered in the portal (encrypted); server = env/file reference. */
+  write_credential_source?: "portal" | "server" | "none";
+  write_credential_set_at?: string | null;
+  write_credential_set_by?: string | null;
   group_move_execution_server_enabled?: boolean;
   /** CFA: custom field assignment (also needs the server switch, a validated route and, for live VSA, a write token). */
   custom_field_writes_enabled?: boolean;

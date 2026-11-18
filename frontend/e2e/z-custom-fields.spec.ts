@@ -19,7 +19,7 @@ async function selectDemoA(page: Page) {
   await selector.selectOption(value ?? "");
 }
 
-test("a super admin enables PatchRing and an engineer assigns it to a pasted list with verified results", async ({ page }) => {
+test("a super admin enables PatchRing, an engineer prepares a pasted list and an admin applies it with verified results", async ({ page }) => {
   test.setTimeout(120_000);
   await login(page, "demo.superadmin@demo.invalid");
   await selectDemoA(page);
@@ -58,6 +58,17 @@ test("a super admin enables PatchRing and an engineer assigns it to a pasted lis
   const preview = job.getByRole("table", { name: "Preview of changes" });
   await expect(preview.getByRole("row", { name: /DEMOA-WS005/ })).toContainText("Update", { timeout: 30_000 });
   await expect(preview.getByRole("row", { name: /DEMOA-WS001/ })).toContainText(/Assign|Update/);
+  // Engineers prepare and preview; only an administrator applies.
+  await expect(job.getByText("An administrator applies these changes")).toBeVisible();
+  await expect(job.getByRole("button", { name: "Apply changes" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Sign out" }).click();
+
+  await login(page, "demo.admin.a@demo.invalid");
+  await selectDemoA(page);
+  await openNav(page, "Custom fields");
+  await page.getByRole("tab", { name: "Assignment history" }).click();
+  await page.getByRole("table", { name: "Assignment history" }).getByRole("button", { name: `PatchRing = ${value}` }).click();
+  await expect(job.getByRole("table", { name: "Preview of changes" }).getByRole("row", { name: /DEMOA-WS005/ })).toContainText("Update");
   await job.getByLabel(/different value set on the device/).check();
   await job.getByLabel(/I confirm setting/).check();
   await job.getByRole("button", { name: "Apply changes" }).click();

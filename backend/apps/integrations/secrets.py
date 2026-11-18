@@ -103,7 +103,11 @@ def decrypt_fields(instance: IntegrationInstance) -> dict[str, str]:
             data = json.loads(plaintext)
         except ValueError as exc:
             raise foreign from exc
-        if data.get("integration") != str(instance.id) or data.get("provider") != instance.provider:
+        if (
+            data.get("integration") != str(instance.id)
+            or data.get("provider") != instance.provider
+            or data.get("purpose", "read") != "read"  # a write-token blob is never the read credential
+        ):
             raise foreign
         fields = data.get("fields")
         if not isinstance(fields, dict):
@@ -152,6 +156,60 @@ def credential_source(instance: IntegrationInstance) -> str:
     if instance.credential_ref:
         return "server"
     return "none"
+
+
+def encrypt_write_token(instance: IntegrationInstance, token_id: str, token_secret: str) -> str:
+    """The separate VSA X write token entered in the portal. Bound to the integration, provider AND purpose."""
+    plaintext = json.dumps(
+        {
+            "v": 2,
+            "integration": str(instance.id),
+            "provider": instance.provider,
+            "purpose": "write",
+            "fields": {"token_id": token_id, "token_secret": token_secret},
+        },
+        separators=(",", ":"),
+    )
+    return _cipher().encrypt(plaintext.encode()).decode()
+
+
+def has_write_credential(instance: IntegrationInstance) -> bool:
+    """A write token is configured (portal-entered or a valid server reference). Does not decrypt or read it."""
+    return bool(instance.write_credential_ciphertext) or bool(WRITE_REF.fullmatch(instance.write_credential_ref or ""))
+
+
+def write_credential_source(instance: IntegrationInstance) -> str:
+    if instance.write_credential_ciphertext:
+        return "portal"
+    if WRITE_REF.fullmatch(instance.write_credential_ref or ""):
+        return "server"
+    return "none"
+
+
+def resolve_instance_write(instance: IntegrationInstance) -> BasicCredential:
+    """The write token: portal-entered first, then the ``env:VSA_WRITE_*`` server reference."""
+    if instance.write_credential_ciphertext:
+        try:
+            plaintext = _cipher().decrypt(instance.write_credential_ciphertext.encode()).decode()
+            data = json.loads(plaintext)
+        except CredentialStorageUnavailable as exc:
+            raise CredentialUnavailable(str(exc)) from exc
+        except (InvalidToken, UnicodeDecodeError, ValueError) as exc:
+            raise CredentialUnavailable("The stored write token cannot be decrypted. Enter it again.") from exc
+        fields = data.get("fields") if isinstance(data, dict) else None
+        if (
+            not isinstance(fields, dict)
+            or data.get("integration") != str(instance.id)
+            or data.get("provider") != instance.provider
+            or data.get("purpose") != "write"
+        ):
+            raise CredentialUnavailable("The stored write token does not belong to this integration. Enter it again.")
+        if not fields.get("token_id") or not fields.get("token_secret"):
+            raise CredentialUnavailable("The stored write token is incomplete. Enter it again.")
+        return BasicCredential(str(fields["token_id"]), str(fields["token_secret"]))
+    if not WRITE_REF.fullmatch(instance.write_credential_ref or ""):
+        raise CredentialUnavailable("No separate VSA X write token is configured.")
+    return resolve_basic(instance.write_credential_ref)
 
 
 def resolve_instance_basic(instance: IntegrationInstance) -> BasicCredential:

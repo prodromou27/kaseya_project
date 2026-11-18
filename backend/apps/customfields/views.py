@@ -276,6 +276,9 @@ class JobViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveMode
         caps = {
             "approve": Cap.CUSTOMER_CF_APPROVE,
             "reject": Cap.CUSTOMER_CF_APPROVE,
+            # Engineers prepare and preview; only administrators apply changes to VSA X.
+            "confirm": Cap.CUSTOMER_CF_APPROVE,
+            "retry": Cap.CUSTOMER_CF_APPROVE,
             "report": Cap.CUSTOMER_EXPORT,
         }
         self.customer_capability = caps.get(

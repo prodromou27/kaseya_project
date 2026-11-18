@@ -143,6 +143,8 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
   const [ack, setAck] = useState(false);
   const [sure, setSure] = useState(false);
   const caps = customer.my_capabilities;
+  // Engineers prepare and preview; only administrators (customer.custom_field.approve) apply or retry.
+  const canApply = caps.includes(CAP.cfApprove);
   const act = useMutation({
     mutationFn: ({ path, body }: { path: string; body?: unknown }) => api.post<CfJob>(`${base(customer, jobId)}/${path}/`, body),
     onSuccess: (data, v) => {
@@ -198,19 +200,29 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
                 </div>
                 <Items customer={customer} job={j} phase="preview" />
                 {!j.writes.available ? <Notice tone="warn">Cannot apply yet: {j.writes.reason}</Notice> : null}
-                {c.updates ? (
+                {!canApply ? (
+                  <Notice tone="info" title="An administrator applies these changes">
+                    You can prepare and preview this job. A customer administrator opens it under Assignment history,
+                    checks the preview and applies it.
+                  </Notice>
+                ) : null}
+                {canApply && c.updates ? (
                   <label className="flex items-start gap-2 text-sm">
                     <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
                     <span><strong>{c.updates}</strong> device{c.updates === 1 ? " has" : "s have"} a different value set on the device. Overwrite {c.updates === 1 ? "it" : "them"}.</span>
                   </label>
                 ) : null}
-                <label className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
-                  <span>I confirm setting <strong>{j.field_name}</strong> on <strong>{c.to_change ?? 0}</strong> workstation{c.to_change === 1 ? "" : "s"} in VSA X.</span>
-                </label>
+                {canApply ? (
+                  <label className="flex items-start gap-2 text-sm">
+                    <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
+                    <span>I confirm setting <strong>{j.field_name}</strong> on <strong>{c.to_change ?? 0}</strong> workstation{c.to_change === 1 ? "" : "s"} in VSA X.</span>
+                  </label>
+                ) : null}
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" className="btn-primary" disabled={!sure || (Boolean(c.updates) && !ack) || !c.to_change || !j.writes.available || act.isPending}
-                          onClick={() => act.mutate({ path: "confirm", body: { confirm: true, acknowledge_overwrite: ack } })}>Apply changes</button>
+                  {canApply ? (
+                    <button type="button" className="btn-primary" disabled={!sure || (Boolean(c.updates) && !ack) || !c.to_change || !j.writes.available || act.isPending}
+                            onClick={() => act.mutate({ path: "confirm", body: { confirm: true, acknowledge_overwrite: ack } })}>Apply changes</button>
+                  ) : null}
                   <button type="button" className="btn-secondary" disabled={act.isPending} onClick={() => act.mutate({ path: "preview" })}>Preview again</button>
                   <button type="button" className="btn-secondary" disabled={act.isPending} onClick={() => act.mutate({ path: "cancel" })}>Discard</button>
                 </div>
@@ -260,7 +272,7 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
                     <a className="btn-secondary" href={`/api/v1${base(customer, j.id)}/report/?type=xlsx`}>Download results (Excel)</a>
                     <a className="btn-secondary" href={`/api/v1${base(customer, j.id)}/report/?type=csv`}>Download results (CSV)</a>
                   </> : null}
-                  {retryable && caps.includes(CAP.cfAssign) ? <button type="button" className="btn-secondary" onClick={() => act.mutate({ path: "retry" })}>Prepare a new job for the failed devices</button> : null}
+                  {retryable && canApply ? <button type="button" className="btn-secondary" onClick={() => act.mutate({ path: "retry" })}>Prepare a new job for the failed devices</button> : null}
                 </div>
               </>
             ) : null}

@@ -6,7 +6,8 @@ import type { CfItem, CfJob, CustomFieldDef } from "../lib/types";
 import { customerA, makeMe, mockFetch, page, renderApp } from "../test/utils";
 
 const base = `/api/v1/customers/${customerA.id}`;
-const assigner = { ...customerA, my_capabilities: ["customer.read", "customer.export", "customer.custom_field.assign"] };
+const engineerCaps = ["customer.read", "customer.export", "customer.custom_field.assign"];
+const adminCaps = [...engineerCaps, "customer.custom_field.bulk_assign", "customer.custom_field.approve"];
 const field = (over: Partial<CustomFieldDef> = {}): CustomFieldDef => ({
   id: "f1", external_id: "901", name: "PatchRing", description: "Patch deployment ring", type: "Text", default_value: "Ring 2",
   is_read_only: false, contexts: ["Organization", "Device"], expiration_date: null, present: true, fetched_at: "2026-11-18T08:00:00Z",
@@ -28,10 +29,11 @@ const item = (over: Partial<CfItem>): CfItem => ({
   http_status: null, error_code: "", finished_at: null, ...over,
 });
 
-function routes(extra: Record<string, unknown> = {}) {
+function routes(extra: Record<string, unknown> = {}, caps: string[] = adminCaps) {
+  const me = { ...customerA, my_capabilities: caps };
   return mockFetch({
-    "GET /api/v1/auth/me/": { body: makeMe({ memberships: [{ customer: { id: customerA.id, code: "ACME", name: "Acme Ltd" }, role: "engineer", capabilities: assigner.my_capabilities }] }) },
-    "GET /api/v1/customers/": { body: page([assigner]) },
+    "GET /api/v1/auth/me/": { body: makeMe({ memberships: [{ customer: { id: customerA.id, code: "ACME", name: "Acme Ltd" }, role: caps === adminCaps ? "admin" : "engineer", capabilities: caps }] }) },
+    "GET /api/v1/customers/": { body: page([me]) },
     [`GET ${base}/custom-fields/`]: { body: [field(), field({ id: "f2", name: "Cost Center", type: "Number" })] },
     [`GET ${base}/custom-field-jobs/`]: { body: page([]) },
     [`GET ${base}/assets/`]: { body: page([]) },
@@ -124,6 +126,22 @@ describe("Custom fields", () => {
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText(/I confirm setting/));
     expect(screen.getByRole("button", { name: "Apply changes" })).toBeDisabled();
+  });
+
+  it("lets engineers preview but leaves applying to an administrator", async () => {
+    const previewed = job({ state: "previewed", state_label: "Preview ready", counts: { to_change: 1, action: { assign: 1 } } });
+    routes({
+      [`GET ${base}/custom-field-jobs/`]: { body: page([previewed]) },
+      [`GET ${base}/custom-field-jobs/j1/`]: { body: previewed },
+      [`GET ${base}/custom-field-jobs/j1/items/`]: { body: page([item({ action: "assign", action_label: "Assign", current_source: "none" })]) },
+    }, engineerCaps);
+    renderApp("/custom-fields");
+    await userEvent.click(await screen.findByRole("tab", { name: "Assignment history" }));
+    await userEvent.click(await screen.findByRole("button", { name: "PatchRing = Ring 0" }));
+    expect(await screen.findByText("An administrator applies these changes")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Apply changes" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/I confirm setting/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview again" })).toBeEnabled();
   });
 
   it("shows read-only users the history and field overview only", async () => {

@@ -50,12 +50,17 @@ No fuzzy matching. Classes: *matched, not found, multiple matches* (user must pi
 
 ## 5. Enabling writes (operator)
 
-1. `VSA_CUSTOM_FIELD_WRITES_ENABLED=true` in the server environment (default false).
-2. Separate write token as for group moves (`write_credential_ref = env:VSA_WRITE_<NAME>`).
-3. Validate the route on an authorised **test** workstation:
-   `manage.py vsa_custom_field_validate --integration <id> --device <device GUID> --field <field id> --value "<test value>" --confirm-test-device`
-   It tries the heading form, falls back to the sample form only on 404, reads the value back and records the route that worked (audited).
-4. Super admin: Settings → Integrations → enable "Assign custom fields", set the approval threshold; Custom Fields → Field overview: mark editable fields.
+All in the portal, super admin only (Settings → Integrations → Edit):
+
+1. **Write token**: a separate VSA X API token entered in the portal (`POST /integrations/{id}/write-credential/`),
+   Fernet-encrypted and bound to the integration and the purpose "write" (never accepted as the read credential, and
+   the read token is refused as the write token). Alternative: `write_credential_ref = env:VSA_WRITE_<NAME>`.
+2. **Validate on a test workstation** (`POST /integrations/{id}/validate-custom-field-route/`, explicit
+   `confirm_test_device`; same logic as `manage.py vsa_custom_field_validate`): tries the heading form, falls back to
+   the sample form only on 404, reads the value back and records the route that worked (audited).
+3. Enable "Assign custom fields", set the approval threshold; Custom Fields → Field overview: mark editable fields.
+
+`VSA_CUSTOM_FIELD_WRITES_ENABLED` (default true) is only a server emergency stop: false blocks every write.
 
 Fixture integrations need none of these (writes go to an in-process fake).
 
@@ -64,13 +69,13 @@ Fixture integrations need none of these (writes go to an in-process fake).
 | Capability | Viewer | Engineer | Customer admin | Super admin |
 |---|---|---|---|---|
 | View fields, jobs, history (`customer.read`) | ✓ | ✓ | ✓ | ✓ |
-| Assign / import (`customer.custom_field.assign`), up to `CUSTOM_FIELD_ENGINEER_MAX_DEVICES` (10) devices | | ✓ | ✓ | ✓ |
-| Bulk above that (`customer.custom_field.bulk_assign`) | | | ✓ | ✓ |
-| Approve jobs needing approval (`customer.custom_field.approve`, not own) | | | ✓ | ✓ |
+| Prepare / import / preview / cancel (`customer.custom_field.assign`) | | ✓ | ✓ | ✓ |
+| Apply (confirm) and retry jobs (`customer.custom_field.approve`) | | | ✓ | ✓ |
+| Approve jobs needing a second approval (`customer.custom_field.approve`, not own) | | | ✓ | ✓ |
 | Export report (`customer.export`) | as granted | ✓ | ✓ | ✓ |
-| Field settings, integration switches (`system.manage`) | | | | ✓ |
+| Field settings, integration switches, write token, route validation (`system.manage`) | | | | ✓ |
 
 ## 7. Deviations from the request
 
 * **Concurrency is fixed at one write at a time per job.** VSA X allows 3,600 requests/hour per endpoint and every write is followed by reads; parallel writes would add risk without a meaningful speed-up. The pace follows the integration's request rate.
-* **No live validation has been performed.** All tests use fixtures; the route, Boolean/Date formats and inheritance behaviour must be confirmed with step 5.3.
+* **No live validation has been performed.** All tests use fixtures; the route, Boolean/Date formats and inheritance behaviour must be confirmed with step 5.2.

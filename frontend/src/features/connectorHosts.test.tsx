@@ -13,8 +13,12 @@ const live = {
 } as unknown as Integration;
 
 function routes() {
+  return mockFetch(routesTable() as never);
+}
+
+function routesTable() {
   const admin = makeMe({ is_super_admin: true, global_capabilities: ["system.manage", "system.cross_customer", "system.audit.read"] });
-  return mockFetch({
+  return {
     "GET /api/v1/auth/me/": { body: admin },
     "GET /api/v1/customers/": { body: page([]) },
     "GET /api/v1/mappings/": { body: page([]) },
@@ -28,7 +32,7 @@ function routes() {
     },
     "POST /api/v1/connector-hosts/": { status: 201, body: {} },
     "PATCH /api/v1/integrations/i2/": { body: live },
-  } as never);
+  };
 }
 
 async function openIntegrations() {
@@ -69,5 +73,37 @@ describe("API settings managed in the portal", () => {
     expect(asked).toMatch(/removes the stored API token/);
     const patch = calls.find((c) => c.method === "PATCH");
     expect(JSON.parse(String(patch?.init?.body))).toMatchObject({ base_url: "https://vsa2.example.com", notifications_budget: 25, applied_policies_budget: 5 });
+  });
+
+  it("enters the separate write token and validates the route on a test workstation in the portal", async () => {
+    const { calls } = mockFetch({
+      ...routesTable(),
+      "POST /api/v1/integrations/i2/write-credential/": { body: { ...live, write_credential_configured: true, write_credential_source: "portal" } },
+      "POST /api/v1/integrations/i2/validate-custom-field-route/": {
+        body: { result: { route: "customfields", field: "PatchRing", field_id: "901", device: "d-1", value: "Ring test", observed: "Ring test" }, integration: live },
+      },
+    } as never);
+    await openIntegrations();
+    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const token = screen.getByRole("form", { name: "VSA X write token" });
+    expect(token).toHaveTextContent("Status: not set");
+    await userEvent.type(within(token).getByLabelText("Write token ID"), "w-id");
+    await userEvent.type(within(token).getByLabelText("Write token secret"), "w-secret");
+    await userEvent.click(within(token).getByRole("button", { name: "Save write token" }));
+    const sent = calls.find((c) => c.url === "/api/v1/integrations/i2/write-credential/");
+    expect(JSON.parse(String(sent?.init?.body))).toEqual({ token_id: "w-id", token_secret: "w-secret" });
+    expect(within(token).getByLabelText("Write token secret")).toHaveValue("");
+
+    const check = screen.getByRole("form", { name: "Validate on a test workstation" });
+    await userEvent.type(within(check).getByLabelText("Test workstation"), "WS-TEST-01");
+    await userEvent.type(within(check).getByLabelText("Custom field ID"), "901");
+    await userEvent.type(within(check).getByLabelText("Test value"), "Ring test");
+    const run = within(check).getByRole("button", { name: "Write test value and verify" });
+    expect(run).toBeDisabled(); // needs the explicit test-workstation confirmation
+    await userEvent.click(within(check).getByLabelText(/authorised test workstation/));
+    await userEvent.click(run);
+    expect(await within(check).findByText(/was written to d-1 and read back/)).toBeInTheDocument();
+    const validation = calls.find((c) => c.url === "/api/v1/integrations/i2/validate-custom-field-route/");
+    expect(JSON.parse(String(validation?.init?.body))).toEqual({ device: "WS-TEST-01", field_id: "901", value: "Ring test", confirm_test_device: true });
   });
 });

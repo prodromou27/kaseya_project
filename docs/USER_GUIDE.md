@@ -287,8 +287,9 @@ date).
 3. **Preview changes.** The portal reads the current value from VSA X for every device: *Assign* (no value set on the
    device; an inherited organisation/site/group value is shown and left unchanged), *Update* (a different value is set
    on the device), *Already correct*, *Requires review* (could not be read) or *Blocked*.
-4. **Apply.** Tick the confirmation (and the overwrite confirmation when devices already have a different value).
-   Large jobs may wait for a second administrator. Progress is shown; you can cancel the devices not started yet.
+4. **Apply (administrators only).** Engineers prepare and preview a job; a customer administrator then opens it under
+   **Assignment history**, checks the preview and applies it. Tick the confirmation (and the overwrite confirmation when
+   devices already have a different value). Large jobs may wait for a second administrator. Progress is shown; you can cancel the devices not started yet.
 5. **Results.** *Verified success* only when the value was read back from VSA X. *Unknown outcome* means VSA X did not
    answer clearly; the change is never sent twice. Download the results (Excel with Summary, Successful, Skipped, Failed,
    Not found and Ambiguous sheets, or CSV), and *Prepare a new job for the failed devices* if needed.

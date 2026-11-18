@@ -58,7 +58,7 @@ ContextItemId eq '<guid>']` - distinguishes a device-level assignment from an in
 /api/v3/devices/{id}/customfields?$filter=Id eq N`. Writes (gated, ADR-031): `POST …/customfields/{id}/assign` (400 if
 the assignment exists) and `PUT …/customfields/{id}/updateAssigned` (400 if it does not), body `{ContextType: "Device",
 ContextItemId, UseDefaultValue: false, Value}`. The documentation's headings use `/api/v3/customfields/…` and its samples
-`/api/v3/automation/customfields/…`; only the form confirmed by `vsa_custom_field_validate` is used. Not live-validated.
+`/api/v3/automation/customfields/…`; only the form confirmed on a test workstation (portal or `vsa_custom_field_validate`) is used. Not live-validated.
 
 ### 2.1 Implementation status (2026-11-12, commit `23550d1`)
 

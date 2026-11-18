@@ -27,9 +27,14 @@ from .secrets import (
     VAULT_REF,
     WRITE_REF,
     CredentialStorageUnavailable,
+    CredentialUnavailable,
     credential_source,
     encrypt_fields,
+    encrypt_write_token,
+    has_write_credential,
+    resolve_instance_basic,
     storage_available,
+    write_credential_source,
 )
 
 
@@ -40,6 +45,25 @@ class CredentialSerializer(serializers.Serializer):
     """
 
     fields = serializers.DictField(child=serializers.CharField(allow_blank=True, max_length=1000), write_only=True)
+
+
+class WriteCredentialSerializer(serializers.Serializer):
+    """The separate VSA X write token. Write-only; encrypted; never echoed, logged or audited."""
+
+    token_id = serializers.CharField(max_length=200, write_only=True)
+    token_secret = serializers.CharField(max_length=500, write_only=True)
+
+
+class RouteValidationSerializer(serializers.Serializer):
+    device = serializers.CharField(max_length=255, help_text="Test workstation hostname or VSA X device ID.")
+    field_id = serializers.RegexField(r"^[0-9]{1,18}$", help_text="VSA X custom field ID.")
+    value = serializers.CharField(max_length=255, allow_blank=True)
+    confirm_test_device = serializers.BooleanField()
+
+    def validate_confirm_test_device(self, value: bool) -> bool:
+        if not value:
+            raise ValidationError("Confirm that this is an authorised test workstation.")
+        return value
 
 
 class ConnectSerializer(serializers.Serializer):
@@ -61,6 +85,8 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
     # VSA5-EXEC: the write token reference is write-only; responses only say whether one is set.
     write_credential_ref = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=80)
     write_credential_configured = serializers.SerializerMethodField()
+    write_credential_source = serializers.SerializerMethodField()
+    write_credential_set_by = serializers.SerializerMethodField()
     group_move_execution_server_enabled = serializers.SerializerMethodField()
     custom_field_writes_server_enabled = serializers.SerializerMethodField()
 
@@ -81,6 +107,9 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "group_move_execution_enabled",
             "write_credential_ref",
             "write_credential_configured",
+            "write_credential_source",
+            "write_credential_set_at",
+            "write_credential_set_by",
             "group_move_execution_server_enabled",
             "custom_field_writes_enabled",
             "custom_field_write_route",
@@ -109,13 +138,14 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
             "updated_at",
             "credential_configured",
             "credential_set_at",
-            # Set only by manage.py vsa_custom_field_validate on a test workstation.
+            "write_credential_set_at",
+            # Set only by the test-workstation validation (portal or manage.py vsa_custom_field_validate).
             "custom_field_write_route",
             "custom_field_route_validated_at",
         ]
 
     def get_custom_field_writes_server_enabled(self, obj: IntegrationInstance) -> bool:
-        return bool(getattr(settings, "VSA_CUSTOM_FIELD_WRITES_ENABLED", False))
+        return bool(getattr(settings, "VSA_CUSTOM_FIELD_WRITES_ENABLED", True))
 
     def get_credential_configured(self, obj: IntegrationInstance) -> bool:
         return bool(obj.credential_ref or obj.credential_ciphertext)
@@ -132,7 +162,14 @@ class IntegrationInstanceSerializer(serializers.ModelSerializer):
         return value
 
     def get_write_credential_configured(self, obj: IntegrationInstance) -> bool:
-        return bool(obj.write_credential_ref)
+        return has_write_credential(obj)
+
+    def get_write_credential_source(self, obj: IntegrationInstance) -> str:
+        """``portal`` (entered in the portal, encrypted), ``server`` (env/file reference) or ``none``."""
+        return write_credential_source(obj)
+
+    def get_write_credential_set_by(self, obj: IntegrationInstance) -> str | None:
+        return obj.write_credential_set_by.email if obj.write_credential_set_by_id else None
 
     def get_group_move_execution_server_enabled(self, obj: IntegrationInstance) -> bool:
         return bool(getattr(settings, "VSA_GROUP_MOVE_EXECUTION_ENABLED", False))
@@ -172,7 +209,7 @@ class IntegrationInstanceViewSet(
     serializer_class = IntegrationInstanceSerializer
     # DELETE exists only for the ``credential`` action; there is no destroy mixin (disable instead).
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
-    queryset = IntegrationInstance.objects.select_related("credential_set_by")
+    queryset = IntegrationInstance.objects.select_related("credential_set_by", "write_credential_set_by")
 
     def get_permissions(self) -> list[Any]:
         if self.action == "options_list":
@@ -180,7 +217,7 @@ class IntegrationInstanceViewSet(
         return [IsSystemAdmin()]
 
     def get_queryset(self) -> QuerySet[IntegrationInstance]:
-        return IntegrationInstance.objects.select_related("credential_set_by")
+        return IntegrationInstance.objects.select_related("credential_set_by", "write_credential_set_by")
 
     def perform_create(self, serializer: IntegrationInstanceSerializer) -> None:
         inst = serializer.save()
@@ -219,6 +256,17 @@ class IntegrationInstanceViewSet(
                     "custom_field_write_route",
                     "custom_field_route_validated_at",
                 ]
+            )
+        if inst.base_url != old_url and inst.write_credential_ciphertext:
+            _clear_write_credential(inst)
+            record_event(
+                action="integration.write_credential_cleared",
+                outcome="success",
+                actor=self.request.user,
+                target_type="integration",
+                target_id=str(inst.id),
+                request=self.request,
+                metadata={"reason": "base_url_changed"},
             )
         if inst.base_url != old_url and inst.credential_ciphertext:
             # Never send a token entered for one server to another: the admin must enter it again.
@@ -329,6 +377,83 @@ class IntegrationInstanceViewSet(
         )
         return Response(self.get_serializer(instance).data)
 
+    @extend_schema(request=WriteCredentialSerializer, responses={200: IntegrationInstanceSerializer})
+    @action(detail=True, methods=["post", "delete"], url_path="write-credential")
+    def write_credential(self, request: Request, pk: str | None = None) -> Response:
+        """Set (POST) or remove (DELETE) the separate VSA X write token. Write-only, encrypted; super admin only."""
+        instance = self.get_object()
+        if request.method == "DELETE":
+            had = bool(instance.write_credential_ciphertext)
+            _clear_write_credential(instance)
+            record_event(
+                action="integration.write_credential_cleared",
+                outcome="success",
+                actor=request.user,
+                target_type="integration",
+                target_id=str(instance.id),
+                request=request,
+                metadata={"reason": "admin_removed", "had_credential": had},
+            )
+            return Response(self.get_serializer(instance).data)
+        if instance.is_fixture:
+            raise ValidationError({"detail": "Fixture instances never use credentials."})
+        if instance.provider != IntegrationInstance.Provider.VSA_X:
+            raise ValidationError({"detail": "Only VSA X integrations have a write token."})
+        body = WriteCredentialSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        token_id = body.validated_data["token_id"].strip()
+        token_secret = body.validated_data["token_secret"].strip()
+        if not token_id or not token_secret or ":" in token_id:
+            raise ValidationError({"detail": "Enter the write token's ID and secret."})
+        try:
+            read = resolve_instance_basic(instance)
+        except CredentialUnavailable:
+            read = None
+        if read is not None and read.username == token_id:
+            raise ValidationError({"detail": "Use a separate VSA X API token for writes, not the read token."})
+        try:
+            ciphertext = encrypt_write_token(instance, token_id, token_secret)
+        except CredentialStorageUnavailable as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+        replaced = bool(instance.write_credential_ciphertext)
+        instance.write_credential_ciphertext = ciphertext
+        instance.write_credential_set_at = timezone.now()
+        instance.write_credential_set_by = request.user
+        instance.save(update_fields=[*_WRITE_CREDENTIAL_FIELDS])
+        record_event(
+            action="integration.write_credential_set",
+            outcome="success",
+            actor=request.user,
+            target_type="integration",
+            target_id=str(instance.id),
+            request=request,
+            metadata={"replaced": replaced, "server_reference_also_set": bool(instance.write_credential_ref)},
+        )
+        return Response(self.get_serializer(instance).data)
+
+    @extend_schema(request=RouteValidationSerializer, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["post"], url_path="validate-custom-field-route")
+    def validate_custom_field_route(self, request: Request, pk: str | None = None) -> Response:
+        """Write ONE value to ONE authorised test workstation, read it back, record the working route. Super admin."""
+        from apps.customfields.validation import ValidationFailed, validate_route
+
+        instance = self.get_object()
+        body = RouteValidationSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        try:
+            result = validate_route(
+                instance,
+                device=body.validated_data["device"],
+                field_id=body.validated_data["field_id"],
+                value=body.validated_data["value"],
+                actor=request.user,
+                request=request,
+            )
+        except ValidationFailed as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+        instance.refresh_from_db()
+        return Response({"result": result, "integration": self.get_serializer(instance).data})
+
     @extend_schema(request=ConnectSerializer, responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="connect")
     def connect(self, request: Request) -> Response:
@@ -384,6 +509,21 @@ _CREDENTIAL_FIELDS = (
     "last_test_result",
     "updated_at",
 )
+
+
+_WRITE_CREDENTIAL_FIELDS = (
+    "write_credential_ciphertext",
+    "write_credential_set_at",
+    "write_credential_set_by",
+    "updated_at",
+)
+
+
+def _clear_write_credential(instance: IntegrationInstance) -> None:
+    instance.write_credential_ciphertext = ""
+    instance.write_credential_set_at = None
+    instance.write_credential_set_by = None
+    instance.save(update_fields=[*_WRITE_CREDENTIAL_FIELDS])
 
 
 def _clear_portal_credential(instance: IntegrationInstance) -> None:

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Field } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import type { Integration } from "../../lib/types";
+import { RouteValidationForm, WriteTokenForm } from "./VsaWriteSetup";
 
 /** Edit an integration's API settings. Provider and fixture/live designation cannot change after creation. */
 export function EditIntegrationForm({ integration, onClose }: { integration: Integration; onClose: () => void }) {
@@ -54,6 +55,7 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
     </Field>
   );
   return (
+    <div className="space-y-2">
     <form onSubmit={submit} aria-label={`Edit integration: ${integration.name}`} className="space-y-2 rounded border border-slate-200 bg-white p-3">
       <h3 className="font-semibold">Edit integration: {integration.name}</h3>
       <div className="flex flex-wrap items-end gap-3">
@@ -75,9 +77,9 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
         <fieldset className="space-y-2 rounded border border-amber-200 bg-amber-50/50 p-3">
           <legend className="px-1 text-sm font-semibold">Execute approved group moves in VSA X</legend>
           <p className="text-xs text-slate-600">
-            The only change the portal can make in VSA X. It needs three things: the server switch
+            It needs three things: the server switch
             (<code>VSA_GROUP_MOVE_EXECUTION_ENABLED</code>, currently <strong>{integration.group_move_execution_server_enabled ? "on" : "off"}</strong>),
-            this switch, and a separate VSA X API token kept as a server secret (<strong>{integration.write_credential_configured ? "configured" : "not configured"}</strong>).
+            this switch, and the separate write token below (<strong>{integration.write_credential_configured ? "set" : "not set"}</strong>).
             Every move still needs an independent approval and is sent once.
           </p>
           <label className="flex items-center gap-2 text-sm">
@@ -85,7 +87,7 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
             Allow approved moves to be executed for this integration
           </label>
           {!integration.is_fixture ? (
-            <Field label="Write token reference" hint="Server secret name, e.g. env:VSA_WRITE_PROD (TOKEN_ID:TOKEN_SECRET). Leave empty to keep the current one.">
+            <Field label="Write token server reference (optional)" hint="Only if the write token is kept as a server secret, e.g. env:VSA_WRITE_TOKEN. A token entered below takes precedence. Leave empty to keep the current one.">
               {(id, h) => <input id={id} aria-describedby={h} className="input w-64" pattern="env:VSA_WRITE_[A-Z0-9_]{1,50}" value={writeRef} onChange={(e) => setWriteRef(e.target.value)} />}
             </Field>
           ) : null}
@@ -95,11 +97,12 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
         <fieldset className="space-y-2 rounded border border-amber-200 bg-amber-50/50 p-3">
           <legend className="px-1 text-sm font-semibold">Assign custom fields in VSA X</legend>
           <p className="text-xs text-slate-600">
-            Lets engineers set editable custom fields on workstations (Custom fields page). It needs the server switch
-            (<code>VSA_CUSTOM_FIELD_WRITES_ENABLED</code>, currently <strong>{integration.custom_field_writes_server_enabled ? "on" : "off"}</strong>),
-            this switch, the separate write token above and, for a live server, a route confirmed on a test workstation
-            (<strong>{integration.is_fixture ? "not needed for fixtures" : integration.custom_field_write_route
-              ? `/api/v3/${integration.custom_field_write_route}/…` : "not validated yet: run manage.py vsa_custom_field_validate"}</strong>).
+            Lets administrators apply editable custom field values to workstations (Custom fields page; engineers can
+            prepare and preview, administrators apply). It needs this switch, the separate write token and, for a live
+            server, a route confirmed on a test workstation (both below).
+            {integration.custom_field_writes_server_enabled === false ? (
+              <strong> Custom field writes are blocked on this server (emergency stop VSA_CUSTOM_FIELD_WRITES_ENABLED=false).</strong>
+            ) : null}
           </p>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={cfWrites} onChange={(e) => setCfWrites(e.target.checked)} />
@@ -112,5 +115,8 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
       ) : null}
       {save.isError ? <p role="alert" className="text-sm text-red-700">{describeError(save.error)}</p> : null}
     </form>
+    {integration.provider === "vsa_x" && !integration.is_fixture ? <WriteTokenForm integration={integration} /> : null}
+    {integration.provider === "vsa_x" ? <RouteValidationForm integration={integration} /> : null}
+    </div>
   );
 }
