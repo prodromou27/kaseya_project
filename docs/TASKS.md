@@ -154,6 +154,15 @@ fixture-verified only (no live VSA X validation).
 - [x] **GR-01** Patch global rules (count toward third-party coverage) and scopes (criteria, device count, used by).
 - [x] **VSA5-EXEC** Approved group moves executed in VSA X (gated: feature flag off, separate write token, approval, read-back).
 - [x] **SRV-01** Servers & owners (portal-only): servers detected from the OS name or marked by hand, owner groups with contact, per-server patching/upgrade needs, report per owner, email-owner summary.
+- [x] **CFA-01** Audit of existing custom field reads, write pattern, inventory, RBAC and imports; API findings in `CUSTOM_FIELD_ASSIGNMENT_IMPLEMENTATION.md` (route inconsistency confirmed).
+- [x] **CFA-02** Field discovery (`GET /customFields`), eligibility (device context, not read-only, not expired, not credential-like, portal-editable), Field overview.
+- [x] **CFA-03** Device selection: filters, selection across pages, "all matching" resolved to a fixed list, workstations only.
+- [x] **CFA-04** Paste and TXT/CSV/XLSX import with column mapping (optional value per device); exact matching engine (device ID → serial → FQDN → hostname) with ambiguity resolution.
+- [x] **CFA-05** Live preview (device-level vs inherited via `/usage`), typed value validation, actions and summary, overwrite acknowledgement.
+- [x] **CFA-06** Gated writer (ADR-031): documented assign/update only, three switches + validated route + separate token; `vsa_custom_field_validate`.
+- [x] **CFA-07** Celery execution: one device at a time, re-check before write, sent-once, 429 backoff, read-back with bounded retries, resume-safe, cancellation, duplicate protection, approval threshold.
+- [x] **CFA-08** Audit per request/decision/device, history, CSV/XLSX report (six sheets, formula-neutralised), retry of failed devices, device page tab.
+- [x] **CFA-09** Tests: 17 backend, 4 frontend, 1 browser scenario + accessibility. **Pending:** live validation on an authorised test workstation (route, Boolean/Date formats, inheritance) - not claimed.
 - [x] **CAT-01** Reference versions from the VSA 10 Application Catalog: pasted table matched to installed programs, reviewed through the existing catalog import (no API endpoint exists; nothing fetched).
 - [x] **CAT-02** Automatic daily update from the VSA application catalog page: version increases for approved products apply automatically (ADR-030); new products/decreases/warnings wait for approval; status and Check now in Settings.
 - [x] **CAT-03** Catalog matching keeps version-series lines and bracketed editions apart (127 of 303 live entries were being skipped); coverage of the last check shown in Settings.

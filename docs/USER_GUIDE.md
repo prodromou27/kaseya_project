@@ -272,6 +272,31 @@ Execution is refused when the approval is older than 24 hours, the device has ch
 the destination group is no longer active, or the inventory is stale. When execution is not enabled the page says why,
 and the move can still be made manually in VSA X.
 
+## Custom fields (assign VSA X custom fields to workstations)
+
+**VSA operations → Custom fields** sets an existing VSA X custom field (for example *PatchRing*) on workstations.
+Only fields an administrator made editable are offered; the value box matches the field type (text, number, true/false,
+date).
+
+1. **Choose the devices.** *Device assignments*: filter and tick devices (the selection stays while you page), or use
+   all devices matching the filters. *Import list*: paste names (one per line, or separated by commas or semicolons) or
+   upload TXT, CSV or Excel and map the columns (device ID, serial, FQDN, hostname, expected site/group, optionally a
+   value per device).
+2. **Review the matches.** Matched, not found, several matches (choose the right device), duplicate, invalid, another
+   customer, or not a workstation (servers are excluded). Nothing is changed yet.
+3. **Preview changes.** The portal reads the current value from VSA X for every device: *Assign* (no value set on the
+   device; an inherited organisation/site/group value is shown and left unchanged), *Update* (a different value is set
+   on the device), *Already correct*, *Requires review* (could not be read) or *Blocked*.
+4. **Apply.** Tick the confirmation (and the overwrite confirmation when devices already have a different value).
+   Large jobs may wait for a second administrator. Progress is shown; you can cancel the devices not started yet.
+5. **Results.** *Verified success* only when the value was read back from VSA X. *Unknown outcome* means VSA X did not
+   answer clearly; the change is never sent twice. Download the results (Excel with Summary, Successful, Skipped, Failed,
+   Not found and Ambiguous sheets, or CSV), and *Prepare a new job for the failed devices* if needed.
+
+The device page has a **Custom fields** tab with the editable fields' current values and the same reviewed change for that
+one device. **Assignment history** lists every job. The portal never removes a custom field or changes organisation,
+site or group values.
+
 ## Servers & owners
 
 **Servers & owners** (Software & patching) shows the selected customer's servers, who owns them and what each needs:

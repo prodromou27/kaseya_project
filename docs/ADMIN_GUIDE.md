@@ -207,6 +207,30 @@ Apply reporting migration 0003_saved_view_layout before the new backend. Existin
 
 No additional migration is required. The new os_update_coverage report uses existing read/export capabilities, protected artifacts, audit and retention; its rows distinguish collection evidence from update records. Pinned source identity/timestamps are included. Before application rollback to an older report registry, pause coverage schedules and archive/manage coverage definitions while retaining artifacts and audit. See INTELLIGENCE_LISTS.md for verified scope and evidence. Named saved layouts remain a Devices feature.
 
+## Enabling custom field assignment (CFA)
+
+Off by default. Engineers can only assign fields after all of the following:
+
+1. The separate write token exists, as for group moves (`write_credential_ref = env:VSA_WRITE_<NAME>`).
+2. `VSA_CUSTOM_FIELD_WRITES_ENABLED=true` in the server environment; restart web and worker.
+3. **Validate the route on one authorised test workstation** (the VSA X documentation gives two route forms):
+   `docker compose -f compose.prod.yml --env-file .env.prod exec backend python manage.py vsa_custom_field_validate
+   --integration <integration id> --device <test device GUID> --field <field id> --value "<test value>"
+   --confirm-test-device`. It writes that value once, reads it back and records the route that worked. Until then live
+   writes are refused with "route has not been validated".
+4. **Settings → Integrations → Edit → Assign custom fields in VSA X**: tick the switch; optionally set *Second approval
+   above (devices)*.
+5. **Custom fields → Field overview**: *Read fields from VSA X*, then tick *Editable in the portal* for each field the
+   portal may change (only device fields that are not read-only or expired; credential-like names never). *Always needs
+   approval* makes every job for that field wait for a second administrator.
+
+Limits: engineers change at most `CUSTOM_FIELD_ENGINEER_MAX_DEVICES` (10) devices per job; customer administrators
+more, up to `CUSTOM_FIELD_MAX_JOB_ITEMS` (5000). A preview must be confirmed within
+`CUSTOM_FIELD_PREVIEW_VALID_MINUTES` (30). Changing an integration's base URL clears the switch and the validated route.
+Audit events: `custom_field.job_created|previewed|confirmed|approved|rejected|cancel_requested|execution_started|
+assignment|execution_finished|report_exported|settings_changed|definitions_refreshed|route_validated`.
+Plan and API findings: `CUSTOM_FIELD_ASSIGNMENT_IMPLEMENTATION.md`.
+
 ## Enabling execution of approved group moves (VSA5-EXEC)
 
 Off by default. All three are required; removing any one switches execution off again.
