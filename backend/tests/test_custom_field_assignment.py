@@ -346,7 +346,9 @@ def test_writes_are_off_unless_every_gate_is_set(world, demo, settings, django_c
 
     demo.is_fixture, demo.custom_field_writes_enabled = False, True
     demo.credential_ref, demo.credential_ciphertext = "", ""
-    assert availability(demo) == (False, "The custom field route has not been validated on a test workstation yet.")
+    ok, why = availability(demo)
+    assert not ok and why.startswith("The custom field route has not been validated on a test workstation yet.")
+    assert "Settings → Integrations → Edit" in why
     demo.custom_field_write_route = "automation/customfields"
     assert availability(demo)[1] == "No VSA X API token is configured for this integration."
     demo.credential_ref = "env:VSA_TOKEN_PROD"

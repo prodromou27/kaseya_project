@@ -95,7 +95,10 @@ def availability(instance: IntegrationInstance) -> tuple[bool, str]:
     if instance.is_fixture:
         return True, ""
     if instance.custom_field_write_route not in ROUTES:
-        return False, "The custom field route has not been validated on a test workstation yet."
+        return False, (
+            "The custom field route has not been validated on a test workstation yet. A super admin does this once "
+            "under Settings → Integrations → Edit → Validate on a test workstation."
+        )
     if not can_write(instance):
         return False, "No VSA X API token is configured for this integration."
     return True, ""
