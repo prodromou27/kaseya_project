@@ -212,6 +212,19 @@ def resolve_instance_write(instance: IntegrationInstance) -> BasicCredential:
     return resolve_basic(instance.write_credential_ref)
 
 
+def can_write(instance: IntegrationInstance) -> bool:
+    """A token is available for writes: the optional separate write token, else the integration's own API token."""
+    return has_write_credential(instance) or bool(instance.credential_ciphertext or instance.credential_ref)
+
+
+def resolve_write_auth(instance: IntegrationInstance) -> BasicCredential:
+    """The token used for writes: the separate write token when one is set, otherwise the integration's API token
+    (product owner decision 2026-11-18: one token is enough; a separate token stays optional)."""
+    if has_write_credential(instance):
+        return resolve_instance_write(instance)
+    return resolve_instance_basic(instance)
+
+
 def resolve_instance_basic(instance: IntegrationInstance) -> BasicCredential:
     """The credential the connector should use: portal-entered first, then the server reference."""
     if instance.credential_ciphertext:

@@ -52,9 +52,9 @@ No fuzzy matching. Classes: *matched, not found, multiple matches* (user must pi
 
 All in the portal, super admin only (Settings → Integrations → Edit):
 
-1. **Write token**: a separate VSA X API token entered in the portal (`POST /integrations/{id}/write-credential/`),
-   Fernet-encrypted and bound to the integration and the purpose "write" (never accepted as the read credential, and
-   the read token is refused as the write token). Alternative: `write_credential_ref = env:VSA_WRITE_<NAME>`.
+1. **Token**: the integration's API token is used (one token is enough). Optional separate write token entered in
+   the portal (`POST /integrations/{id}/write-credential/`), Fernet-encrypted and bound to the integration and the
+   purpose "write", or `write_credential_ref = env:VSA_WRITE_<NAME>`; when set, it is used instead.
 2. **Validate on a test workstation** (`POST /integrations/{id}/validate-custom-field-route/`, explicit
    `confirm_test_device`; same logic as `manage.py vsa_custom_field_validate`): tries the heading form, falls back to
    the sample form only on 404, reads the value back and records the route that worked (audited).

@@ -5755,8 +5755,8 @@ paths:
   /api/v1/integrations/{id}/write-credential/:
     post:
       operationId: integrations_write_credential_create
-      description: Set (POST) or remove (DELETE) the separate VSA X write token. Write-only,
-        encrypted; super admin only.
+      description: Set (POST) or remove (DELETE) the optional separate write token.
+        Write-only, encrypted; super admin only.
       parameters:
       - in: path
         name: id
@@ -5784,8 +5784,8 @@ paths:
           description: ''
     delete:
       operationId: integrations_write_credential_destroy
-      description: Set (POST) or remove (DELETE) the separate VSA X write token. Write-only,
-        encrypted; super admin only.
+      description: Set (POST) or remove (DELETE) the optional separate write token.
+        Write-only, encrypted; super admin only.
       parameters:
       - in: path
         name: id
@@ -11365,8 +11365,8 @@ components:
         * `os_updates` - Windows updates
     WriteCredential:
       type: object
-      description: The separate VSA X write token. Write-only; encrypted; never echoed,
-        logged or audited.
+      description: Optional separate VSA X write token. Write-only; encrypted; never
+        echoed, logged or audited.
       properties:
         token_id:
           type: string

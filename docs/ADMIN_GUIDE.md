@@ -212,10 +212,11 @@ No additional migration is required. The new os_update_coverage report uses exis
 Everything is done in the portal by a **super admin**; nothing is written to VSA X until all steps are complete.
 Engineers can prepare and preview jobs; only customer administrators (and super admins) apply them.
 
-1. **Settings → Integrations → Edit** (VSA X integration) → **Write token**: enter the ID and secret of a *second*
-   VSA X API token (not the read token) and *Save write token*. It is stored encrypted and never shown again; it can be
-   replaced or removed. Shared with group moves. (Alternative for server-managed secrets: put `TOKEN_ID:TOKEN_SECRET`
-   in `/opt/okp/secrets/vsa_write_token` and set the server reference `env:VSA_WRITE_TOKEN`; a portal token wins.)
+1. **Token**: changes are made with the integration's API token (Settings → Integrations → Credentials); its VSA X
+   permissions must allow assigning custom fields. One token is enough. *Optional:* under **Settings → Integrations →
+   Edit → Separate write token** you can enter a second VSA X API token used only for changes (stored encrypted, never
+   shown again, replaceable or removable; shared with group moves), or keep it as a server secret in
+   `/opt/okp/secrets/vsa_write_token` referenced as `env:VSA_WRITE_TOKEN`.
 2. **Custom fields → Field overview → Read fields from VSA X** to see the field IDs.
 3. Back in **Settings → Integrations → Edit** → **Validate on a test workstation**: enter the test workstation
    (hostname or VSA X device ID), the custom field ID and a test value, tick *This is an authorised test workstation*
@@ -241,14 +242,14 @@ Plan and API findings: `CUSTOM_FIELD_ASSIGNMENT_IMPLEMENTATION.md`.
 
 ## Enabling execution of approved group moves (VSA5-EXEC)
 
-Off by default. All three are required; removing any one switches execution off again.
+Off by default. Both switches are required; removing either switches execution off again.
 
-1. Create a **separate** VSA X API token for moves (not the read token), with the narrowest permissions VSA X allows.
-2. Store it on the host as a Docker secret / environment value named `VSA_WRITE_<NAME>` in the form
-   `TOKEN_ID:TOKEN_SECRET` (for example `VSA_WRITE_PROD`, or `VSA_WRITE_PROD_FILE` pointing at the secret file).
-3. Set `VSA_GROUP_MOVE_EXECUTION_ENABLED=true` in the server environment and restart the web and worker containers.
-4. In **Settings → Integrations → Edit**, tick *Allow approved moves to be executed for this integration* and enter the
-   write token reference `env:VSA_WRITE_<NAME>`. The change is audited. Changing the integration's base URL clears the
+1. Token: moves use the integration's API token (its VSA X permissions must allow moving devices). Optionally enter a
+   separate write token under **Settings → Integrations → Edit → Separate write token** (or as the server secret
+   `env:VSA_WRITE_<NAME>`); when set, it is used instead.
+2. Set `VSA_GROUP_MOVE_EXECUTION_ENABLED=true` in the server environment and restart the web and worker containers.
+3. In **Settings → Integrations → Edit**, tick *Allow approved moves to be executed for this integration*. The change is
+   audited. Changing the integration's base URL clears the
    switch.
 
 Optional: `GROUP_MOVE_EXECUTION_WINDOW_HOURS` (default 24) limits how old an approval may be when executed. Audit

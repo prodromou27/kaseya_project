@@ -27,12 +27,10 @@ from .secrets import (
     VAULT_REF,
     WRITE_REF,
     CredentialStorageUnavailable,
-    CredentialUnavailable,
     credential_source,
     encrypt_fields,
     encrypt_write_token,
     has_write_credential,
-    resolve_instance_basic,
     storage_available,
     write_credential_source,
 )
@@ -48,7 +46,7 @@ class CredentialSerializer(serializers.Serializer):
 
 
 class WriteCredentialSerializer(serializers.Serializer):
-    """The separate VSA X write token. Write-only; encrypted; never echoed, logged or audited."""
+    """Optional separate VSA X write token. Write-only; encrypted; never echoed, logged or audited."""
 
     token_id = serializers.CharField(max_length=200, write_only=True)
     token_secret = serializers.CharField(max_length=500, write_only=True)
@@ -380,7 +378,7 @@ class IntegrationInstanceViewSet(
     @extend_schema(request=WriteCredentialSerializer, responses={200: IntegrationInstanceSerializer})
     @action(detail=True, methods=["post", "delete"], url_path="write-credential")
     def write_credential(self, request: Request, pk: str | None = None) -> Response:
-        """Set (POST) or remove (DELETE) the separate VSA X write token. Write-only, encrypted; super admin only."""
+        """Set (POST) or remove (DELETE) the optional separate write token. Write-only, encrypted; super admin only."""
         instance = self.get_object()
         if request.method == "DELETE":
             had = bool(instance.write_credential_ciphertext)
@@ -405,12 +403,6 @@ class IntegrationInstanceViewSet(
         token_secret = body.validated_data["token_secret"].strip()
         if not token_id or not token_secret or ":" in token_id:
             raise ValidationError({"detail": "Enter the write token's ID and secret."})
-        try:
-            read = resolve_instance_basic(instance)
-        except CredentialUnavailable:
-            read = None
-        if read is not None and read.username == token_id:
-            raise ValidationError({"detail": "Use a separate VSA X API token for writes, not the read token."})
         try:
             ciphertext = encrypt_write_token(instance, token_id, token_secret)
         except CredentialStorageUnavailable as exc:

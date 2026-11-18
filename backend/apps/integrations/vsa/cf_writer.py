@@ -7,8 +7,8 @@ Deliberately separate from the read-only adapter/client (which stay GET-only), m
   (``custom_field_write_route``, set only by the test-workstation validation in the portal or
   ``manage.py vsa_custom_field_validate``). Fixture integrations skip the
   route gate (their writes go to an in-process fake).
-* **Separate write credential** (entered encrypted in the portal or ``env:VSA_WRITE_*``; never the read token),
-  shared with group moves.
+* **Credential**: the integration's API token, or the optional separate write token when one is set (shared with
+  group moves).
 * **Documented routes only**: ``POST /api/v3/[automation/]customfields/{id}/assign`` and
   ``PUT /api/v3/[automation/]customfields/{id}/updateAssigned`` with body
   ``{ContextType: "Device", ContextItemId, UseDefaultValue: false, Value}``. ``unassign`` is never called.
@@ -29,9 +29,8 @@ from apps.integrations.http import DEFAULT_TIMEOUT, check_egress, default_resolv
 from apps.integrations.models import IntegrationInstance
 from apps.integrations.secrets import (
     CredentialUnavailable,
-    has_write_credential,
-    resolve_instance_basic,
-    resolve_instance_write,
+    can_write,
+    resolve_write_auth,
 )
 
 ROUTES = ("customfields", "automation/customfields")
@@ -97,8 +96,8 @@ def availability(instance: IntegrationInstance) -> tuple[bool, str]:
         return True, ""
     if instance.custom_field_write_route not in ROUTES:
         return False, "The custom field route has not been validated on a test workstation yet."
-    if not has_write_credential(instance):
-        return False, "No separate VSA X write token is configured for this integration."
+    if not can_write(instance):
+        return False, "No VSA X API token is configured for this integration."
     return True, ""
 
 
@@ -136,15 +135,9 @@ class VsaCustomFieldWriter:
             return
         self.transport = transport or RequestsTransport()
         try:
-            write = resolve_instance_write(instance)
+            write = resolve_write_auth(instance)
         except CredentialUnavailable as exc:
-            raise WriteNotAvailable("The VSA X write token could not be read.") from exc
-        try:
-            read = resolve_instance_basic(instance)
-        except CredentialUnavailable:
-            read = None
-        if read is not None and read.username == write.username:
-            raise WriteNotAvailable("The write token must be a separate VSA X API token, not the read token.")
+            raise WriteNotAvailable("The VSA X API token could not be read.") from exc
         self.auth = (write.username, write.password)
 
     def write(self, field_id: str, device_id: str, value: str, *, update: bool) -> dict[str, Any]:

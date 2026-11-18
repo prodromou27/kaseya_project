@@ -10,8 +10,8 @@ function when(iso: string | null | undefined) {
 }
 
 /**
- * The separate VSA X WRITE token (super admin). Sent once over HTTPS, stored encrypted, never shown again; used only
- * for approved group moves and confirmed custom field assignments. Must be a different API token from the read one.
+ * OPTIONAL separate VSA X write token (super admin). Without one, writes use the integration's API token. Sent once
+ * over HTTPS, stored encrypted, never shown again; used only for approved group moves and custom field assignments.
  */
 export function WriteTokenForm({ integration }: { integration: Integration }) {
   const queryClient = useQueryClient();
@@ -38,17 +38,18 @@ export function WriteTokenForm({ integration }: { integration: Integration }) {
   const source = integration.write_credential_source ?? (integration.write_credential_configured ? "server" : "none");
   return (
     <form onSubmit={submit} aria-label="VSA X write token" className="space-y-2 rounded border border-amber-200 bg-amber-50/50 p-3">
-      <h4 className="text-sm font-semibold">Write token</h4>
+      <h4 className="text-sm font-semibold">Separate write token (optional)</h4>
       <p className="text-xs text-slate-600">
-        A <strong>separate</strong> VSA X API token used only to apply approved group moves and confirmed custom field
-        changes; never the read token. Stored encrypted; it can be replaced or removed but never viewed again.
+        Not required: without it, changes are made with this integration's API token (entered under Credentials). Enter a
+        second VSA X API token here only if you want changes made with a different token. Stored encrypted; it can be
+        replaced or removed but never viewed again.
       </p>
       <p className="text-sm" aria-live="polite">
         Status:{" "}
         <strong>
           {source === "portal"
             ? `entered in the portal${integration.write_credential_set_by ? ` by ${integration.write_credential_set_by}` : ""}${integration.write_credential_set_at ? `, ${when(integration.write_credential_set_at)}` : ""}`
-            : source === "server" ? "server secret reference" : "not set"}
+            : source === "server" ? "server secret reference" : "not set (the integration's API token is used)"}
         </strong>
       </p>
       <div className="flex flex-wrap items-end gap-3">
@@ -61,7 +62,7 @@ export function WriteTokenForm({ integration }: { integration: Integration }) {
         <button type="submit" className="btn-primary" disabled={save.isPending}>{source === "portal" ? "Replace write token" : "Save write token"}</button>
         {source === "portal" ? (
           <button type="button" className="btn-secondary" disabled={remove.isPending}
-                  onClick={() => { if (window.confirm("Remove the write token? Group moves and custom field changes stop until a new one is entered.")) remove.mutate(); }}>
+                  onClick={() => { if (window.confirm("Remove the separate write token? Changes will then be made with the integration's API token.")) remove.mutate(); }}>
             Remove write token
           </button>
         ) : null}

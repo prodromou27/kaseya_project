@@ -1,4 +1,4 @@
-"""Custom field writes set up in the portal by a super admin: separate write token (encrypted, write-only, audited),
+"""Custom field writes set up in the portal by a super admin: optional separate write token (encrypted, audited),
 test-workstation route validation, and the server switch as an emergency stop. Fake tokens and fixture VSA only."""
 
 from __future__ import annotations
@@ -45,11 +45,18 @@ def _url(inst, action="write-credential"):
     return f"/api/v1/integrations/{inst.id}/{action}/"
 
 
-def test_super_admin_enters_write_token_encrypted_and_separate(world, live):
+def test_one_api_token_is_enough_for_writes(world, live):
+    assert world.client(world.super_admin).post(_url(live, "credential"), READ, format="json").status_code == 200
+    live.refresh_from_db()
+    live.custom_field_writes_enabled, live.custom_field_write_route = True, "customfields"
+    live.save()
+    assert availability(live) == (True, "")
+    assert VsaCustomFieldWriter(live, transport=object()).auth == ("fake-read-id-1", "FAKE-READ-secret")
+
+
+def test_super_admin_may_enter_an_optional_separate_write_token(world, live):
     client = world.client(world.super_admin)
     assert client.post(_url(live, "credential"), READ, format="json").status_code == 200
-    same = client.post(_url(live), {"token_id": "fake-read-id-1", "token_secret": "x"}, format="json")
-    assert same.status_code == 400 and "not the read token" in same.content.decode()
 
     resp = client.post(_url(live), {"token_id": WRITE_ID, "token_secret": WRITE_SECRET}, format="json")
     assert resp.status_code == 200, resp.content

@@ -145,7 +145,7 @@ def test_rejected_by_vsa_is_failed(world, enabled):
     assert execution.state == "failed" and execution.http_status == 403
 
 
-def test_live_integration_needs_a_separate_write_token(world, settings, monkeypatch):
+def test_live_integration_writes_with_its_token_or_an_optional_write_token(world, settings, monkeypatch):
     from apps.integrations.models import IntegrationInstance
 
     settings.VSA_GROUP_MOVE_EXECUTION_ENABLED = True
@@ -155,20 +155,18 @@ def test_live_integration_needs_a_separate_write_token(world, settings, monkeypa
         base_url="https://vsa.example.com",
         enabled=True,
         group_move_execution_enabled=True,
-        credential_ref="env:VSA_READ_TOKEN",
+        credential_ref="",
     )
-    with pytest.raises(MoveNotAvailable, match="separate VSA X write token"):
-        VsaMoveWriter(inst)  # no write reference configured
+    with pytest.raises(MoveNotAvailable, match="No VSA X API token"):
+        VsaMoveWriter(inst)  # no token at all
+    inst.credential_ref = "env:VSA_READ_TOKEN"
     monkeypatch.setenv("VSA_READ_TOKEN", "reader:secret-1")
-    monkeypatch.setenv("VSA_WRITE_PROD", "reader:secret-2")
-    inst.write_credential_ref = "env:VSA_WRITE_PROD"
-    with pytest.raises(MoveNotAvailable, match="not the read token"):
-        VsaMoveWriter(inst)
+    assert VsaMoveWriter(inst).auth == ("reader", "secret-1")  # one token is enough
     monkeypatch.setenv("VSA_WRITE_PROD", "writer:secret-2")
-    assert VsaMoveWriter(inst).auth == ("writer", "secret-2")
+    inst.write_credential_ref = "env:VSA_WRITE_PROD"
+    assert VsaMoveWriter(inst).auth == ("writer", "secret-2")  # an optional separate token wins
     inst.write_credential_ref = "env:DJANGO_SECRET_KEY"
-    with pytest.raises(MoveNotAvailable):
-        VsaMoveWriter(inst)  # only env:VSA_WRITE_* references are accepted
+    assert VsaMoveWriter(inst).auth == ("reader", "secret-1")  # never a server secret; falls back to the API token
 
 
 def test_credential_references_cannot_name_server_secrets(world, monkeypatch, settings):

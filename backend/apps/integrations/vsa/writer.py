@@ -4,8 +4,8 @@ Deliberately separate from the read-only adapter and client (which stay GET-only
 
 * **Off by default, two switches.** ``settings.VSA_GROUP_MOVE_EXECUTION_ENABLED`` (server environment; cannot be set
   from the portal) AND ``IntegrationInstance.group_move_execution_enabled`` (super admin, audited).
-* **Separate write credential.** Entered in the portal (Fernet-encrypted, bound to the integration and the purpose
-  "write") or ``write_credential_ref = env:VSA_WRITE_*`` (a Docker secret); never the read token.
+* **Credential.** The integration's API token, or an optional separate write token (entered in the portal,
+  Fernet-encrypted and bound to the integration and the purpose "write", or ``env:VSA_WRITE_*``) when one is set.
 * **One fixed route.** Exactly ``/api/v3/devices/{identifier}/move`` with body ``{"GroupId": <int>}``.
 * **No retries, ever.** A timeout, connection error or 5xx is reported as *outcome unknown*; the caller verifies by
   reading the device back instead of sending the PUT again.
@@ -27,9 +27,8 @@ from apps.integrations.http import DEFAULT_TIMEOUT, check_egress, default_resolv
 from apps.integrations.models import IntegrationInstance
 from apps.integrations.secrets import (
     CredentialUnavailable,
-    has_write_credential,
-    resolve_instance_basic,
-    resolve_instance_write,
+    can_write,
+    resolve_write_auth,
 )
 
 MOVE_PATH = re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/move")
@@ -86,8 +85,8 @@ def availability(instance: IntegrationInstance) -> tuple[bool, str]:
         return False, "The VSA X integration is not enabled."
     if not instance.group_move_execution_enabled:
         return False, "Executing moves is not enabled for this VSA X integration."
-    if not instance.is_fixture and not has_write_credential(instance):
-        return False, "No separate VSA X write token is configured for this integration."
+    if not instance.is_fixture and not can_write(instance):
+        return False, "No VSA X API token is configured for this integration."
     return True, ""
 
 
@@ -108,15 +107,9 @@ class VsaMoveWriter:
                 transport = RequestsWriteTransport()
             self.transport = transport
             try:
-                write = resolve_instance_write(instance)
+                write = resolve_write_auth(instance)
             except CredentialUnavailable as exc:
-                raise MoveNotAvailable("The VSA X write token could not be read.") from exc
-            try:
-                read = resolve_instance_basic(instance)
-            except CredentialUnavailable:
-                read = None
-            if read is not None and read.username == write.username:
-                raise MoveNotAvailable("The write token must be a separate VSA X API token, not the read token.")
+                raise MoveNotAvailable("The VSA X API token could not be read.") from exc
             self.auth = (write.username, write.password)
 
     def move(self, device_id: str, group_id: str) -> dict[str, Any]:

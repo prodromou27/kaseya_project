@@ -341,13 +341,16 @@ def test_writes_are_off_unless_every_gate_is_set(world, demo, settings, django_c
     )
     assert "not enabled for this VSA X integration" in str(confirm.json())
     assert not fixtures.FIXTURE_CUSTOM_FIELDS
-    # A live integration also needs a validated route and a separate write token.
+    # A live integration also needs a validated route and an API token (a separate write token is optional).
     from apps.integrations.vsa.cf_writer import availability
 
     demo.is_fixture, demo.custom_field_writes_enabled = False, True
+    demo.credential_ref, demo.credential_ciphertext = "", ""
     assert availability(demo) == (False, "The custom field route has not been validated on a test workstation yet.")
     demo.custom_field_write_route = "automation/customfields"
-    assert availability(demo)[1] == "No separate VSA X write token is configured for this integration."
+    assert availability(demo)[1] == "No VSA X API token is configured for this integration."
+    demo.credential_ref = "env:VSA_TOKEN_PROD"
+    assert availability(demo) == (True, "")
 
 
 def test_only_documented_routes_and_body(world, ready):

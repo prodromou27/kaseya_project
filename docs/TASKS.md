@@ -160,6 +160,7 @@ fixture-verified only (no live VSA X validation).
 - [x] **CFA-04** Paste and TXT/CSV/XLSX import with column mapping (optional value per device); exact matching engine (device ID → serial → FQDN → hostname) with ambiguity resolution.
 - [x] **CFA-05** Live preview (device-level vs inherited via `/usage`), typed value validation, actions and summary, overwrite acknowledgement.
 - [x] **CFA-06** Gated writer (ADR-031): documented assign/update only, three switches + validated route + separate token; `vsa_custom_field_validate`.
+- [x] **CFA-11** One token is enough: writes use the integration's API token unless an optional separate write token is set (product owner, 2026-11-18).
 - [x] **CFA-10** Setup in the portal, admins apply: separate write token entered encrypted in Settings → Integrations (purpose-bound, write-only, audited, cleared on base URL change); test-workstation route validation in the portal; server variable becomes an emergency stop (default on); engineers prepare/preview, only administrators apply or retry.
 - [x] **CFA-07** Celery execution: one device at a time, re-check before write, sent-once, 429 backoff, read-back with bounded retries, resume-safe, cancellation, duplicate protection, approval threshold.
 - [x] **CFA-08** Audit per request/decision/device, history, CSV/XLSX report (six sheets, formula-neutralised), retry of failed devices, device page tab.

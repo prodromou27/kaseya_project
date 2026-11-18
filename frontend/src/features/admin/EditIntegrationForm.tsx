@@ -77,9 +77,9 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
         <fieldset className="space-y-2 rounded border border-amber-200 bg-amber-50/50 p-3">
           <legend className="px-1 text-sm font-semibold">Execute approved group moves in VSA X</legend>
           <p className="text-xs text-slate-600">
-            It needs three things: the server switch
-            (<code>VSA_GROUP_MOVE_EXECUTION_ENABLED</code>, currently <strong>{integration.group_move_execution_server_enabled ? "on" : "off"}</strong>),
-            this switch, and the separate write token below (<strong>{integration.write_credential_configured ? "set" : "not set"}</strong>).
+            It needs the server switch
+            (<code>VSA_GROUP_MOVE_EXECUTION_ENABLED</code>, currently <strong>{integration.group_move_execution_server_enabled ? "on" : "off"}</strong>)
+            and this switch. Moves use the integration's API token, or the optional separate write token below.
             Every move still needs an independent approval and is sent once.
           </p>
           <label className="flex items-center gap-2 text-sm">
@@ -87,7 +87,7 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
             Allow approved moves to be executed for this integration
           </label>
           {!integration.is_fixture ? (
-            <Field label="Write token server reference (optional)" hint="Only if the write token is kept as a server secret, e.g. env:VSA_WRITE_TOKEN. A token entered below takes precedence. Leave empty to keep the current one.">
+            <Field label="Write token server reference (optional)" hint="Only if a separate write token is kept as a server secret, e.g. env:VSA_WRITE_TOKEN. A token entered below takes precedence. Leave empty to keep the current one.">
               {(id, h) => <input id={id} aria-describedby={h} className="input w-64" pattern="env:VSA_WRITE_[A-Z0-9_]{1,50}" value={writeRef} onChange={(e) => setWriteRef(e.target.value)} />}
             </Field>
           ) : null}
@@ -98,8 +98,8 @@ export function EditIntegrationForm({ integration, onClose }: { integration: Int
           <legend className="px-1 text-sm font-semibold">Assign custom fields in VSA X</legend>
           <p className="text-xs text-slate-600">
             Lets administrators apply editable custom field values to workstations (Custom fields page; engineers can
-            prepare and preview, administrators apply). It needs this switch, the separate write token and, for a live
-            server, a route confirmed on a test workstation (both below).
+            prepare and preview, administrators apply). It needs this switch and, for a live server, a route confirmed
+            on a test workstation (below). Changes use the integration's API token unless a separate write token is set.
             {integration.custom_field_writes_server_enabled === false ? (
               <strong> Custom field writes are blocked on this server (emergency stop VSA_CUSTOM_FIELD_WRITES_ENABLED=false).</strong>
             ) : null}

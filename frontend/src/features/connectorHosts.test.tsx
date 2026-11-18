@@ -86,7 +86,7 @@ describe("API settings managed in the portal", () => {
     await openIntegrations();
     await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
     const token = screen.getByRole("form", { name: "VSA X write token" });
-    expect(token).toHaveTextContent("Status: not set");
+    expect(token).toHaveTextContent("Status: not set (the integration's API token is used)");
     await userEvent.type(within(token).getByLabelText("Write token ID"), "w-id");
     await userEvent.type(within(token).getByLabelText("Write token secret"), "w-secret");
     await userEvent.click(within(token).getByRole("button", { name: "Save write token" }));

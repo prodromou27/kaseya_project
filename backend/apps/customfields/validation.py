@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from apps.audit.services import record_event
 from apps.integrations.models import IntegrationInstance
-from apps.integrations.secrets import has_write_credential
+from apps.integrations.secrets import can_write
 from apps.integrations.vsa.adapter import VsaXAdapter
 from apps.integrations.vsa.cf_writer import (
     ROUTES,
@@ -72,8 +72,8 @@ def validate_route(
         raise ValidationFailed("Writing custom fields is switched off on this server (emergency stop).")
     if instance.provider != IntegrationInstance.Provider.VSA_X or not instance.enabled:
         raise ValidationFailed("The VSA X integration is not enabled.")
-    if not instance.is_fixture and not has_write_credential(instance):
-        raise ValidationFailed("Enter the separate VSA X write token first.")
+    if not instance.is_fixture and not can_write(instance):
+        raise ValidationFailed("Enter the VSA X API token first.")
     device_id = find_device(instance, device)
     adapter = VsaXAdapter(instance)
     definitions.refresh(instance, adapter)

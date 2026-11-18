@@ -1,5 +1,9 @@
 # Changelog
 
+## CFA-11 - 2026-11-18 - one VSA X token is enough
+
+- Group moves and custom field changes now use the integration's API token; a separate write token is optional (Settings → Integrations → Edit → *Separate write token*, or `env:VSA_WRITE_*`) and is used instead when set. The rule that the write token must differ from the read token is removed. Availability message is now "No VSA X API token is configured for this integration." when neither exists.
+
 ## CFA-10 - 2026-11-18 - custom field writes set up in the portal; only administrators apply
 
 - **Settings → Integrations → Edit** (super admin) now has *Write token* (a separate VSA X API token entered in the portal, Fernet-encrypted, bound to the integration and the purpose "write", never shown again, refused if it is the read token, cleared when the base URL changes; audited `integration.write_credential_set|cleared`) and *Validate on a test workstation* (writes one value to one confirmed test device, reads it back, records the route; same logic as `manage.py vsa_custom_field_validate`, which now also accepts a hostname). New endpoints `POST|DELETE /integrations/{id}/write-credential/`, `POST /integrations/{id}/validate-custom-field-route/`; migration `integrations.0015`. Group moves use the portal write token too.
