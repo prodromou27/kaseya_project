@@ -1,5 +1,9 @@
 # Changelog
 
+## FIX-COMPOSE - 2026-11-18 - write switches and write token reach the containers
+
+- `compose.prod.yml` passed only a fixed list of settings into backend/worker/beat, so `VSA_GROUP_MOVE_EXECUTION_ENABLED`, `VSA_CUSTOM_FIELD_WRITES_ENABLED`, `VSA_APP_CATALOG_AUTO_UPDATE` and any `VSA_WRITE_*` token set in `.env.prod` never took effect. They are now passed through (writes still default to off), and the write token is a Docker secret file `secrets/vsa_write_token` (`VSA_WRITE_TOKEN_FILE`), created empty by `prepare-secrets.sh`; reference it as `env:VSA_WRITE_TOKEN`.
+
 ## CFA - 2026-11-18 - VSA X custom field assignment
 
 - **VSA operations → Custom fields** (new): assign or update existing VSA X custom fields (e.g. *PatchRing*) on workstations. Tabs: *Device assignments* (filters, selection across pages, all matching devices as a fixed list), *Import list* (paste, or TXT/CSV/XLSX with column mapping and optional per-device values), *Assignment history*, *Field overview*. Device page: new *Custom fields* tab. Both input methods use one engine.

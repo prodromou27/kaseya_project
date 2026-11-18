@@ -211,8 +211,11 @@ No additional migration is required. The new os_update_coverage report uses exis
 
 Off by default. Engineers can only assign fields after all of the following:
 
-1. The separate write token exists, as for group moves (`write_credential_ref = env:VSA_WRITE_<NAME>`).
-2. `VSA_CUSTOM_FIELD_WRITES_ENABLED=true` in the server environment; restart web and worker.
+1. The separate write token: put `TOKEN_ID:TOKEN_SECRET` of a second VSA X API token (not the read token) into
+   `/opt/okp/secrets/vsa_write_token` (created empty, mode 0640, by `prepare-secrets.sh`), then in **Settings →
+   Integrations → Edit** enter the write token reference `env:VSA_WRITE_TOKEN`. Shared with group moves.
+2. `VSA_CUSTOM_FIELD_WRITES_ENABLED=true` in `/opt/okp/.env.prod`, then `sudo ./install.sh -y` (or `docker compose -f
+   compose.prod.yml --env-file .env.prod up -d`) so backend, worker and beat restart with it.
 3. **Validate the route on one authorised test workstation** (the VSA X documentation gives two route forms):
    `docker compose -f compose.prod.yml --env-file .env.prod exec backend python manage.py vsa_custom_field_validate
    --integration <integration id> --device <test device GUID> --field <field id> --value "<test value>"

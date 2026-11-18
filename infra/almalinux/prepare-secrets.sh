@@ -48,11 +48,15 @@ if [ ! -e "$SECRETS_DIR/oidc_client_secret" ]; then
   : >"$SECRETS_DIR/oidc_client_secret"
   echo "WARNING: created EMPTY oidc_client_secret. Put the Entra client secret there before enabling OIDC." >&2
 fi
+if [ ! -e "$SECRETS_DIR/vsa_write_token" ]; then
+  : >"$SECRETS_DIR/vsa_write_token"
+  echo "created EMPTY vsa_write_token (VSA X writes stay unavailable until TOKEN_ID:TOKEN_SECRET is placed there)."
+fi
 for f in tls_cert.pem tls_key.pem; do
   [ -s "$SECRETS_DIR/$f" ] || echo "WARNING: $SECRETS_DIR/$f is missing. Place the CA-issued certificate/key." >&2
 done
 
-for f in django_secret_key postgres_password oidc_client_secret connector_encryption_key; do
+for f in django_secret_key postgres_password oidc_client_secret connector_encryption_key vsa_write_token; do
   chown root:"$APP_GID" "$SECRETS_DIR/$f"
   chmod 0640 "$SECRETS_DIR/$f"
 done
