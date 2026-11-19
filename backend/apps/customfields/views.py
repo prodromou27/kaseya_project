@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timedelta
 from typing import Any
 
+from django.conf import settings
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
@@ -130,6 +132,7 @@ class JobSerializer(serializers.ModelSerializer):
     state_label = serializers.CharField(source="get_state_display", read_only=True)
     source_label = serializers.CharField(source="get_source_display", read_only=True)
     writes = serializers.SerializerMethodField()
+    preview_expires_at = serializers.SerializerMethodField()
 
     class Meta:
         model = AssignmentJob
@@ -151,6 +154,7 @@ class JobSerializer(serializers.ModelSerializer):
             "created_by",
             "created_at",
             "previewed_at",
+            "preview_expires_at",
             "confirmed_by",
             "confirmed_at",
             "approval_required",
@@ -169,6 +173,12 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_approved_by(self, obj: AssignmentJob) -> str | None:
         return obj.approved_by.email if obj.approved_by else None
+
+    def get_preview_expires_at(self, obj: AssignmentJob) -> datetime | None:
+        """After this the preview must be refreshed before it can be applied (``jobs.confirm`` enforces it)."""
+        if obj.previewed_at is None:
+            return None
+        return obj.previewed_at + timedelta(minutes=settings.CUSTOM_FIELD_PREVIEW_VALID_MINUTES)
 
     def get_writes(self, obj: AssignmentJob) -> dict[str, Any]:
         from apps.integrations.vsa.cf_writer import availability
@@ -293,7 +303,7 @@ class JobViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveMode
             "field", "integration_instance", "created_by", "confirmed_by", "approved_by"
         )
         if state := self.request.query_params.get("state"):
-            qs = qs.filter(state=state)
+            qs = qs.filter(state__in=[s for s in state.split(",") if s][:10])
         return qs
 
     def _job(self) -> AssignmentJob:

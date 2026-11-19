@@ -586,3 +586,22 @@ def test_select_all_matching_filters_becomes_a_fixed_list(world, ready):
         format="json",
     )
     assert bad.status_code == 400
+
+
+def test_preview_expiry_is_shown_and_waiting_jobs_can_be_listed(world, ready, django_capture_on_commit_callbacks):
+    eng = world.client(world.engineer_a)
+    ws = workstations(world, 1)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 2", "assets": [str(ws[0].asset_id)]},
+        format="json",
+    ).json()
+    assert job["preview_expires_at"] is None
+    with django_capture_on_commit_callbacks(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    job = eng.get(f"{base(world)}/custom-field-jobs/{job['id']}/").json()
+    assert job["state"] == "previewed" and job["preview_expires_at"] > job["previewed_at"]
+    admin = world.client(world.admin_a)
+    waiting = admin.get(f"{base(world)}/custom-field-jobs/", {"state": "previewed,awaiting_approval"}).json()
+    assert [j["id"] for j in waiting["results"]] == [job["id"]]
+    assert not admin.get(f"{base(world)}/custom-field-jobs/", {"state": "completed"}).json()["results"]

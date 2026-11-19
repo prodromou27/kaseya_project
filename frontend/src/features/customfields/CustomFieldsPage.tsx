@@ -314,11 +314,43 @@ function FieldOverview({ customer }: { customer: Customer }) {
   );
 }
 
+/** Administrators: jobs engineers have prepared (previewed) or that wait for a second approval, one click to open. */
+function WaitingForYou({ customer, openId, onOpen }: { customer: Customer; openId: string | null; onOpen: (id: string) => void }) {
+  const jobs = useQuery({
+    queryKey: ["cf-jobs", customer.id, "waiting"],
+    queryFn: ({ signal }) => api.get<Paginated<CfJob>>(`/customers/${customer.id}/custom-field-jobs/`, { state: "previewed,awaiting_approval" }, signal),
+    refetchInterval: 15000,
+  });
+  const list = (jobs.data?.results ?? []).filter((j) => j.id !== openId);
+  if (!list.length) return null;
+  return (
+    <section aria-label="Waiting for you to apply" className="rounded border border-sky-200 bg-sky-50/60 p-3">
+      <h3 className="text-sm font-semibold">Waiting for you to apply ({list.length})</h3>
+      <ul className="mt-1 divide-y divide-sky-100 text-sm">
+        {list.map((j) => (
+          <li key={j.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+            <span>
+              <span className="font-mono">{j.field_name}</span> = <span className="font-mono">{j.per_device_values ? "(per device)" : j.value}</span>
+              {" "}on {j.counts.to_change ?? j.counts.items ?? 0} device{(j.counts.to_change ?? j.counts.items) === 1 ? "" : "s"}
+              <span className="block text-xs text-slate-500">{j.state === "awaiting_approval" ? "Needs a second approval" : "Prepared"} by {j.created_by} · {formatUtc(j.created_at)}</span>
+            </span>
+            <button type="button" className="btn-primary" onClick={() => onOpen(j.id)}>Review and apply</button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Workspace({ customer }: { customer: Customer }) {
   const [tab, setTab] = useState("devices");
   const [jobId, setJobId] = useState<string | null>(null);
   const canAssign = customer.my_capabilities.includes(CAP.cfAssign);
-  const open = (id: string) => setJobId(id);
+  const canApply = customer.my_capabilities.includes(CAP.cfApprove);
+  const open = (id: string) => {
+    setJobId(id);
+    requestAnimationFrame(() => document.querySelector("[aria-label=\"Custom field job\"]")?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
+  };
   const tabs = [
     ...(canAssign ? [
       { id: "devices", label: "Device assignments", content: <SelectDevices customer={customer} onJob={open} /> },
@@ -330,6 +362,7 @@ function Workspace({ customer }: { customer: Customer }) {
   const active = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "history");
   return (
     <div className="space-y-4">
+      {canApply ? <WaitingForYou customer={customer} openId={jobId} onOpen={open} /> : null}
       {jobId ? <JobPanel key={jobId} customer={customer} jobId={jobId} onClose={() => setJobId(null)} onRetry={open} /> : null}
       <Tabs label="Custom fields" tabs={tabs} active={active} onChange={setTab} />
     </div>

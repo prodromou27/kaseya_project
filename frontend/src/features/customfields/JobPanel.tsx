@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { QueryBoundary } from "../../components/States";
 import { Badge, Notice, type Tone } from "../../components/ui";
@@ -140,11 +140,11 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
   const qc = useQueryClient();
   const me = useMe();
   const job = useJob(customer, jobId);
-  const [ack, setAck] = useState(false);
   const [sure, setSure] = useState(false);
   const caps = customer.my_capabilities;
   // Engineers prepare and preview; only administrators (customer.custom_field.approve) apply or retry.
   const canApply = caps.includes(CAP.cfApprove);
+  const canPrepare = caps.includes(CAP.cfAssign);
   const act = useMutation({
     mutationFn: ({ path, body }: { path: string; body?: unknown }) => api.post<CfJob>(`${base(customer, jobId)}/${path}/`, body),
     onSuccess: (data, v) => {
@@ -154,6 +154,21 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
       void qc.invalidateQueries({ queryKey: ["cf-jobs", customer.id] });
     },
   });
+  // Fewer clicks: preview starts by itself when no line needs a choice, and an out-of-date preview is refreshed
+  // when someone who can act on it opens the job. Each happens at most once per job state.
+  const auto = useRef("");
+  const data = job.data;
+  useEffect(() => {
+    if (!data || act.isPending) return;
+    const c = data.counts;
+    const expired = data.state === "previewed" && data.preview_expires_at && new Date(data.preview_expires_at).getTime() < Date.now();
+    const draftReady = data.state === "draft" && canPrepare && !c.match?.multiple && (c.match?.matched ?? 0) > 0;
+    const key = `${data.id}:${data.state}:${data.previewed_at ?? ""}`;
+    if ((draftReady || (expired && (canApply || canPrepare))) && auto.current !== key) {
+      auto.current = key;
+      act.mutate({ path: "preview" });
+    }
+  }, [data, act, canApply, canPrepare]);
   return (
     <QueryBoundary query={job}>
       {(j) => {
@@ -181,9 +196,13 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
                   <Count label="Invalid / other customer" value={(c.match?.invalid ?? 0) + (c.match?.other_customer ?? 0)} tone="bad" />
                   <Count label="Unsupported (not a workstation)" value={c.match?.unsupported} />
                 </div>
-                <p className="text-sm text-slate-600">Only matched workstations are changed. Lines with several matching devices are left out until you choose one.</p>
+                <p className="text-sm text-slate-600">
+                  Only matched workstations are changed.{c.match?.multiple ? " Choose the right device for each line with several matches, then preview." : ""}
+                </p>
                 <Items customer={customer} job={j} phase="match" />
-                <button type="button" className="btn-primary" disabled={act.isPending || !caps.includes(CAP.cfAssign)} onClick={() => act.mutate({ path: "preview" })}>Preview changes</button>
+                <button type="button" className="btn-primary" disabled={act.isPending || !canPrepare} onClick={() => act.mutate({ path: "preview" })}>
+                  {act.isPending ? "Starting preview…" : "Preview changes"}
+                </button>
               </>
             ) : null}
 
@@ -201,27 +220,24 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
                 <Items customer={customer} job={j} phase="preview" />
                 {!j.writes.available ? <Notice tone="warn">Cannot apply yet: {j.writes.reason}</Notice> : null}
                 {!canApply ? (
-                  <Notice tone="info" title="An administrator applies these changes">
-                    You can prepare and preview this job. A customer administrator opens it under Assignment history,
-                    checks the preview and applies it.
+                  <Notice tone="info" title="Ready for an administrator">
+                    Nothing else to do here. The job now appears at the top of the Custom fields page for administrators
+                    under <em>Waiting for you to apply</em>.
                   </Notice>
                 ) : null}
-                {canApply && c.updates ? (
-                  <label className="flex items-start gap-2 text-sm">
-                    <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-                    <span><strong>{c.updates}</strong> device{c.updates === 1 ? " has" : "s have"} a different value set on the device. Overwrite {c.updates === 1 ? "it" : "them"}.</span>
-                  </label>
-                ) : null}
-                {canApply ? (
+                {canApply && c.to_change ? (
                   <label className="flex items-start gap-2 text-sm">
                     <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
-                    <span>I confirm setting <strong>{j.field_name}</strong> on <strong>{c.to_change ?? 0}</strong> workstation{c.to_change === 1 ? "" : "s"} in VSA X.</span>
+                    <span>
+                      I confirm setting <strong>{j.field_name}</strong> on <strong>{c.to_change}</strong> workstation{c.to_change === 1 ? "" : "s"} in VSA X
+                      {c.updates ? <>, overwriting a different value on <strong>{c.updates}</strong> of them</> : null}.
+                    </span>
                   </label>
                 ) : null}
                 <div className="flex flex-wrap gap-2">
                   {canApply ? (
-                    <button type="button" className="btn-primary" disabled={!sure || (Boolean(c.updates) && !ack) || !c.to_change || !j.writes.available || act.isPending}
-                            onClick={() => act.mutate({ path: "confirm", body: { confirm: true, acknowledge_overwrite: ack } })}>Apply changes</button>
+                    <button type="button" className="btn-primary" disabled={!sure || !c.to_change || !j.writes.available || act.isPending}
+                            onClick={() => act.mutate({ path: "confirm", body: { confirm: true, acknowledge_overwrite: Boolean(c.updates) && sure } })}>Apply changes</button>
                   ) : null}
                   <button type="button" className="btn-secondary" disabled={act.isPending} onClick={() => act.mutate({ path: "preview" })}>Preview again</button>
                   <button type="button" className="btn-secondary" disabled={act.isPending} onClick={() => act.mutate({ path: "cancel" })}>Discard</button>

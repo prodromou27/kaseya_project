@@ -1,5 +1,13 @@
 # Changelog
 
+## UX-01 - 2026-11-19 - fewer clicks for custom field changes
+
+- The preview starts by itself when no line needs a device choice.
+- One confirmation checkbox replaces the separate overwrite checkbox (it states how many devices are overwritten; the API still requires `acknowledge_overwrite`).
+- An out-of-date preview is refreshed automatically when the job is opened.
+- Administrators see a *Waiting for you to apply* list at the top of the Custom fields page (prepared jobs and jobs waiting for a second approval), so they no longer search the history.
+- API: jobs include `preview_expires_at`; `?state=` accepts several comma-separated states.
+
 ## CFA-11 - 2026-11-18 - one VSA X token is enough
 
 - Group moves and custom field changes now use the integration's API token; a separate write token is optional (Settings → Integrations → Edit → *Separate write token*, or `env:VSA_WRITE_*`) and is used instead when set. The rule that the write token must differ from the read token is removed. Availability message is now "No VSA X API token is configured for this integration." when neither exists.

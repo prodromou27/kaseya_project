@@ -8045,6 +8045,13 @@ components:
           type: string
           format: date-time
           nullable: true
+        preview_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: After this the preview must be refreshed before it can be applied
+            (``jobs.confirm`` enforces it).
+          readOnly: true
         confirmed_by:
           type: string
           nullable: true
@@ -8092,6 +8099,7 @@ components:
       - field_type
       - id
       - integration
+      - preview_expires_at
       - source
       - source_label
       - state_label

@@ -42,7 +42,7 @@ function routes(extra: Record<string, unknown> = {}, caps: string[] = adminCaps)
 }
 
 describe("Custom fields", () => {
-  it("pastes a list, reviews matches, previews and applies only after explicit confirmation", async () => {
+  it("pastes a list, previews by itself and applies after one explicit confirmation", async () => {
     let state = job();
     const items = { current: [item({}), item({ id: "i2", position: 1, input_identifier: "WS-HR-005", hostname: "WS-HR-005" }), item({ id: "i3", position: 2, input_identifier: "NOPE", match_status: "not_found", match_label: "Not found", hostname: "", included: false })] };
     const { calls } = routes({
@@ -72,16 +72,15 @@ describe("Custom fields", () => {
     const created = calls.find((c) => c.method === "POST" && c.url === `${base}/custom-field-jobs/`);
     expect(JSON.parse(String(created?.init?.body))).toEqual({ field: "f1", value: "Ring 0", source: "list", text: "WS-FIN-001\nWS-HR-005\nNOPE" });
 
-    expect(await screen.findByRole("table", { name: "Matched devices" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+    // No line needs a choice, so the preview starts without another click.
     const preview = await screen.findByRole("table", { name: "Preview of changes" });
+    expect(calls.filter((c) => c.url === `${base}/custom-field-jobs/j1/preview/`)).toHaveLength(1);
     expect(within(preview).getByText("Ring 1")).toBeInTheDocument();
     expect(within(preview).getByText("inherited")).toBeInTheDocument();
     const apply = screen.getByRole("button", { name: "Apply changes" });
     expect(apply).toBeDisabled();
-    await userEvent.click(screen.getByLabelText(/I confirm setting/));
-    expect(apply).toBeDisabled(); // the overwrite still needs acknowledging
-    await userEvent.click(screen.getByLabelText(/has a different value set on the device/));
+    // One checkbox covers the change and the overwrite of the device that has another value.
+    await userEvent.click(screen.getByLabelText(/I confirm setting PatchRing on 2 workstations in VSA X, overwriting a different value on 1 of them/));
     await userEvent.click(apply);
     const confirmCall = calls.find((c) => c.url === `${base}/custom-field-jobs/j1/confirm/`);
     expect(JSON.parse(String(confirmCall?.init?.body))).toEqual({ confirm: true, acknowledge_overwrite: true });
@@ -98,6 +97,7 @@ describe("Custom fields", () => {
         : { count: 3, next: "p2", previous: null, results: [dev(1), dev(2)] } }),
       [`POST ${base}/custom-field-jobs/`]: { status: 201, body: job({ source: "selection" }) },
       [`GET ${base}/custom-field-jobs/j1/`]: { body: job() },
+      [`POST ${base}/custom-field-jobs/j1/preview/`]: { body: job({ state: "previewing" }) },
       [`GET ${base}/custom-field-jobs/j1/items/`]: { body: page([]) },
     });
     renderApp("/custom-fields");
@@ -120,8 +120,10 @@ describe("Custom fields", () => {
       [`GET ${base}/custom-field-jobs/j1/items/`]: { body: page([item({ action: "assign", action_label: "Assign", current_source: "none" })]) },
     });
     renderApp("/custom-fields");
-    await userEvent.click(await screen.findByRole("tab", { name: "Assignment history" }));
-    await userEvent.click(await screen.findByRole("button", { name: "PatchRing = Ring 0" }));
+    // Administrators see prepared jobs at the top of the page; no trip through the history.
+    const waiting = await screen.findByRole("region", { name: "Waiting for you to apply" });
+    expect(waiting).toHaveTextContent("Prepared by eng@example.test");
+    await userEvent.click(within(waiting).getByRole("button", { name: "Review and apply" }));
     expect(await screen.findByText(/Cannot apply yet: Writing custom fields to VSA X is switched off/)).toBeInTheDocument();
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText(/I confirm setting/));
@@ -138,7 +140,8 @@ describe("Custom fields", () => {
     renderApp("/custom-fields");
     await userEvent.click(await screen.findByRole("tab", { name: "Assignment history" }));
     await userEvent.click(await screen.findByRole("button", { name: "PatchRing = Ring 0" }));
-    expect(await screen.findByText("An administrator applies these changes")).toBeInTheDocument();
+    expect(await screen.findByText("Ready for an administrator")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Waiting for you to apply" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Apply changes" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/I confirm setting/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Preview again" })).toBeEnabled();

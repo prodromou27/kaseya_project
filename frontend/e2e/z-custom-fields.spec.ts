@@ -51,26 +51,25 @@ test("a super admin enables PatchRing, an engineer prepares a pasted list and an
   await page.getByRole("button", { name: "Find devices" }).click();
 
   const job = page.getByRole("region", { name: "Custom field job" });
-  const matches = job.getByRole("table", { name: "Matched devices" });
-  await expect(matches.getByRole("row", { name: /DEMOA-SRV007/ })).toContainText("Unsupported");
-  await expect(matches.getByRole("row", { name: /NO-SUCH-PC/ })).toContainText("Not found");
-  await job.getByRole("button", { name: "Preview changes" }).click();
+  // No line needs a device choice, so the preview starts without another click; unmatched lines stay listed.
   const preview = job.getByRole("table", { name: "Preview of changes" });
   await expect(preview.getByRole("row", { name: /DEMOA-WS005/ })).toContainText("Update", { timeout: 30_000 });
+  await expect(preview.getByRole("row", { name: /DEMOA-SRV007/ })).toContainText("Unsupported");
+  await expect(preview.getByRole("row", { name: /NO-SUCH-PC/ })).toContainText("Not found");
   await expect(preview.getByRole("row", { name: /DEMOA-WS001/ })).toContainText(/Assign|Update/);
   // Engineers prepare and preview; only an administrator applies.
-  await expect(job.getByText("An administrator applies these changes")).toBeVisible();
+  await expect(job.getByText("Ready for an administrator")).toBeVisible();
   await expect(job.getByRole("button", { name: "Apply changes" })).toHaveCount(0);
   await page.getByRole("button", { name: "Sign out" }).click();
 
   await login(page, "demo.admin.a@demo.invalid");
   await selectDemoA(page);
   await openNav(page, "Custom fields");
-  await page.getByRole("tab", { name: "Assignment history" }).click();
-  await page.getByRole("table", { name: "Assignment history" }).getByRole("button", { name: `PatchRing = ${value}` }).click();
+  // The prepared job is waiting at the top of the page: one click to open, one confirmation to apply.
+  const waiting = page.getByRole("region", { name: "Waiting for you to apply" });
+  await waiting.getByRole("listitem").filter({ hasText: value }).getByRole("button", { name: "Review and apply" }).click();
   await expect(job.getByRole("table", { name: "Preview of changes" }).getByRole("row", { name: /DEMOA-WS005/ })).toContainText("Update");
-  await job.getByLabel(/different value set on the device/).check();
-  await job.getByLabel(/I confirm setting/).check();
+  await job.getByLabel(/I confirm setting PatchRing on \d+ workstations? in VSA X, overwriting/).check();
   await job.getByRole("button", { name: "Apply changes" }).click();
   const results = job.getByRole("table", { name: "Results" });
   await expect(results.getByText("Verified success")).toHaveCount(2, { timeout: 60_000 });
