@@ -16,7 +16,7 @@ const field = (over: Partial<CustomFieldDef> = {}): CustomFieldDef => ({
 const job = (over: Partial<CfJob> = {}): CfJob => ({
   id: "j1", field: "f1", field_name: "PatchRing", field_type: "Text", field_external_id: "901", integration: "VSA", value: "Ring 0",
   per_device_values: false, source: "list", source_label: "Pasted list", source_filename: "", retry_of: null, state: "draft",
-  state_label: "Draft (review matches)", created_by: "eng@example.test", created_at: "2026-11-18T09:00:00Z", previewed_at: null,
+  state_label: "Draft (review matches)", created_by: "eng@example.test", created_at: "2026-11-18T09:00:00Z", previewed_at: null, preview_expires_at: null,
   confirmed_by: null, confirmed_at: null, approval_required: false, approved_by: null, approved_at: null, cancel_requested: false,
   started_at: null, finished_at: null, error_code: "", counts: { items: 3, match: { matched: 2, not_found: 1 } },
   writes: { available: true, reason: "" }, ...over,
