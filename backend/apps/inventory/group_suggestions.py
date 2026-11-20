@@ -255,6 +255,7 @@ def plan(context, observations, ips_by_observation, site_names):
         dest = destinations.setdefault(
             winner["external_id"],
             {
+                "id": winner["id"],
                 "external_id": winner["external_id"],
                 "name": winner["name"],
                 "site_external_id": winner["site"],

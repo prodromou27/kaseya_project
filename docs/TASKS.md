@@ -160,6 +160,7 @@ fixture-verified only (no live VSA X validation).
 - [x] **CFA-04** Paste and TXT/CSV/XLSX import with column mapping (optional value per device); exact matching engine (device ID → serial → FQDN → hostname) with ambiguity resolution.
 - [x] **CFA-05** Live preview (device-level vs inherited via `/usage`), typed value validation, actions and summary, overwrite acknowledgement.
 - [x] **CFA-06** Gated writer (ADR-031): documented assign/update only, three switches + validated route + separate token; `vsa_custom_field_validate`.
+- [x] **UX-02** Fewer steps for group moves: propose a whole destination at once, approve and move in one step, decide several proposals together (product owner, 2026-11-20).
 - [x] **UX-01** Fewer steps for custom field changes: preview starts by itself, one confirmation, stale previews refresh on open, administrators get a *Waiting for you to apply* list (product owner, 2026-11-19).
 - [x] **CFA-11** One token is enough: writes use the integration's API token unless an optional separate write token is set (product owner, 2026-11-18).
 - [x] **CFA-10** Setup in the portal, admins apply: separate write token entered encrypted in Settings → Integrations (purpose-bound, write-only, audited, cleared on base URL change); test-workstation route validation in the portal; server variable becomes an emergency stop (default on); engineers prepare/preview, only administrators apply or retry.

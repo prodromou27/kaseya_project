@@ -87,3 +87,31 @@ it("groups onboarding devices by destination and lists ties separately", async (
   expect(screen.getByRole("region", { name: "Needs a decision" })).toHaveTextContent("could go to Sales HQ or Sales Branch");
   expect(screen.getByRole("button", { name: "Download move list (CSV)" })).toBeInTheDocument();
 });
+
+it("proposes all ticked devices of one destination in one action", async () => {
+  const proposer = { ...customerA, my_capabilities: ["customer.read", "customer.group_move.propose"] };
+  const { calls } = mockFetch({
+    [`GET /api/v1/customers/${customerA.id}/groups/51/suggestions/plan/`]: { body: {
+      is_onboarding: true, devices: 3, truncated: false, suggestion_note: "Network first.",
+      destinations: [{ id: "g61", external_id: "61", name: "Finance", site_external_id: "6", site_name: "Nicosia", devices: [
+        { asset_id: "a1", hostname: "FINUSR01", basis: "naming", evidence: [] },
+        { asset_id: "a2", hostname: "FINUSR02", basis: "observed_subnet", evidence: [] },
+        { asset_id: "a3", hostname: "FINUSR03", basis: "observed_subnet", evidence: [] },
+      ] }],
+      ambiguous: [], unmatched: [],
+    } },
+    [`POST /api/v1/customers/${customerA.id}/group-moves/`]: { status: 201, body: {} },
+  });
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <MemoryRouter><GroupSuggestions customer={proposer} groupId="51" instance="source-a" /></MemoryRouter>
+  </QueryClientProvider>);
+  const finance = await screen.findByRole("region", { name: "Move to Finance" });
+  await userEvent.click(within(finance).getByLabelText("Include FINUSR03"));
+  await userEvent.click(within(finance).getByRole("button", { name: "Propose moving 2 devices" }));
+  expect(await within(finance).findByText(/2 proposal\(s\) sent for approval/)).toBeInTheDocument();
+  const posts = calls.filter((c) => c.method === "POST").map((c) => JSON.parse(String(c.init?.body)));
+  expect(posts).toEqual([
+    { asset: "a1", target_group: "g61", reason: "Onboarding: move to Finance (subnet/name evidence)" },
+    { asset: "a2", target_group: "g61", reason: "Onboarding: move to Finance (subnet/name evidence)" },
+  ]);
+});

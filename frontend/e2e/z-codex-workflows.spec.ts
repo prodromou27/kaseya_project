@@ -88,7 +88,7 @@ test("group assignment proposal requires independent review and never executes a
   await page.goto("/group-moves");
   await page.getByRole("row").filter({ hasText: "DEMOA-WS001" }).getByRole("button", { name: "Review proposal" }).click();
   await page.getByLabel("Review reason").fill("Independent review completed; execution remains disabled");
-  await page.getByRole("button", { name: "Approve proposal only" }).click();
+  await page.getByRole("button", { name: "Approve only" }).click();
   await expect(page.getByRole("row").filter({ hasText: "DEMOA-WS001" })).toContainText("approved");
   const customers = await (await page.request.get("/api/v1/customers/")).json();
   const requests = await (await page.request.get(`/api/v1/customers/${customers.results[0].id}/group-moves/`)).json();

@@ -1,13 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router";
 
 import { QueryBoundary } from "../../components/States";
-import { Badge } from "../../components/ui";
-import { api } from "../../lib/api";
+import { Badge, Field } from "../../components/ui";
+import { api, describeError } from "../../lib/api";
 import type { Customer } from "../../lib/types";
 
 type PlanDevice = { asset_id: string; hostname: string; basis?: string; evidence?: string[]; candidates?: string[] };
-type Destination = { external_id: string; name: string; site_external_id: string; site_name: string; devices: PlanDevice[] };
+type Destination = { id: string; external_id: string; name: string; site_external_id: string; site_name: string; devices: PlanDevice[] };
 export type Plan = {
   is_onboarding: boolean; destinations: Destination[]; ambiguous: PlanDevice[]; unmatched: PlanDevice[];
   devices: number; truncated: boolean; suggestion_note: string;
@@ -35,12 +36,75 @@ function downloadCsv(plan: Plan, groupLabel: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Propose every ticked device of one destination for approval (one normal proposal per device). */
+function ProposeAll({ customer, destination }: { customer: Customer; destination: Destination }) {
+  const qc = useQueryClient();
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(destination.devices.map((d) => d.asset_id)));
+  const [reason, setReason] = useState(`Onboarding: move to ${destination.name} (subnet/name evidence)`);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: number; problems: string[] } | null>(null);
+  const toggle = (id: string) => setChosen((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const run = async () => {
+    setBusy(true);
+    let ok = 0;
+    const problems: string[] = [];
+    for (const dev of destination.devices.filter((d) => chosen.has(d.asset_id))) {
+      try {
+        await api.post(`/customers/${customer.id}/group-moves/`, { asset: dev.asset_id, target_group: destination.id, reason });
+        ok += 1;
+      } catch (error) {
+        problems.push(`${dev.hostname}: ${describeError(error)}`);
+      }
+      setResult({ ok, problems: [...problems] });
+    }
+    setBusy(false);
+    void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
+  };
+  return (
+    <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
+      <ul className="max-h-72 space-y-1 overflow-auto text-sm">
+        {destination.devices.map((dev) => (
+          <li key={dev.asset_id} className="flex flex-wrap items-baseline justify-between gap-2 border-t border-slate-100 pt-1">
+            <label className="flex items-center gap-1">
+              <input type="checkbox" aria-label={`Include ${dev.hostname}`} checked={chosen.has(dev.asset_id)} onChange={() => toggle(dev.asset_id)} />
+              <Link className="font-medium text-sky-800 hover:underline" to={`/assets/${dev.asset_id}?tab=operations`}>{dev.hostname}</Link>
+            </label>
+            <span className="flex items-center gap-1 text-xs text-slate-600">
+              <Badge tone={dev.basis === "naming" ? "neutral" : "info"}>{BASIS[dev.basis ?? ""] ?? dev.basis}</Badge>
+              <span className="max-w-xs truncate" title={(dev.evidence ?? []).join("\n")}>{dev.evidence?.[0]}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap items-end gap-2">
+        <Field label="Reason" hint="At least 10 characters; another administrator approves.">
+          {(id, h) => <input id={id} aria-describedby={h} className="input w-72" minLength={10} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />}
+        </Field>
+        <button type="button" className="btn-primary" disabled={busy || !chosen.size || reason.trim().length < 10} onClick={() => void run()}>
+          {busy ? "Proposing…" : `Propose moving ${chosen.size} device${chosen.size === 1 ? "" : "s"}`}
+        </button>
+      </div>
+      {result ? (
+        <div role="status" className="text-sm">
+          {result.ok ? <p className="text-emerald-800">{result.ok} proposal(s) sent for approval. <Link className="text-sky-800 underline" to="/group-moves">Open approvals</Link></p> : null}
+          {result.problems.length ? <ul className="text-xs text-red-700">{result.problems.map((m) => <li key={m}>{m}</li>)}</ul> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** Onboarding devices grouped by their clearly best destination: "move these N devices to group X at site Y". */
 export function DestinationPlan({ customer, groupId, instance }: { customer: Customer; groupId: string; instance: string }) {
   const query = useQuery({
     queryKey: ["group-destination-plan", customer.id, instance, groupId],
     queryFn: ({ signal }) => api.get<Plan>(`/customers/${customer.id}/groups/${groupId}/suggestions/plan/`, { instance }, signal),
   });
+  const canPropose = customer.my_capabilities.includes("customer.group_move.propose");
   return (
     <QueryBoundary query={query}>
       {(plan) => (
@@ -62,6 +126,7 @@ export function DestinationPlan({ customer, groupId, instance }: { customer: Cus
                   Move {d.devices.length} device(s) to <span className="text-sky-800">{d.name}</span>
                 </h3>
                 <p className="mb-2 text-xs text-slate-500">Site {d.site_name || d.site_external_id || "not reported"} · group ID {d.external_id}</p>
+                {canPropose && d.id ? <ProposeAll customer={customer} destination={d} /> : (
                 <ul className="max-h-72 space-y-1 overflow-auto text-sm">
                   {d.devices.map((dev) => (
                     <li key={dev.asset_id} className="flex flex-wrap items-baseline justify-between gap-2 border-t border-slate-100 pt-1">
@@ -73,6 +138,7 @@ export function DestinationPlan({ customer, groupId, instance }: { customer: Cus
                     </li>
                   ))}
                 </ul>
+                )}
               </section>
             ))}
           </div>

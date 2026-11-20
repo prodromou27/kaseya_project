@@ -42,6 +42,7 @@ class MoveSerializer(serializers.ModelSerializer):
     target_group_external_id = serializers.CharField(source="target_group.external_id")
     expired = serializers.SerializerMethodField()
     execution_enabled = serializers.SerializerMethodField()
+    execution_available = serializers.SerializerMethodField()
     execution_blocked_reason = serializers.SerializerMethodField()
     execution = serializers.SerializerMethodField()
 
@@ -68,6 +69,7 @@ class MoveSerializer(serializers.ModelSerializer):
             "reviewed_at",
             "expired",
             "execution_enabled",
+            "execution_available",
             "execution_blocked_reason",
             "execution",
         ]
@@ -78,6 +80,10 @@ class MoveSerializer(serializers.ModelSerializer):
 
     def get_execution_enabled(self, obj: GroupMoveRequest) -> bool:
         return move_execution.execution_status(obj)[0]
+
+    def get_execution_available(self, obj: GroupMoveRequest) -> bool:
+        """Execution is set up for the integration (switches + token), whatever this proposal's state."""
+        return move_execution.availability(obj.asset.integration_instance)[0]
 
     def get_execution_blocked_reason(self, obj: GroupMoveRequest) -> str:
         return move_execution.execution_status(obj)[1]

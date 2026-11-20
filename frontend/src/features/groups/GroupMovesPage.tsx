@@ -19,7 +19,7 @@ type Proposal = {
   target_group_name: string; target_group_external_id: string; reason: string; policy_impact: string;
   state: "pending" | "approved" | "rejected"; requested_by: string; reviewed_by: string | null;
   review_reason: string; created_at: string; expires_at: string; expired: boolean;
-  execution_enabled: boolean; execution_blocked_reason: string; execution: Execution | null;
+  execution_enabled: boolean; execution_available: boolean; execution_blocked_reason: string; execution: Execution | null;
 };
 type ExecutionState = "sending" | "succeeded" | "unverified" | "unknown" | "failed";
 type Execution = {
@@ -90,8 +90,12 @@ function Review({ proposal, customer }: { proposal: Proposal; customer: Customer
   const qc = useQueryClient();
   const [reason, setReason] = useState("");
   const decision = useMutation({
-    mutationFn: (value: "approved" | "rejected") => api.post<Proposal>(`/customers/${customer.id}/group-moves/${proposal.id}/review/`, { decision: value, reason }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] }),
+    mutationFn: async (value: "approved" | "rejected" | "move") => {
+      const reviewed = await api.post<Proposal>(`/customers/${customer.id}/group-moves/${proposal.id}/review/`, { decision: value === "move" ? "approved" : value, reason });
+      // The same administrator may execute what they approved (never the requester); the server re-checks everything.
+      if (value === "move" && reviewed.execution_enabled) await api.post(`/customers/${customer.id}/group-moves/${proposal.id}/execute/`, {});
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] }),
   });
   return <div className="space-y-3">
     <p className="text-sm"><strong>Reason:</strong> {proposal.reason}</p>
@@ -99,9 +103,15 @@ function Review({ proposal, customer }: { proposal: Proposal; customer: Customer
     <p className="text-xs text-slate-500">Requested {formatUtc(proposal.created_at)} · expires {formatUtc(proposal.expires_at)} · {proposal.requested_by}</p>
     {proposal.reviewed_by ? <p className="text-sm">Reviewed by {proposal.reviewed_by}: {proposal.review_reason}</p> : null}
     {proposal.state === "pending" && customer.my_capabilities.includes("customer.group_move.approve") && me.email !== proposal.requested_by ? (
-      <form className="flex flex-wrap items-end gap-2" aria-label="Independent move review" onSubmit={(event) => { event.preventDefault(); decision.mutate("approved"); }}>
+      <form className="flex flex-wrap items-end gap-2" aria-label="Independent move review" onSubmit={(event) => { event.preventDefault(); decision.mutate(proposal.execution_available ? "move" : "approved"); }}>
         <Field label="Review reason">{(id) => <input id={id} className="input w-80" required minLength={10} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
-        <button type="submit" className="btn-primary" disabled={decision.isPending || proposal.expired}>Approve proposal only</button>
+        {proposal.execution_available ? (
+          <button type="submit" className="btn-primary" disabled={decision.isPending || proposal.expired || reason.trim().length < 10}>
+            {decision.isPending ? "Working…" : "Approve and move in VSA X"}
+          </button>
+        ) : null}
+        <button type={proposal.execution_available ? "button" : "submit"} className={proposal.execution_available ? "btn-secondary" : "btn-primary"} disabled={decision.isPending || proposal.expired || reason.trim().length < 10}
+                onClick={proposal.execution_available ? () => decision.mutate("approved") : undefined}>Approve only</button>
         <button type="button" className="btn-danger" disabled={decision.isPending || reason.trim().length < 10} onClick={() => decision.mutate("rejected")}>Reject proposal</button>
       </form>
     ) : proposal.state === "pending" ? <p className="text-xs text-slate-500">A different authorized administrator must review this proposal.</p> : null}
@@ -146,6 +156,78 @@ function ExecutionPanel({ proposal, customer }: { proposal: Proposal; customer: 
   </section>;
 }
 
+type Outcome = { device: string; ok: boolean; text: string };
+
+/** Decide (and optionally execute) several selected proposals one after another; every call is the normal per-move API. */
+function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[] }) {
+  const me = useMe();
+  const qc = useQueryClient();
+  const [reason, setReason] = useState("");
+  const [sure, setSure] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<Outcome[]>([]);
+  const mine = (p: Proposal) => p.requested_by === me.email;
+  const pending = rows.filter((p) => p.state === "pending" && !p.expired && !mine(p));
+  const approvedWaiting = rows.filter((p) => p.state === "approved" && !p.execution && p.execution_enabled && !mine(p));
+  const movable = [...pending.filter((p) => p.execution_available), ...approvedWaiting];
+  const skipped = rows.length - pending.length - approvedWaiting.length;
+  const base = `/customers/${customer.id}/group-moves`;
+  const run = async (mode: "move" | "approved" | "rejected") => {
+    setBusy(true);
+    setDone([]);
+    const list = mode === "move" ? movable : pending;
+    const results: Outcome[] = [];
+    for (const p of list) {
+      try {
+        let current = p;
+        if (p.state === "pending") current = await api.post<Proposal>(`${base}/${p.id}/review/`, { decision: mode === "move" ? "approved" : mode, reason });
+        if (mode === "move") {
+          const after = await api.post<Proposal>(`${base}/${p.id}/execute/`, {});
+          const state = after.execution?.state ?? "sending";
+          results.push({ device: p.device_name, ok: state === "succeeded", text: EXECUTION_TEXT[state].label });
+        } else {
+          results.push({ device: p.device_name, ok: true, text: current.state });
+        }
+      } catch (error) {
+        results.push({ device: p.device_name, ok: false, text: describeError(error) });
+      }
+      setDone([...results]);
+    }
+    setBusy(false);
+    setSure(false);
+    void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
+  };
+  const needsReason = pending.length > 0;
+  const reasonOk = !needsReason || reason.trim().length >= 10;
+  return (
+    <div className="flex w-full flex-col gap-2 text-sm" role="group" aria-label="Decide selected proposals">
+      {skipped ? <p className="text-xs text-slate-600">{skipped} selected proposal(s) skipped: your own, expired, already decided or already sent.</p> : null}
+      {pending.length || approvedWaiting.length ? (
+        <div className="flex flex-wrap items-end gap-2">
+          {needsReason ? (
+            <Field label="Review reason (all selected)">{(id) => <input id={id} className="input w-72" minLength={10} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
+          ) : null}
+          {movable.length ? (
+            <label className="flex items-center gap-1">
+              <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
+              Move {movable.length} device{movable.length === 1 ? "" : "s"} in VSA X now (sent once; the new group&apos;s policies apply)
+            </label>
+          ) : null}
+          {movable.length ? <button type="button" className="btn-primary" disabled={busy || !sure || !reasonOk} onClick={() => void run("move")}>Approve and move ({movable.length})</button> : null}
+          {pending.length ? <button type="button" className="btn-secondary" disabled={busy || !reasonOk} onClick={() => void run("approved")}>Approve only ({pending.length})</button> : null}
+          {pending.length ? <button type="button" className="btn-danger" disabled={busy || !reasonOk} onClick={() => void run("rejected")}>Reject ({pending.length})</button> : null}
+        </div>
+      ) : null}
+      {done.length ? (
+        <ul aria-label="Decision results" aria-live="polite" className="space-y-0.5 text-xs">
+          {busy ? <li>Working… {done.length} done</li> : null}
+          {done.map((o, i) => <li key={i}><Badge tone={o.ok ? "good" : "bad"}>{o.ok ? "Done" : "Problem"}</Badge> {o.device}: {o.text}</li>)}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function Requests({ customer }: { customer: Customer }) {
   const { page, setPage } = useUrlFilters({});
   const [open, setOpen] = useState<string | null>(null);
@@ -153,6 +235,8 @@ function Requests({ customer }: { customer: Customer }) {
   const selected = query.data?.results.find((proposal) => proposal.id === open);
   return <QueryBoundary query={query}>{(data) => <div className="space-y-4">
     <DataTable caption="Group move proposals" rows={data.results} total={data.count} page={page} onPageChange={setPage} getRowId={(row) => row.id}
+      selectable={customer.my_capabilities.includes("customer.group_move.approve")}
+      selectionActions={(rows) => <BulkDecision customer={customer} rows={rows} />}
       emptyTitle="No group changes have been proposed." emptyHint="Open a device's Operations tab to propose a change."
       columns={[
         { header: "Device", cell: ({ row }) => <Link className="font-medium text-sky-800 underline" to={`/assets/${row.original.asset}`}>{row.original.device_name}</Link> },

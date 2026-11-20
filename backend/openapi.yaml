@@ -8446,6 +8446,11 @@ components:
         execution_enabled:
           type: boolean
           readOnly: true
+        execution_available:
+          type: boolean
+          description: Execution is set up for the integration (switches + token),
+            whatever this proposal's state.
+          readOnly: true
         execution_blocked_reason:
           type: string
           readOnly: true
@@ -8459,6 +8464,7 @@ components:
       - created_at
       - device_name
       - execution
+      - execution_available
       - execution_blocked_reason
       - execution_enabled
       - expired

@@ -56,7 +56,7 @@ def approved(world, proposer=None, reviewer=None):
 
 def test_switched_off_by_default_and_nothing_is_sent(world, demo):  # noqa: F811
     proposal, _, _ = approved(world)
-    assert proposal["execution_enabled"] is False
+    assert proposal["execution_enabled"] is False and proposal["execution_available"] is False
     response = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/")
     assert response.status_code == 400 and "switched off on this server" in str(response.json())
     assert not GroupMoveExecution.objects.exists() and not fixtures.FIXTURE_MOVES
@@ -72,7 +72,7 @@ def test_integration_switch_is_also_required(world, demo, settings):  # noqa: F8
 def test_approved_move_is_executed_once_and_confirmed(world, enabled):
     proposal, obs, target = approved(world)
     listed = world.client(world.admin_a).get(f"{base(world)}{proposal['id']}/").json()
-    assert listed["execution_enabled"] is True and listed["execution"] is None
+    assert listed["execution_enabled"] is True and listed["execution_available"] is True and listed["execution"] is None
     body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/").json()
     assert body["execution"]["state"] == "succeeded"
     assert body["execution"]["observed_group_id"] == target["external_id"]

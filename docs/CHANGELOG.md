@@ -1,5 +1,12 @@
 # Changelog
 
+## UX-02 - 2026-11-20 - fewer clicks for group moves
+
+- Onboarding destinations: tick devices and **Propose moving N devices** (one normal proposal per device, prefilled reason).
+- Group move proposals: select several and **Approve and move (N)**, **Approve only** or **Reject** with one reason; the requester's own, expired and decided proposals are skipped; results per device.
+- Single proposal: **Approve and move in VSA X** reviews and executes in one step (the requester still cannot approve or execute; every server check is unchanged and each move is still sent once).
+- API: proposals include `execution_available`; destination plan entries include the group `id`.
+
 ## UX-01 - 2026-11-19 - fewer clicks for custom field changes
 
 - The preview starts by itself when no line needs a device choice.

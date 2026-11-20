@@ -188,6 +188,8 @@ def test_longer_shared_prefix_ranks_first_and_wins_the_plan(world, synced):
     body = plan.json()
     placed = {d["hostname"]: dest["external_id"] for dest in body["destinations"] for d in dest["devices"]}
     assert placed["DEPTSALESX"] == "52"
+    for dest in body["destinations"]:
+        assert GroupNode.objects.filter(pk=dest["id"], external_id=dest["external_id"]).exists()
     total = sum(len(d["devices"]) for d in body["destinations"]) + len(body["ambiguous"]) + len(body["unmatched"])
     assert total == body["devices"] and body["truncated"] is False
 
