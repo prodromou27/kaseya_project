@@ -5,6 +5,7 @@ import { QueryBoundary } from "../../components/States";
 import { Field } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import type { Customer, ReportRun } from "../../lib/types";
+import { LatestRun, RepeatReport } from "./ReportFollowUp";
 
 type FieldType = "text" | "number" | "enum" | "bool" | "date";
 type SourceField = { key: string; label: string; type: FieldType; values: string[]; operators: string[] };
@@ -97,10 +98,6 @@ function Builder({ customer, sources }: { customer: Customer; sources: Source[] 
     mutationFn: () => api.post<ReportRun>(`/customers/${customer.id}/reports/`, { report_type: "custom", format, filters: body() }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["reports", customer.id] }),
   });
-  const save = useMutation({
-    mutationFn: (name: string) => api.post(`/customers/${customer.id}/report-definitions/`, { name, report_type: "custom", format, filters: body() }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["report-definitions", customer.id] }),
-  });
   if (!source) return null;
   const pickSource = (key: string) => {
     const s = sources.find((x) => x.key === key);
@@ -111,7 +108,7 @@ function Builder({ customer, sources }: { customer: Customer; sources: Source[] 
     const f = source.fields[0];
     if (f) setSpec({ ...spec, conditions: [...spec.conditions, { field: f.key, op: f.operators[0] ?? "", value: defaultValue(f, f.operators[0] ?? "") }] });
   };
-  const errors = [preview, generate, save].filter((m) => m.isError);
+  const errors = [preview, generate].filter((m) => m.isError);
   return (
     <div className="space-y-4">
       <section aria-labelledby="cr-src" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -173,11 +170,13 @@ function Builder({ customer, sources }: { customer: Customer; sources: Source[] 
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" className="btn-secondary" disabled={!spec.columns.length || preview.isPending} onClick={() => preview.mutate()}>{preview.isPending ? "Loading…" : "Preview"}</button>
           <button type="button" className="btn-primary" disabled={!spec.columns.length || generate.isPending} onClick={() => generate.mutate()}>Generate report</button>
-          <button type="button" className="btn-secondary" disabled={!spec.columns.length || save.isPending}
-            onClick={() => { const name = window.prompt("Name for this saved report (you can schedule it under Definitions & schedules)"); if (name) save.mutate(name); }}>Save for reuse</button>
         </div>
-        {generate.isSuccess ? <p role="status" className="mt-2 text-sm text-emerald-800">Report requested. Download it from the History tab when it is ready.</p> : null}
-        {save.isSuccess ? <p role="status" className="mt-2 text-sm text-emerald-800">Saved. Schedule it under Definitions &amp; schedules.</p> : null}
+        {generate.data ? <div className="mt-2"><LatestRun key={generate.data.id} runId={generate.data.id} /></div> : null}
+        {spec.columns.length ? (
+          <div className="mt-3">
+            <RepeatReport customer={customer} body={{ report_type: "custom", format, filters: body() }} defaultName={spec.title || `Custom report: ${source.label}`} />
+          </div>
+        ) : null}
         {errors.map((m, i) => <p key={i} role="alert" className="mt-2 text-sm text-red-700">{describeError(m.error)}</p>)}
       </section>
 

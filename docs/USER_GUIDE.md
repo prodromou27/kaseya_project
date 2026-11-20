@@ -195,9 +195,9 @@ endpoints report, not the physical network.
 **Reports → Custom report** builds your own report in four steps: pick the data (devices, health, software, Windows
 updates, compliance, third-party patching or subnets), tick the columns, add filters (for example *Disk is
 critical*, *Days since seen ≥ 14*, *Program contains Chrome*, *Version state is outdated*), and choose the sort and
-format (Excel, CSV or PDF). **Preview** shows the first 100 rows. **Generate report** creates the file (download it
-from History). **Save for reuse** keeps the definition so it can be generated again or scheduled under *Definitions
-& schedules*. Every file states its data source, snapshot time, filters and limitations.
+format (Excel, CSV or PDF). **Preview** shows the first 100 rows. **Generate report** creates the file and offers
+**Download** on the same page when it is ready. **Send this report regularly** saves it and adds a daily, weekly or
+monthly schedule with recipients in one step (or *Save without schedule*). Every file states its data source, snapshot time, filters and limitations.
 
 ## Monthly customer scorecard
 

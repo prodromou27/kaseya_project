@@ -32,10 +32,7 @@ for (const [format, magic] of [["xlsx", "PK"], ["pdf", "%PDF"]] as const) {
     await page.getByLabel("Report", { exact: true }).selectOption({ label: "Operating system updates (RPT-04)" });
     await page.getByLabel("Format").selectOption(format);
     await page.getByRole("button", { name: "Generate" }).click();
-    await page.getByRole("tab", { name: "History" }).click();
-    const newest = page.getByRole("table", { name: "DEMO-A reports" }).getByRole("row").nth(1);
-    await expect(newest).toContainText(format.toUpperCase());
-    const link = newest.getByRole("link", { name: "Download" });
+    const link = page.getByRole("link", { name: `Download ${format.toUpperCase()}` }); // offered on the same page
     await expect(link).toBeVisible({ timeout: 20_000 });
     const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);
     expect(download.suggestedFilename()).toMatch(new RegExp(`^DEMO-A_os_updates_.*\\.${format}$`));
@@ -56,15 +53,15 @@ test("definition + schedule with an unauthorised recipient is rejected, authoris
   await login(page, "demo.engineer.a@demo.invalid");
   await openNav(page, "Reports");
   const definitionName = `Weekly inventory ${Date.now()}`;
-  page.once("dialog", (d) => void d.accept(definitionName));
-  await page.getByRole("button", { name: "Save as definition" }).click();
-  await expect(page.getByText("Definition saved.")).toBeVisible();
+  // Saved and scheduled from the New report form in one step.
+  await page.getByText("Send this report regularly").click();
+  await page.getByLabel("Name", { exact: true }).fill(definitionName);
+  await page.getByLabel("Recipients", { exact: true }).fill("demo.viewer.b@demo.invalid");
+  await page.getByRole("button", { name: "Save and schedule" }).click();
+  await expect(page.getByRole("alert")).toContainText("cannot receive");
   await page.getByRole("tab", { name: "Definitions & schedules" }).click();
   const form = page.getByRole("form", { name: `Schedule ${definitionName}`, exact: true });
   await form.getByLabel("Timezone (IANA)").fill("Asia/Nicosia");
-  await form.getByLabel("Recipients (emails, in-portal)").fill("demo.viewer.b@demo.invalid");
-  await form.getByRole("button", { name: "Add schedule" }).click();
-  await expect(form.getByRole("alert")).toContainText("cannot receive");
   await form.getByLabel("Recipients (emails, in-portal)").fill("demo.admin.a@demo.invalid");
   await form.getByRole("button", { name: "Add schedule" }).click();
   await expect(page.getByText(/weekly at 07:00 Asia\/Nicosia/).last()).toBeVisible();

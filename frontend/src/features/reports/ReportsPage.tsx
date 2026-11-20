@@ -21,8 +21,8 @@ import {
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { SelectCustomer } from "../../components/SelectCustomer";
 import { CustomReportBuilder } from "./CustomReportBuilder";
+import { LatestRun, RepeatReport, WEEKDAYS } from "./ReportFollowUp";
 
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 function useTemplates() {
   return useQuery({ queryKey: ["report-templates"], queryFn: () => api.get<ReportTemplate[]>("/report-templates/"), staleTime: 300_000 });
@@ -109,18 +109,16 @@ function NewReport({ customer, templates }: { customer: Customer; templates: Rep
   const [key, setKey] = useState(templates.find((template) => template.key === "asset_inventory")?.key ?? templates[0]?.key ?? "");
   const [format, setFormat] = useState("csv");
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const [runId, setRunId] = useState<string | null>(null);
   const template = templates.find((t) => t.key === key);
   const request = useMutation({
     mutationFn: () => api.post<ReportRun>(`/customers/${customer.id}/reports/`, { report_type: key, format, filters: clean(filters) }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["reports", customer.id] }),
-  });
-  const save = useMutation({
-    mutationFn: (name: string) => api.post(`/customers/${customer.id}/report-definitions/`, { name, report_type: key, format, filters: clean(filters) }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["report-definitions", customer.id] }),
+    onSuccess: (run) => { setRunId(run.id); void queryClient.invalidateQueries({ queryKey: ["reports", customer.id] }); },
   });
   if (!template) return <EmptyState title="No report templates are available to you for this customer." />;
   const submit = (e: FormEvent) => { e.preventDefault(); request.mutate(); };
   return (
+    <div className="space-y-3">
     <form onSubmit={submit} aria-label="New report" className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Report">{(id) => (
@@ -136,15 +134,12 @@ function NewReport({ customer, templates }: { customer: Customer; templates: Rep
       <FilterInputs template={template} value={filters} onChange={setFilters} customer={customer} />
       <div className="flex flex-wrap items-center gap-2">
         <button type="submit" className="btn-primary" disabled={request.isPending}>Generate</button>
-        <button type="button" className="btn-secondary" disabled={save.isPending}
-                onClick={() => { const name = window.prompt("Name for this saved report definition?"); if (name) save.mutate(name); }}>
-          Save as definition
-        </button>
         {request.isError ? <span role="alert" className="text-sm text-red-700">{describeError(request.error)}</span> : null}
-        {save.isError ? <span role="alert" className="text-sm text-red-700">{describeError(save.error)}</span> : null}
-        {save.isSuccess ? <span role="status" className="text-sm text-emerald-700">Definition saved.</span> : null}
+        {runId ? <LatestRun key={runId} runId={runId} /> : null}
       </div>
     </form>
+    <RepeatReport key={key} customer={customer} body={{ report_type: key, format, filters: clean(filters) }} defaultName={`${template.title} (${customer.code})`} />
+    </div>
   );
 }
 
@@ -237,7 +232,7 @@ function Definitions({ customer }: { customer: Customer }) {
         approved, DEC-09). Owner and recipients are re-authorised at every run; anyone who has lost access is dropped.
       </Notice>
       <QueryBoundary query={defs} isEmpty={(d) => d.results.length === 0}
-        empty={<EmptyState title="No saved report definitions.">Use “Save as definition” on the New report tab.</EmptyState>}>
+        empty={<EmptyState title="No saved report definitions.">Use “Send this report regularly” on the New report tab.</EmptyState>}>
         {(d) => (
           <ul className="space-y-3">
             {d.results.map((def) => (

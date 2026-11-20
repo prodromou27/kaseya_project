@@ -26,7 +26,7 @@ test("an engineer builds a filtered custom report, previews it and generates an 
 
   await page.getByLabel("Report title (optional)").fill("Critical disks");
   await page.getByRole("button", { name: "Generate report" }).click();
-  await expect(page.getByText("Report requested.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download XLSX" })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("tab", { name: "History", exact: true }).click();
   await expect(page.getByRole("table").first()).toContainText("Critical disks");
 });

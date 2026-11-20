@@ -1,5 +1,10 @@
 # Changelog
 
+## UX-03 - 2026-11-20 - fewer clicks for reports
+
+- New report and Custom report: after **Generate**, the page waits for the file and shows **Download** right there (History still lists every run).
+- **Send this report regularly** on both forms: name, frequency, day, time (browser time zone) and recipients; saves the definition and the schedule in one step, or *Save without schedule*. Replaces the browser prompt of *Save as definition* / *Save for reuse*. Same APIs and authorisation checks.
+
 ## UX-02 - 2026-11-20 - fewer clicks for group moves
 
 - Onboarding destinations: tick devices and **Propose moving N devices** (one normal proposal per device, prefilled reason).

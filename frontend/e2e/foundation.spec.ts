@@ -78,8 +78,7 @@ test("customer admin generates and downloads a scoped audit report", async ({ pa
   await openNav(page, "Reports");
   await page.getByLabel("Report", { exact: true }).selectOption({ label: "Customer audit log" });
   await page.getByRole("button", { name: "Generate" }).click();
-  await page.getByRole("tab", { name: "History" }).click();
-  const link = page.getByRole("link", { name: "Download" }).first();
+  const link = page.getByRole("link", { name: "Download CSV" }); // offered on the same page when ready
   await expect(link).toBeVisible({ timeout: 15_000 });
   const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);
   expect(download.suggestedFilename()).toMatch(/^DEMO-A_customer_audit_log_.*\.csv$/);

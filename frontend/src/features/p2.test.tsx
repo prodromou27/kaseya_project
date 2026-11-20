@@ -66,7 +66,10 @@ describe("windows updates", () => {
 
 describe("reports", () => {
   it("offers only templates the user may run, with their formats", async () => {
-    const { calls } = routes({ [`POST ${base}/reports/`]: { status: 202, body: { id: "r1" } } });
+    const { calls } = routes({
+      [`POST ${base}/reports/`]: { status: 202, body: { id: "r1" } },
+      "GET /api/v1/reports/r1/": { body: { id: "r1", state: "completed", download_available: true, format: "pdf", row_count: 12, error_code: "" } },
+    });
     renderApp("/reports");
     const report = await screen.findByLabelText("Report");
     expect(within(report).getAllByRole("option").map((o) => o.textContent)).toEqual(["Asset inventory (RPT-01)"]);
@@ -77,6 +80,28 @@ describe("reports", () => {
     await userEvent.click(screen.getByRole("button", { name: "Generate" }));
     const post = calls.find((c) => c.method === "POST");
     expect(JSON.parse(String(post?.init?.body))).toEqual({ report_type: "asset_inventory", format: "pdf", filters: { os: "Windows 11" } });
+    // The file is offered right here when it is ready; no trip to the History tab.
+    expect(await screen.findByRole("link", { name: "Download PDF" })).toHaveAttribute("href", "/api/v1/reports/r1/download/");
+  });
+
+  it("saves and schedules the current report in one step", async () => {
+    const { calls } = routes({
+      [`POST ${base}/report-definitions/`]: { status: 201, body: { id: "d1" } },
+      [`POST ${base}/report-schedules/`]: { status: 201, body: { id: "s1" } },
+    });
+    renderApp("/reports");
+    await screen.findByLabelText("Report");
+    await userEvent.click(screen.getByText("Send this report regularly"));
+    await userEvent.selectOptions(screen.getByLabelText("Frequency"), "monthly");
+    await userEvent.clear(screen.getByLabelText("Day of month"));
+    await userEvent.type(screen.getByLabelText("Day of month"), "3");
+    await userEvent.type(screen.getByLabelText("Recipients"), "a@example.test, b@example.test");
+    await userEvent.click(screen.getByRole("button", { name: "Save and schedule" }));
+    expect(await screen.findByText(/Saved\. Manage it under Definitions/)).toBeInTheDocument();
+    const def = calls.find((c) => c.url === `${base}/report-definitions/`);
+    expect(JSON.parse(String(def?.init?.body))).toMatchObject({ name: "Asset inventory (RPT-01) (ACME)", report_type: "asset_inventory", format: "csv" });
+    const sched = calls.find((c) => c.url === `${base}/report-schedules/`);
+    expect(JSON.parse(String(sched?.init?.body))).toMatchObject({ definition: "d1", frequency: "monthly", day_of_month: 3, weekday: null, time_of_day: "07:00", recipients: ["a@example.test", "b@example.test"] });
   });
 });
 
