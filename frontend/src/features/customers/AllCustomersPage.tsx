@@ -38,8 +38,11 @@ function csv(rows: Row[]) {
   URL.revokeObjectURL(url);
 }
 
-/** Every customer the user can read, side by side, with drill-down into the customer's summary. */
-export function AllCustomersPage() {
+/**
+ * Every customer the user can read, side by side, with drill-down into the customer's summary. ``embedded`` (the
+ * dashboard with no customer selected): no page header, and a click selects the customer and opens its dashboard.
+ */
+export function AllCustomersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { select } = useCustomers();
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "code", desc: false });
   const query = useQuery({
@@ -55,7 +58,9 @@ export function AllCustomersPage() {
   });
   return (
     <>
-      <PageHeader title="All customers" subtitle="Key measures for every customer you can access. Select a customer to open its summary." />
+      {embedded
+        ? <h2 className="mb-2 text-base font-semibold text-slate-900">Your customers</h2>
+        : <PageHeader title="All customers" subtitle="Key measures for every customer you can access. Select a customer to open its summary." />}
       <QueryBoundary query={query}>
         {(d) => (
           <div className="space-y-3">
@@ -83,7 +88,7 @@ export function AllCustomersPage() {
                   {sorted(d.results).map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50">
                       <td className="px-3 py-2">
-                        <Link className="font-medium text-sky-800 hover:underline" to={`/customers/${r.id}`} onClick={() => select(r.id)}>{r.code}</Link>
+                        <Link className="font-medium text-sky-800 hover:underline" to={embedded ? "/" : `/customers/${r.id}`} onClick={() => select(r.id)}>{r.code}</Link>
                         <span className="block text-xs text-slate-500">{r.name}</span>
                       </td>
                       {COLUMNS.slice(1).map((c) => {

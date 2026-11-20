@@ -11,6 +11,8 @@ import { SetupChecklist } from "./SetupChecklist";
 import { SystemStatusBanner } from "../admin/SystemStatusPanel";
 import { Trends } from "./Trends";
 import { DataSources } from "../inventory/DataSources";
+import { AllCustomersPage } from "../customers/AllCustomersPage";
+import { CustomerWorkspace } from "../customers/CustomerWorkspace";
 
 const ROLE_LABEL: Record<string, string> = { admin: "Customer admin", engineer: "Engineer", viewer: "Viewer" };
 
@@ -70,7 +72,8 @@ export function DashboardPage() {
       {selected ? (
         <>
           <KpiTiles key={selected.id} customer={selected} />
-          <div className="grid gap-4 lg:grid-cols-3">
+          <CustomerWorkspace key={`ws-${selected.id}`} customer={selected} showDeviceHealth={false} />
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <div className="min-w-0 lg:col-span-2">
               <Trends customer={selected} />
             </div>
@@ -80,6 +83,8 @@ export function DashboardPage() {
             </aside>
           </div>
         </>
+      ) : customers.length > 1 ? (
+        <AllCustomersPage embedded />
       ) : customers.length > 0 ? (
         <SelectCustomer>Choose the customer you want to look at. You can switch at any time in the header.</SelectCustomer>
       ) : null}

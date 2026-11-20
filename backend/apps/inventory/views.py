@@ -24,7 +24,7 @@ from apps.software.capability import THIRD_PARTY_PATCH_STATUS
 from .filters import AssetFilters, filter_inventory
 from .hierarchy import group_network, hierarchy
 from .models import Asset, AssetObservation
-from .queries import current_generations, current_observations, stale_cutoff
+from .queries import DATASET, current_generations, current_observations, stale_cutoff
 
 
 class AssetRowSerializer(serializers.ModelSerializer):
@@ -145,6 +145,49 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
 
     serializer_class = AssetRowSerializer
     queryset = Asset.objects.none()
+
+    @extend_schema(
+        parameters=[OpenApiParameter("q", OpenApiTypes.STR, description="Hostname, serial or device ID.")],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get"])
+    def lookup(self, request: Request) -> Response:
+        """Find a device across every customer the user may read (current inventory only), at most 10 matches."""
+        q = serializers.CharField(min_length=2, max_length=100, trim_whitespace=True).run_validation(
+            request.query_params.get("q", "")
+        )
+        rows = scope.scope_queryset(
+            AssetObservation.objects.filter(
+                generation__is_current=True,
+                generation__dataset=DATASET,
+                generation__mapping__mapping_status="approved",
+            ),
+            request.user,
+            Cap.CUSTOMER_READ,
+        )
+        rows = (
+            rows.filter(Q(hostname__icontains=q) | Q(serial_number__iexact=q) | Q(asset__external_id=q))
+            .select_related("customer")
+            .order_by("hostname", "customer__code")[:10]
+        )
+        return Response(
+            {
+                "results": [
+                    {
+                        "asset_id": str(o.asset_id),
+                        "hostname": o.hostname,
+                        "customer_id": str(o.customer_id),
+                        "customer_code": o.customer.code,
+                        "customer_name": o.customer.name,
+                        "site": o.site_name,
+                        "group": o.group_name,
+                        "os": o.os_name,
+                        "last_seen_online": o.last_seen_online,
+                    }
+                    for o in rows
+                ]
+            }
+        )
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:

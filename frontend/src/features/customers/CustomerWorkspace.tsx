@@ -7,6 +7,7 @@ import { api, describeError } from "../../lib/api";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import { CAP, type Customer, type DatasetStatus, type HealthSummary, type OsUpdateSummary, type Paginated, type ReportRun } from "../../lib/types";
+import { LatestRun } from "../reports/ReportFollowUp";
 
 type ComplianceOverview = { baselines: { id: string; name: string; score_pct: number | null; devices_in_scope: number; totals: Record<"pass" | "fail" | "unknown", number> }[] };
 type ThirdParty = { totals: { outdated: number; outdated_not_covered: number; outdated_no_policy: number; outdated_covered: number } };
@@ -46,7 +47,8 @@ function Line({ label, value, attention, customer, to, pending }: { label: strin
 /** Customer workspace: everything that needs attention for one customer, each number linked to its investigation. */
 type ServerTotals = { servers: number; needs_attention: number; unassigned: number };
 
-export function CustomerWorkspace({ customer }: { customer: Customer }) {
+/** Everything about one customer at a glance. ``showDeviceHealth`` is off on the dashboard, whose tiles and side panel already show device health and sources. */
+export function CustomerWorkspace({ customer, showDeviceHealth = true }: { customer: Customer; showDeviceHealth?: boolean }) {
   const id = customer.id;
   const canExport = customer.my_capabilities.includes(CAP.export);
   const health = useQuery({ queryKey: ["device-health", id, "summary"], queryFn: ({ signal }) => api.get<HealthSummary>(`/customers/${id}/device-health/summary/`, undefined, signal) });
@@ -77,17 +79,17 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
       {canExport ? (
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className="btn-primary" disabled={scorecard.isPending} onClick={() => scorecard.mutate()}>Monthly scorecard (PDF)</button>
-          {scorecard.isSuccess ? <span role="status" className="text-sm text-emerald-800">Scorecard requested; it appears under Recent reports when ready. Schedule it monthly under Reports → Definitions &amp; schedules.</span> : null}
+          {scorecard.data ? <LatestRun key={scorecard.data.id} runId={scorecard.data.id} /> : null}
           {scorecard.isError ? <span role="alert" className="text-sm text-red-700">{describeError(scorecard.error)}</span> : null}
         </div>
       ) : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Card title="Device health" footer={<Go customer={customer} to="/device-health">Open device health</Go>}>
+        {showDeviceHealth ? <Card title="Device health" footer={<Go customer={customer} to="/device-health">Open device health</Go>}>
           <Line pending={health.isPending} customer={customer} label="Devices" value={h?.devices ?? null} to="/assets" />
           <Line pending={health.isPending} customer={customer} label="Offline or not seen" value={offline} attention={(offline ?? 0) > 0} to="/device-health?connectivity=offline,stale,never_seen" />
           <Line pending={health.isPending} customer={customer} label="Disk critical" value={disk} attention={(disk ?? 0) > 0} to="/device-health?disk=critical" />
           <Line pending={health.isPending} customer={customer} label="Antivirus issues" value={av} attention={(av ?? 0) > 0} to="/device-health?antivirus=disabled,enabled_outdated" />
-        </Card>
+        </Card> : null}
         <Card title="Compliance" footer={<Go customer={customer} to="/compliance">Open compliance</Go>}>
           {compliance.data?.baselines.length ? compliance.data.baselines.map((b) => (
             <div key={b.id} className="flex items-baseline justify-between gap-3">
@@ -121,14 +123,14 @@ export function CustomerWorkspace({ customer }: { customer: Customer }) {
             ))}
           </Card>
         ) : null}
-        <Card title="Data sources">
+        {showDeviceHealth ? <Card title="Data sources">
           {datasets.data?.length ? datasets.data.map((d) => (
             <div key={d.mapping_id} className="flex flex-wrap items-center justify-between gap-2">
               <span>{d.integration.name} <span className="text-xs text-slate-500">org {d.external_org_id}</span></span>
               <span className="flex items-center gap-2"><Badge tone={d.status === "fresh" ? "good" : "warn"}>{d.status.replace("_", " ")}</Badge><span className="text-xs text-slate-500">{d.as_of ? formatUtc(d.as_of) : "never synced"}</span></span>
             </div>
           )) : <p className="text-slate-500">No approved source mapping.</p>}
-        </Card>
+        </Card> : null}
         {canExport ? (
           <Card title="Recent reports" footer={<span className="flex gap-3"><Go customer={customer} to="/reports?tab=custom">Build a custom report</Go><Go customer={customer} to="/reports?tab=history">All reports</Go></span>}>
             {reports.data?.results.length ? reports.data.results.slice(0, 5).map((r) => (

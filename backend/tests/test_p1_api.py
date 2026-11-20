@@ -531,3 +531,20 @@ def test_installed_programs_need_no_catalog_and_stay_scoped(world, synced):
     assert world.client(world.viewer_a).get(url, {"search": "contoso"}).json()["count"] == 1
     # Customer B's user cannot read A's programs
     assert world.client(world.engineer_b).get(url).status_code in (403, 404)
+
+
+def test_device_lookup_spans_only_the_users_customers(world, synced):
+    url = "/api/v1/assets/lookup/"
+    found = world.client(world.engineer_a).get(url, {"q": "pc"}).json()["results"]
+    assert found and {r["customer_code"] for r in found} == {world.customer_a.code}
+    assert all(r["hostname"].upper().startswith(("A-PC", "=HYPERLINK")) for r in found)
+    both = world.client(world.super_admin).get(url, {"q": "-pc"}).json()["results"]
+    assert {r["customer_code"] for r in both} == {world.customer_a.code, world.customer_b.code}
+    assert len(both) == 9  # 5 + 4 (one A device has a hostile name without "-pc")
+    exact = world.client(world.engineer_b).get(url, {"q": "b-002"}).json()["results"]  # VSA device ID
+    assert [r["hostname"] for r in exact] == ["B-PC2"]
+    assert world.client(world.engineer_b).get(url, {"q": "a-001"}).json()["results"] == []  # other customer's ID
+    assert world.client(world.engineer_a).get(url, {"q": "x"}).status_code == 400  # too short
+    synced["mapping_a"].mapping_status = "revoked"
+    synced["mapping_a"].save()
+    assert world.client(world.engineer_a).get(url, {"q": "pc"}).json()["results"] == []  # revocation hides data

@@ -24,11 +24,23 @@ Access the Odyssey internal portal using the approved HTTPS URL. Sign in with or
 
 ## 2. Dashboard
 
+With no customer selected, the dashboard lists **Your customers** with their key health measures (offline devices,
+critical disks, antivirus issues, critical updates, outdated software, compliance); click a customer to open its
+dashboard. With a customer selected, the dashboard shows the health tiles and, below them, the whole customer summary
+(compliance, patching, servers, network, details from VSA, recent reports and the monthly scorecard), so there is no
+need to open the customer under Administration.
+
 The dashboard summarizes device inventory, installed software, version-compliance classifications, OS update availability and integration health. Each card links to a filtered list. Every metric must display the **data-as-of** timestamp and warn if the source is stale or incomplete. **Unknown** means no justified classification, not automatically compliant.
 
 ## 3. Find a workstation or server
 
-1. Choose **Assets → All Devices**, select an authorized customer.
+**Fastest:** type part of the name, the serial number or the VSA device ID into **Find a device** in the header. Matches
+from every customer you may read appear as you type (up to 10, with customer, site, group and OS); choose one (or use
+the arrow keys and Enter) to open the device. Its customer becomes the selected customer.
+
+To browse or filter instead:
+
+1. Choose **Devices**, select an authorized customer.
 2. Search by exact/partial hostname, VSA asset ID, site or group. Add OS, device type or last-seen filters.
 3. Open a device record. Confirm source instance and last collection time.
 4. Use tabs: Overview, Hardware, Installed Software, Windows Updates, Documentation (if linked), Tickets (if linked), History.

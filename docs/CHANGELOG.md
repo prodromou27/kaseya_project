@@ -1,5 +1,12 @@
 # Changelog
 
+## UX-04 - 2026-11-20 - find a device and check a customer's health faster
+
+- Header **Find a device** works on every screen size and without choosing a customer first: as you type (2+ characters) it lists up to 10 matches by hostname, serial or VSA device ID from every customer you may read; choosing one selects its customer and opens the device.
+- API: `GET /api/v1/assets/lookup/?q=` (current published inventory of approved mappings only, scoped to customers with `customer.read`; revoked mappings hide data).
+- Dashboard: with no customer selected it shows **Your customers** (the all-customers health table; a click opens that customer's dashboard). With a customer selected it shows the full customer summary under the tiles (compliance, patching, servers, network, VSA details, recent reports, scorecard).
+- The monthly scorecard offers its download in place when ready.
+
 ## UX-03 - 2026-11-20 - fewer clicks for reports
 
 - New report and Custom report: after **Generate**, the page waits for the file and shows **Download** right there (History still lists every run).

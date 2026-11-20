@@ -208,6 +208,29 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/assets/lookup/:
+    get:
+      operationId: assets_lookup_retrieve
+      description: Find a device across every customer the user may read (current
+        inventory only), at most 10 matches.
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Hostname, serial or device ID.
+      tags:
+      - assets
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/audit-events/:
     get:
       operationId: audit_events_list
