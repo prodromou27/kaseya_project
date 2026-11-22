@@ -88,7 +88,8 @@ def test_approved_move_is_executed_once_and_confirmed(world, enabled):
     assert moved.group_external_id == target["external_id"]
 
 
-def test_who_may_execute(world, enabled):
+def test_who_may_execute(world, enabled, settings):
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = True
     proposal, _, _ = approved(world, proposer=world.admin_a, reviewer=world.super_admin)
     url = f"{base(world)}{proposal['id']}/execute/"
     assert world.client(world.engineer_a).post(url).status_code == 404  # no approve capability
@@ -96,6 +97,15 @@ def test_who_may_execute(world, enabled):
     refused = world.client(world.admin_a).post(url)  # the requester
     assert refused.status_code == 400 and "proposed the move" in str(refused.json())
     assert world.client(world.super_admin).post(url).json()["execution"]["state"] == "succeeded"
+
+
+def test_single_admin_approves_and_executes_own_move(world, enabled, settings):
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = False
+    proposal, _, target = approved(world, proposer=world.admin_a, reviewer=world.admin_a)
+    body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/").json()
+    assert body["execution"]["state"] == "succeeded" and body["execution"]["observed_group_id"] == target["external_id"]
+    started = AuditEvent.objects.get(action="group_move.execute_started", target_id=proposal["id"])
+    assert started.metadata["by_requester"] is True
 
 
 def test_changed_inventory_blocks_execution(world, enabled):

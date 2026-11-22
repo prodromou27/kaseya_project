@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from django.conf import settings
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_field
@@ -43,6 +44,7 @@ class MoveSerializer(serializers.ModelSerializer):
     expired = serializers.SerializerMethodField()
     execution_enabled = serializers.SerializerMethodField()
     execution_available = serializers.SerializerMethodField()
+    self_approval_allowed = serializers.SerializerMethodField()
     execution_blocked_reason = serializers.SerializerMethodField()
     execution = serializers.SerializerMethodField()
 
@@ -70,6 +72,7 @@ class MoveSerializer(serializers.ModelSerializer):
             "expired",
             "execution_enabled",
             "execution_available",
+            "self_approval_allowed",
             "execution_blocked_reason",
             "execution",
         ]
@@ -80,6 +83,10 @@ class MoveSerializer(serializers.ModelSerializer):
 
     def get_execution_enabled(self, obj: GroupMoveRequest) -> bool:
         return move_execution.execution_status(obj)[0]
+
+    def get_self_approval_allowed(self, obj: GroupMoveRequest) -> bool:
+        """The requester may approve and execute their own proposal (REQUIRE_SECOND_APPROVER is off)."""
+        return not settings.CATALOG_REQUIRE_SEPARATE_REVIEWER
 
     def get_execution_available(self, obj: GroupMoveRequest) -> bool:
         """Execution is set up for the integration (switches + token), whatever this proposal's state."""
@@ -120,9 +127,16 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
     def get_queryset(self) -> Any:
         if getattr(self, "swagger_fake_view", False):
             return GroupMoveRequest.objects.none()
-        return GroupMoveRequest.objects.filter(customer=self.get_customer()).select_related(
+        qs = GroupMoveRequest.objects.filter(customer=self.get_customer()).select_related(
             "requested_by", "reviewed_by", "target_group", "asset__integration_instance", "execution__executed_by"
         )
+        if self.action == "list":
+            view = self.request.query_params.get("view", "")
+            if view == "waiting":  # needs a decision: pending and not expired
+                qs = qs.filter(state="pending", expires_at__gt=timezone.now())
+            elif view == "to_move":  # approved, not sent yet
+                qs = qs.filter(state="approved", execution__isnull=True)
+        return qs
 
     @extend_schema(request=ProposalInput, responses={201: MoveSerializer})
     def create(self, request: Any, *args: Any, **kwargs: Any) -> Response:

@@ -36,11 +36,9 @@ class GroupMoveRequest(models.Model):
     class Meta:
         ordering = ["-created_at", "id"]
         indexes = [models.Index(fields=["customer", "state", "created_at"], name="inventory_move_review_idx")]
+        # Requester == reviewer is allowed unless REQUIRE_SECOND_APPROVER (checked in moves.review; product owner
+        # 2026-11-22), so there is no database constraint for it any more.
         constraints = [
-            models.CheckConstraint(
-                condition=models.Q(reviewed_by__isnull=True) | ~models.Q(reviewed_by=models.F("requested_by")),
-                name="inventory_move_separate_review",
-            ),
             models.CheckConstraint(
                 condition=models.Q(state="pending", reviewed_by__isnull=True, reviewed_at__isnull=True)
                 | models.Q(state__in=["approved", "rejected"], reviewed_by__isnull=False, reviewed_at__isnull=False),

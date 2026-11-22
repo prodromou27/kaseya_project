@@ -19,7 +19,7 @@ type Proposal = {
   target_group_name: string; target_group_external_id: string; reason: string; policy_impact: string;
   state: "pending" | "approved" | "rejected"; requested_by: string; reviewed_by: string | null;
   review_reason: string; created_at: string; expires_at: string; expired: boolean;
-  execution_enabled: boolean; execution_available: boolean; execution_blocked_reason: string; execution: Execution | null;
+  execution_enabled: boolean; execution_available: boolean; self_approval_allowed?: boolean; execution_blocked_reason: string; execution: Execution | null;
 };
 type ExecutionState = "sending" | "succeeded" | "unverified" | "unknown" | "failed";
 type Execution = {
@@ -102,7 +102,7 @@ function Review({ proposal, customer }: { proposal: Proposal; customer: Customer
     <p className="text-sm text-amber-900">{proposal.policy_impact}</p>
     <p className="text-xs text-slate-500">Requested {formatUtc(proposal.created_at)} · expires {formatUtc(proposal.expires_at)} · {proposal.requested_by}</p>
     {proposal.reviewed_by ? <p className="text-sm">Reviewed by {proposal.reviewed_by}: {proposal.review_reason}</p> : null}
-    {proposal.state === "pending" && customer.my_capabilities.includes("customer.group_move.approve") && me.email !== proposal.requested_by ? (
+    {proposal.state === "pending" && customer.my_capabilities.includes("customer.group_move.approve") && (proposal.self_approval_allowed || me.email !== proposal.requested_by) ? (
       <form className="flex flex-wrap items-end gap-2" aria-label="Independent move review" onSubmit={(event) => { event.preventDefault(); decision.mutate(proposal.execution_available ? "move" : "approved"); }}>
         <Field label="Review reason">{(id) => <input id={id} className="input w-80" required minLength={10} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
         {proposal.execution_available ? (
@@ -140,7 +140,7 @@ function ExecutionPanel({ proposal, customer }: { proposal: Proposal; customer: 
         {["unknown", "unverified", "sending"].includes(ex.state) && canApprove ? <button type="button" className="btn-secondary" disabled={run.isPending} onClick={() => run.mutate("verify")}>Verify in VSA X</button> : null}
       </div>
     ) : proposal.execution_enabled ? (
-      canApprove && me.email !== proposal.requested_by ? (
+      canApprove && (proposal.self_approval_allowed || me.email !== proposal.requested_by) ? (
         confirming ? (
           <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="group" aria-label="Confirm move">
             <p>Move <strong>{proposal.device_name}</strong> from <strong>{proposal.source_group_name}</strong> to <strong>{proposal.target_group_name}</strong> (ID {proposal.target_group_external_id}) in VSA X now? Policies inherited from the new group apply to the device. This is sent once and cannot be undone from the portal.</p>
@@ -166,7 +166,8 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Outcome[]>([]);
-  const mine = (p: Proposal) => p.requested_by === me.email;
+  // Own proposals are skipped only when a second approver is required (REQUIRE_SECOND_APPROVER).
+  const mine = (p: Proposal) => p.requested_by === me.email && !p.self_approval_allowed;
   const pending = rows.filter((p) => p.state === "pending" && !p.expired && !mine(p));
   const approvedWaiting = rows.filter((p) => p.state === "approved" && !p.execution && p.execution_enabled && !mine(p));
   const movable = [...pending.filter((p) => p.execution_available), ...approvedWaiting];
@@ -201,7 +202,13 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
   const reasonOk = !needsReason || reason.trim().length >= 10;
   return (
     <div className="flex w-full flex-col gap-2 text-sm" role="group" aria-label="Decide selected proposals">
-      {skipped ? <p className="text-xs text-slate-600">{skipped} selected proposal(s) skipped: your own, expired, already decided or already sent.</p> : null}
+      {skipped ? <p className="text-xs text-slate-600">{skipped} selected proposal(s) skipped: expired, already decided or already sent{rows.some((p) => p.requested_by === me.email && !p.self_approval_allowed) ? ", or your own (a second administrator must approve)" : ""}.</p> : null}
+      {pending.length && !movable.length ? (
+        <p className="text-xs text-amber-900">
+          Moving in VSA X is not switched on for this integration, so approving only records the decision. A super
+          admin enables it under Settings → Integrations → Edit (and VSA_GROUP_MOVE_EXECUTION_ENABLED=true on the server).
+        </p>
+      ) : null}
       {pending.length || approvedWaiting.length ? (
         <div className="flex flex-wrap items-end gap-2">
           {needsReason ? (
@@ -229,12 +236,22 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
 }
 
 function Requests({ customer }: { customer: Customer }) {
-  const { page, setPage } = useUrlFilters({});
+  const { filters, update, page, setPage } = useUrlFilters({ view: "waiting" });
   const [open, setOpen] = useState<string | null>(null);
-  const query = useQuery({ queryKey: ["group-moves", customer.id, page], queryFn: ({ signal }) => api.get<Paginated<Proposal>>(`/customers/${customer.id}/group-moves/`, { page }, signal) });
+  const view = filters.view;
+  const query = useQuery({
+    queryKey: ["group-moves", customer.id, view, page],
+    queryFn: ({ signal }) => api.get<Paginated<Proposal>>(`/customers/${customer.id}/group-moves/`, { page, page_size: 200, ...(view ? { view } : {}) }, signal),
+  });
   const selected = query.data?.results.find((proposal) => proposal.id === open);
-  return <QueryBoundary query={query}>{(data) => <div className="space-y-4">
-    <DataTable caption="Group move proposals" rows={data.results} total={data.count} page={page} onPageChange={setPage} getRowId={(row) => row.id}
+  const VIEWS: [string, string][] = [["waiting", "Waiting for decision"], ["to_move", "Approved, not moved yet"], ["", "All proposals"]];
+  return <div className="space-y-3">
+    <div role="group" aria-label="Show" className="flex flex-wrap gap-2">
+      {VIEWS.map(([v, label]) => <button key={v || "all"} type="button" aria-pressed={view === v} className="list-preset" onClick={() => update({ view: v }, true)}>{label}</button>)}
+    </div>
+    <QueryBoundary query={query}>{(data) => <div className="space-y-4">
+    {data.count && customer.my_capabilities.includes("customer.group_move.approve") ? <p className="text-xs text-slate-600">Tick the box in the table header to select all {Math.min(data.count, 200)} on this page, then choose Approve and move.</p> : null}
+    <DataTable caption="Group move proposals" rows={data.results} total={data.count} page={page} pageSize={200} onPageChange={setPage} getRowId={(row) => row.id}
       selectable={customer.my_capabilities.includes("customer.group_move.approve")}
       selectionActions={(rows) => <BulkDecision customer={customer} rows={rows} />}
       emptyTitle="No group changes have been proposed." emptyHint="Open a device's Operations tab to propose a change."
@@ -247,7 +264,8 @@ function Requests({ customer }: { customer: Customer }) {
         { header: "Review", cell: ({ row }) => <button type="button" className="btn-secondary" aria-expanded={open === row.original.id} onClick={() => setOpen(open === row.original.id ? null : row.original.id)}>Review proposal</button> },
       ]} />
     {selected ? <section className="investigation-card" aria-label="Selected group move proposal"><Review key={selected.id} proposal={selected} customer={customer} /></section> : null}
-  </div>}</QueryBoundary>;
+  </div>}</QueryBoundary>
+  </div>;
 }
 
 export function GroupMovesPage() {

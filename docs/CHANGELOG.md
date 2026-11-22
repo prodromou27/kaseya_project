@@ -1,5 +1,11 @@
 # Changelog
 
+## UX-06 - 2026-11-22 - approve all suggested moves as a single administrator
+
+- Fix: moves proposed by an administrator stayed pending because the requester could never approve them, even with single-administrator approvals. Group moves now follow `REQUIRE_SECOND_APPROVER` like every other approval: off (default) lets an administrator approve and move their own proposals; on requires a different administrator. Audit: `group_move.approved` records `self_approved`, `group_move.execute_started` records `by_requester`. Migration `inventory.0015` removes the database constraint that forbade requester = reviewer.
+- Group move proposals opens on **Waiting for decision** (also *Approved, not moved yet* and *All proposals*), 200 per page; the header checkbox selects all for **Approve and move (N)**. When moving is not switched on for the integration, the page says that approving only records the decision.
+- API: proposals include `self_approval_allowed`; the list accepts `view=waiting|to_move`.
+
 ## UX-05 - 2026-11-22 - shorter menu
 
 - The side menu shows 6 entries instead of about 20: *Daily work* (Dashboard, Devices, Device health, Reports) and *Changes in VSA X* (Custom fields, Group move approvals). *Patching & software*, *Inventory & network* and *Administration* are folded groups; the one containing the current page opens by itself, opened groups are remembered per browser, and **Find a page** searches and opens every group. All page URLs are unchanged.

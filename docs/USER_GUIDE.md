@@ -278,13 +278,15 @@ assigned. This is configuration only: whether VSA deployed an update is not avai
 
 **Fewer steps.** On an onboarding group's *Destinations* view, each destination lists its devices with tick boxes and
 a prefilled reason: **Propose moving N devices** sends one proposal per ticked device for approval. On **Group move
-proposals**, an approver can tick several proposals and use **Approve and move (N)** (one reason, one confirmation),
-**Approve only** or **Reject**; proposals they made themselves, expired or already decided ones are skipped and the
-result is listed per device. For a single proposal, **Review proposal → Approve and move in VSA X** approves and
+proposals** (it opens on *Waiting for decision*, up to 200 per page), an administrator ticks the box in the table
+header to select all, then uses **Approve and move (N)** (one reason, one confirmation), **Approve only** or
+**Reject**; expired or already decided ones are skipped and the result is listed per device. Administrators may
+approve their own proposals unless the server requires a second approver (`REQUIRE_SECOND_APPROVER`). If moving is not
+switched on for the integration, approving only records the decision and the page says so. For a single proposal, **Review proposal → Approve and move in VSA X** approves and
 executes in one step.
 
 When execution is enabled for the VSA X integration, an approved proposal shows **Execute move in VSA X…** under
-**Group move proposals → Review proposal**. Someone other than the requester, with approval permission, confirms the
+**Group move proposals → Review proposal**. An administrator with approval permission (not the requester when a second approver is required) confirms the
 move; the portal sends it to VSA X once and then reads the device back:
 
 - **Moved in VSA X** - VSA X accepted it and the device now reports the destination group.

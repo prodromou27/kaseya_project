@@ -8474,6 +8474,11 @@ components:
           description: Execution is set up for the integration (switches + token),
             whatever this proposal's state.
           readOnly: true
+        self_approval_allowed:
+          type: boolean
+          description: The requester may approve and execute their own proposal (REQUIRE_SECOND_APPROVER
+            is off).
+          readOnly: true
         execution_blocked_reason:
           type: string
           readOnly: true
@@ -8500,6 +8505,7 @@ components:
       - review_reason
       - reviewed_at
       - reviewed_by
+      - self_approval_allowed
       - source_group_id
       - source_group_name
       - state

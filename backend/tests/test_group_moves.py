@@ -45,16 +45,30 @@ def test_propose_independent_review_and_safe_replay(world, synced):  # noqa: F81
     assert GroupMoveRequest.objects.get(pk=proposal["id"]).state == "approved"
 
 
-def test_self_approval_refused_even_in_single_admin_mode(world, synced, settings):  # noqa: F811
-    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = False
+def test_self_approval_refused_when_a_second_approver_is_required(world, synced, settings):  # noqa: F811
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = True
     client = world.client(world.admin_a)
     response = client.post(base(world.customer_a), payload(world))
-    assert response.status_code == 201
+    assert response.status_code == 201 and response.json()["self_approval_allowed"] is False
     review = client.post(
         f"{base(world.customer_a)}{response.json()['id']}/review/",
-        {"decision": "approved", "reason": "Self approval must never work"},
+        {"decision": "approved", "reason": "Self approval must not work here"},
     )
     assert review.status_code == 400
+
+
+def test_single_admin_may_approve_own_move_and_it_is_audited(world, synced, settings):  # noqa: F811
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = False  # the default (product owner, 2026-11-22)
+    client = world.client(world.admin_a)
+    response = client.post(base(world.customer_a), payload(world))
+    assert response.status_code == 201 and response.json()["self_approval_allowed"] is True
+    review = client.post(
+        f"{base(world.customer_a)}{response.json()['id']}/review/",
+        {"decision": "approved", "reason": "Single administrator approval"},
+    )
+    assert review.status_code == 200 and review.json()["state"] == "approved"
+    event = AuditEvent.objects.get(action="group_move.approved", target_id=response.json()["id"])
+    assert event.metadata["self_approved"] is True and event.actor_id == world.admin_a.id
 
 
 def test_customer_and_permission_boundaries(world, synced):  # noqa: F811
@@ -125,3 +139,14 @@ def test_options_and_no_vendor_write_action(world, synced):  # noqa: F811
     assert options.status_code == 200 and options.json()["execution_enabled"] is False
     assert all(group["external_id"] != "51" for group in options.json()["groups"])
     assert client.get(f"{base(world.customer_a)}options/", {"asset": "invalid"}).status_code == 400
+
+
+def test_list_can_show_only_what_waits_for_a_decision(world, synced, settings):  # noqa: F811
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = False
+    client = world.client(world.admin_a)
+    pid = client.post(base(world.customer_a), payload(world)).json()["id"]
+    assert [p["id"] for p in client.get(base(world.customer_a), {"view": "waiting"}).json()["results"]] == [pid]
+    assert client.get(base(world.customer_a), {"view": "to_move"}).json()["results"] == []
+    client.post(f"{base(world.customer_a)}{pid}/review/", {"decision": "approved", "reason": "Approved for moving"})
+    assert client.get(base(world.customer_a), {"view": "waiting"}).json()["results"] == []
+    assert [p["id"] for p in client.get(base(world.customer_a), {"view": "to_move"}).json()["results"]] == [pid]

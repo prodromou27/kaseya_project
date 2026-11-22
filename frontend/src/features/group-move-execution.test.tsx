@@ -96,4 +96,29 @@ describe("group move execution", () => {
     expect(results).toHaveTextContent("PC1: Moved in VSA X");
     expect(calls.filter((c) => c.url.includes("/p3/"))).toHaveLength(0);
   });
+
+  it("lets a single administrator select all their own proposals and approve and move them", async () => {
+    const own = (id: string, name: string) => ({ ...proposal, id, device_name: name, requested_by: "admin@example.test", state: "pending", reviewed_by: null, execution_enabled: false, self_approval_allowed: true });
+    const { calls } = mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
+      "GET /api/v1/customers/": { body: page([admin]) },
+      [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([own("p1", "PC1"), own("p2", "PC2")]) },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/review/`]: { body: proposal },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/review/`]: { body: proposal },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/execute/`]: { body: { ...proposal, execution: { state: "succeeded" } } },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/execute/`]: { body: { ...proposal, execution: { state: "succeeded" } } },
+    } as never);
+    window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
+    renderApp("/group-moves");
+    await userEvent.click(await screen.findByLabelText("Select all rows on this page"));
+    const bar = screen.getByRole("group", { name: "Decide selected proposals" });
+    expect(bar).not.toHaveTextContent("skipped");
+    await userEvent.type(within(bar).getByLabelText("Review reason (all selected)"), "Suggested destinations checked");
+    await userEvent.click(within(bar).getByLabelText(/Move 2 devices in VSA X now/));
+    await userEvent.click(within(bar).getByRole("button", { name: "Approve and move (2)" }));
+    await waitFor(() => expect(calls.filter((c) => c.url.includes("/execute/"))).toHaveLength(2));
+    const list = calls.find((c) => c.method === "GET" && c.url.startsWith(`/api/v1/customers/${customerA.id}/group-moves/?`));
+    expect(list?.url).toContain("view=waiting");
+    expect(list?.url).toContain("page_size=200");
+  });
 });

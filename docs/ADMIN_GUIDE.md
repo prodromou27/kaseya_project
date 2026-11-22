@@ -252,6 +252,9 @@ Off by default. Both switches are required; removing either switches execution o
    audited. Changing the integration's base URL clears the
    switch.
 
+Who approves: with `REQUIRE_SECOND_APPROVER` off (the default) an administrator may approve and move their own
+proposals (audited); set it to `true` to require a different administrator.
+
 Optional: `GROUP_MOVE_EXECUTION_WINDOW_HOURS` (default 24) limits how old an approval may be when executed. Audit
 events: `group_move.execute_started`, `group_move.execute_succeeded|unverified|unknown|failed`, `group_move.verified`.
 Validate on one test device first (live behaviour has not been verified yet).

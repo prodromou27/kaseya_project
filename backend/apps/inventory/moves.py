@@ -3,6 +3,7 @@
 from datetime import timedelta
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
@@ -88,7 +89,10 @@ def review(customer: Any, user: Any, proposal_id: Any, decision: str, reason: st
     proposal = GroupMoveRequest.objects.select_for_update().filter(customer=customer, pk=proposal_id).first()
     if proposal is None:
         raise NotFound()
-    if proposal.requested_by_id == user.id:
+    self_review = proposal.requested_by_id == user.id
+    # Same rule as every other approval (product owner, 2026-11-22): one administrator may approve their own proposal
+    # unless REQUIRE_SECOND_APPROVER is set. Always audited with self_approved.
+    if self_review and settings.CATALOG_REQUIRE_SEPARATE_REVIEWER:
         raise ValidationError({"review": "A different authorized administrator must review this request."})
     if proposal.state != "pending":
         if proposal.state == decision and proposal.reviewed_by_id == user.id:
@@ -116,6 +120,6 @@ def review(customer: Any, user: Any, proposal_id: Any, decision: str, reason: st
         target_type="group_move_request",
         target_id=str(proposal.id),
         request=request,
-        metadata={"execution_enabled": False},
+        metadata={"execution_enabled": False, "self_approved": self_review},
     )
     return proposal

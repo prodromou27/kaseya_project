@@ -85,7 +85,7 @@ def _start(customer: Any, user: Any, proposal_id: Any, request: Any) -> tuple[Gr
             raise ValidationError({"execute": "Only approved proposals can be executed."})
         if GroupMoveExecution.objects.filter(proposal=proposal).exists():
             raise ValidationError({"execute": "This move was already sent to VSA X. Use Verify to check it."})
-        if proposal.requested_by_id == user.id:
+        if proposal.requested_by_id == user.id and settings.CATALOG_REQUIRE_SEPARATE_REVIEWER:
             raise ValidationError({"execute": "The person who proposed the move cannot execute it."})
         if proposal.reviewed_at is None or proposal.reviewed_at + _window() <= timezone.now():
             raise ValidationError(
@@ -117,6 +117,7 @@ def _start(customer: Any, user: Any, proposal_id: Any, request: Any) -> tuple[Gr
             request,
             target_group_id=proposal.target_group.external_id,
             source_group_id=proposal.source_group_id,
+            by_requester=proposal.requested_by_id == user.id,
         )
     return proposal, execution
 
