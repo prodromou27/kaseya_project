@@ -1,5 +1,9 @@
 # Changelog
 
+## UX-05 - 2026-11-22 - shorter menu
+
+- The side menu shows 6 entries instead of about 20: *Daily work* (Dashboard, Devices, Device health, Reports) and *Changes in VSA X* (Custom fields, Group move approvals). *Patching & software*, *Inventory & network* and *Administration* are folded groups; the one containing the current page opens by itself, opened groups are remembered per browser, and **Find a page** searches and opens every group. All page URLs are unchanged.
+
 ## UX-04 - 2026-11-20 - find a device and check a customer's health faster
 
 - Header **Find a device** works on every screen size and without choosing a customer first: as you type (2+ characters) it lists up to 10 matches by hostname, serial or VSA device ID from every customer you may read; choosing one selects its customer and opens the device.

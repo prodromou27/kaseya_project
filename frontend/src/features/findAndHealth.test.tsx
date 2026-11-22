@@ -68,3 +68,22 @@ describe("customer health on the dashboard", () => {
     expect(screen.getByRole("heading", { name: "Patching" })).toBeInTheDocument();
   });
 });
+
+describe("main menu", () => {
+  it("shows daily work, folds the rest, opens the current page's group and finds any page", async () => {
+    window.localStorage.removeItem("okp.navOpen");
+    mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe() },
+      "GET /api/v1/customers/": { body: page([customerA]) },
+    });
+    renderApp("/windows-updates");
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    expect(within(nav).getByRole("link", { name: "Devices" })).toBeVisible();
+    expect(within(nav).getByRole("link", { name: "Custom fields" })).toBeVisible();
+    expect(within(nav).getByRole("group", { name: "Patching & software" })).toHaveAttribute("open"); // current page
+    expect(within(nav).getByRole("group", { name: "Inventory & network" })).not.toHaveAttribute("open");
+    await userEvent.type(within(nav).getByLabelText("Find a page"), "clean");
+    expect(within(nav).getByRole("group", { name: "Inventory & network" })).toHaveAttribute("open");
+    expect(within(nav).getByRole("link", { name: "Cleanup" })).toBeInTheDocument();
+  });
+});

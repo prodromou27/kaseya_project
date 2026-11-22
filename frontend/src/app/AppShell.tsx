@@ -9,22 +9,31 @@ import { useCustomers } from "../lib/customerContext";
 import { AlertBell } from "../features/alerts/AlertsPage";
 
 type NavItem = { to: string; label: string; adminOnly?: boolean };
-export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
-  { label: "Overview", items: [{ to: "/", label: "Dashboard" }, { to: "/compliance", label: "Compliance" }, { to: "/all-customers", label: "All customers" }] },
-  { label: "VSA operations", items: [
-    { to: "/assets", label: "Devices" }, { to: "/groups", label: "Groups & network" },
-    { to: "/device-health", label: "Device health" }, { to: "/notifications", label: "Notifications" },
-    { to: "/changes", label: "Inventory changes" }, { to: "/cleanup", label: "Cleanup" }, { to: "/automation", label: "Automation" },
-    { to: "/custom-fields", label: "Custom fields" },
+/**
+ * Daily work first and always visible; everything else in folded groups (the group with the current page opens by
+ * itself, and "Find a page" searches all of them). Every page keeps its URL.
+ */
+export const NAV_GROUPS: { label: string; items: NavItem[]; folded?: boolean }[] = [
+  { label: "Daily work", items: [
+    { to: "/", label: "Dashboard" }, { to: "/assets", label: "Devices" }, { to: "/device-health", label: "Device health" },
+    { to: "/reports", label: "Reports" },
   ] },
-  { label: "Software & patching", items: [
-    { to: "/servers", label: "Servers & owners" }, { to: "/software", label: "Software" }, { to: "/windows-updates", label: "Windows updates" },
-    { to: "/patch-policies", label: "Patch policies" }, { to: "/lifecycle", label: "Lifecycle" },
+  { label: "Changes in VSA X", items: [
+    { to: "/custom-fields", label: "Custom fields" }, { to: "/group-moves", label: "Group move approvals" },
   ] },
-  { label: "Inventory reconciliation", items: [{ to: "/onboarding", label: "Onboarding check" }] },
-  { label: "Reporting", items: [{ to: "/reports", label: "Reports" }] },
-  { label: "Administration", items: [
-    { to: "/customers", label: "Customers" }, { to: "/group-moves", label: "Group move approvals" }, { to: "/admin", label: "Settings", adminOnly: true },
+  { label: "Patching & software", folded: true, items: [
+    { to: "/windows-updates", label: "Windows updates" }, { to: "/software", label: "Software" },
+    { to: "/patch-policies", label: "Patch policies" }, { to: "/servers", label: "Servers & owners" },
+    { to: "/lifecycle", label: "Lifecycle" }, { to: "/compliance", label: "Compliance" },
+  ] },
+  { label: "Inventory & network", folded: true, items: [
+    { to: "/groups", label: "Groups & network" }, { to: "/changes", label: "Inventory changes" },
+    { to: "/notifications", label: "Notifications" }, { to: "/cleanup", label: "Cleanup" },
+    { to: "/onboarding", label: "Onboarding check" }, { to: "/automation", label: "Automation" },
+  ] },
+  { label: "Administration", folded: true, items: [
+    { to: "/all-customers", label: "All customers" }, { to: "/customers", label: "Customers" },
+    { to: "/admin", label: "Settings", adminOnly: true },
   ] },
 ];
 export const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
@@ -68,9 +77,28 @@ function AccountStatus() {
   );
 }
 
+const FOLD_KEY = "okp.navOpen";
+
+function readOpen(): string[] {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(FOLD_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 function MainNav({ onNavigate }: { onNavigate: () => void }) {
   const me = useMe();
+  const { pathname } = useLocation();
   const [search, setSearch] = useState("");
+  const [opened, setOpened] = useState<string[]>(readOpen);
+  const toggle = (label: string, open: boolean) => setOpened((prev) => {
+    const next = open ? [...new Set([...prev, label])] : prev.filter((x) => x !== label);
+    try { window.localStorage.setItem(FOLD_KEY, JSON.stringify(next)); } catch { /* per-browser convenience only */ }
+    return next;
+  });
+  const here = (item: NavItem) => item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
   const visible = NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) =>
     (!item.adminOnly || me.is_super_admin) && `${group.label} ${item.label}`.toLowerCase().includes(search.trim().toLowerCase()),
   ) })).filter((group) => group.items.length);
@@ -83,9 +111,8 @@ function MainNav({ onNavigate }: { onNavigate: () => void }) {
       <label className="sr-only" htmlFor="nav-search">Find a page</label>
       <input id="nav-search" type="search" placeholder="Find a page…" maxLength={80} className="mx-1 min-w-0 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-2 text-xs text-white placeholder:text-slate-400" value={search} onChange={(e) => setSearch(e.target.value)} />
       <div className="space-y-4">
-        {visible.map((group) => (
-          <section key={group.label} aria-label={group.label}>
-            <h2 className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">{group.label}</h2>
+        {visible.map((group) => {
+          const links = (
             <ul className="space-y-0.5">
               {group.items.map((item) => <li key={item.to}>
                 <NavLink to={item.to} end={item.to === "/"} onClick={onNavigate} className={({ isActive }) =>
@@ -94,8 +121,26 @@ function MainNav({ onNavigate }: { onNavigate: () => void }) {
                 </NavLink>
               </li>)}
             </ul>
-          </section>
-        ))}
+          );
+          if (!group.folded) {
+            return (
+              <section key={group.label} aria-label={group.label}>
+                <h2 className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">{group.label}</h2>
+                {links}
+              </section>
+            );
+          }
+          const open = Boolean(search.trim()) || group.items.some(here) || opened.includes(group.label);
+          return (
+            <details key={group.label} aria-label={group.label} open={open} className="group/fold"
+              onToggle={(e) => { const now = (e.currentTarget as HTMLDetailsElement).open; if (now !== open) toggle(group.label, now); }}>
+              <summary className="mb-1 flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
+                {group.label}<span aria-hidden="true" className="transition-transform group-open/fold:rotate-90">›</span>
+              </summary>
+              {links}
+            </details>
+          );
+        })}
         {!visible.length ? <p className="px-3 text-xs text-slate-400">No matching pages.</p> : null}
       </div>
       <p className="mt-auto border-t border-slate-800 px-3 pt-3 text-[10px] leading-relaxed text-slate-400">VSA source access is read-only.<br />Customer permissions apply to every view.</p>

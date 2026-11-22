@@ -22,6 +22,11 @@ Final screens and checks: [CODEX_VERIFICATION.md](CODEX_VERIFICATION.md). Existi
 
 Access the Odyssey internal portal using the approved HTTPS URL. Sign in with organizational SSO/MFA when configured. Choose a customer from the selector; only assigned customers should appear. A global aggregated view is available only to explicitly authorized global roles. Always confirm the selected customer before exporting.
 
+**The menu.** *Daily work* (Dashboard, Devices, Device health, Reports) and *Changes in VSA X* (Custom fields, Group
+move approvals) are always shown. *Patching & software*, *Inventory & network* and *Administration* are folded; click a
+group to open it (the portal remembers your choice), the group of the page you are on opens by itself, and **Find a
+page** at the top of the menu searches every page.
+
 ## 2. Dashboard
 
 With no customer selected, the dashboard lists **Your customers** with their key health measures (offline devices,
