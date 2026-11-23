@@ -243,6 +243,8 @@ if ! "${COMPOSE[@]}" up -d --remove-orphans; then
   "${COMPOSE[@]}" logs --tail 30 || true
   die "A container failed to start (see the status and logs above; SELinux: ausearch -m avc -ts recent)."
 fi
+# The proxy is not recreated when only the backend changes; restart it so it never keeps a stale backend address.
+"${COMPOSE[@]}" restart proxy >/dev/null 2>&1 || true
 info "waiting for the portal to become ready..."
 ready=0
 for _ in $(seq 1 60); do

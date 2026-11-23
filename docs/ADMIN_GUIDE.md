@@ -93,6 +93,7 @@ A catalog update never means the portal is deploying a patch.
 | Wrong software comparison | Alias/channel/architecture/catalog revision | Mark unknown, review reference, reclassify |
 | Empty PSA tickets | API user rights, zone and mapping | Verify permissions in test scope |
 | Report download denied | Customer membership/retention expiry | Reauthorize, do not bypass RBAC |
+| Update stops at "waiting for the portal to become ready"; proxy log shows 502 `connect() failed (111: Connection refused)` to the backend | Backend healthy (`/health/live/` 200) but the proxy kept the old backend address | `docker compose -f compose.prod.yml --env-file .env.prod restart proxy` (fixed in OPS-05: the proxy re-resolves the backend) |
 | PostgreSQL unavailable | DB health, storage, migrations | Follow restore/incident runbook |
 
 ## 10. Operational governance

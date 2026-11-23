@@ -1,5 +1,9 @@
 # Changelog
 
+## OPS-05 - 2026-11-23 - updates no longer stop at "waiting for the portal to become ready"
+
+- Fix: after an update recreated the backend container, the proxy kept the backend's old IP address and every request failed with 502 (`connect() failed (111: Connection refused)`), so `install.sh` gave up after 5 minutes. The proxy now re-resolves `backend` through Docker's DNS (`resolver 127.0.0.11 valid=10s`), and `install.sh` restarts the proxy after starting the stack. **Existing stuck install:** `sudo docker compose -f compose.prod.yml --env-file .env.prod restart proxy`.
+
 ## UX-07 - 2026-11-23 - switch group moves on in the portal
 
 - `VSA_GROUP_MOVE_EXECUTION_ENABLED` now defaults to `true` and is only a server-wide emergency stop; moves are switched on per integration in Settings → Integrations → Edit (still off until a super admin ticks it), as for custom field writes. **Existing installs:** an `.env.prod` created from the old example still contains `VSA_GROUP_MOVE_EXECUTION_ENABLED=false`; change it to `true` (or remove the line) and redeploy.
