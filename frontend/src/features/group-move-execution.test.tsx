@@ -36,6 +36,27 @@ describe("group move execution", () => {
     expect(calls.filter((c) => c.url.includes("/execute/")).length).toBe(1);
   });
 
+  it("offers to send again when reading the device back showed it never moved", async () => {
+    const failed = { ...proposal, execution_enabled: true,
+      execution: { state: "failed", executed_by: "admin@example.test", started_at: "2026-11-23T12:36:26Z", finished_at: "2026-11-23T12:40:00Z",
+        http_status: null, error_code: "still_in_source_group", observed_group_id: "40", verified_at: "2026-11-23T12:40:00Z" } };
+    const { calls } = mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
+      "GET /api/v1/customers/": { body: page([admin]) },
+      [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([failed]) },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/execute/`]: { body: proposal },
+    } as never);
+    window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
+    renderApp("/group-moves");
+    await userEvent.click(await screen.findByRole("button", { name: "Review proposal" }));
+    const panel = screen.getByRole("region", { name: "Execute in VSA X" });
+    expect(panel).toHaveTextContent("Not moved");
+    expect(panel).toHaveTextContent("still in its old group, so you can send the move again");
+    await userEvent.click(within(panel).getByRole("button", { name: "Execute move in VSA X…" }));
+    await userEvent.click(within(panel).getByRole("button", { name: "Move device in VSA X" }));
+    expect(calls.filter((c) => c.url.includes("/execute/")).length).toBe(1);
+  });
+
   it("explains why execution is not available", async () => {
     mockFetch({
       "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },

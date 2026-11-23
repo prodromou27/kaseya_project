@@ -19,11 +19,12 @@ import re
 import time
 from collections.abc import Mapping
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 import requests
 from django.conf import settings
 
-from apps.integrations.http import DEFAULT_TIMEOUT, check_egress, default_resolver
+from apps.integrations.http import DEFAULT_TIMEOUT, ConnectorError, check_egress, default_resolver
 from apps.integrations.models import IntegrationInstance
 from apps.integrations.secrets import (
     CredentialUnavailable,
@@ -45,6 +46,10 @@ class MoveRejected(Exception):
     def __init__(self, status: int):
         super().__init__(f"VSA X rejected the move (HTTP {status}).")
         self.status = status
+
+
+class MoveNotSent(Exception):
+    """The portal could not reach VSA X before sending (DNS, egress policy): nothing was sent. Safe message."""
 
 
 class MoveOutcomeUnknown(Exception):
@@ -122,7 +127,14 @@ class VsaMoveWriter:
         path = f"/api/v3/devices/{device_id}/move"
         if not MOVE_PATH.fullmatch(path):
             raise ValueError("Unsafe path.")
-        check_egress(self.instance.base_url, "vsa_x", is_fixture=self.instance.is_fixture, resolver=self.resolver)
+        try:
+            check_egress(self.instance.base_url, "vsa_x", is_fixture=self.instance.is_fixture, resolver=self.resolver)
+        except ConnectorError as exc:  # before any request: definitely not sent
+            host = urlsplit(self.instance.base_url).hostname or "the VSA X host"
+            raise MoveNotSent(
+                f"Nothing was sent: the portal server could not reach {host} ({exc}). Check DNS and the firewall on "
+                "the portal server; the move stays approved and can be sent again."
+            ) from exc
         url = f"{self.instance.base_url.rstrip('/')}{path}"
         started = time.monotonic()
         try:

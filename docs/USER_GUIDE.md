@@ -296,8 +296,12 @@ move; the portal sends it to VSA X once and then reads the device back:
 
 - **Moved in VSA X** - VSA X accepted it and the device now reports the destination group.
 - **Not confirmed yet** - VSA X accepted it but the device still reported the old group; press **Verify in VSA X** later.
-- **Outcome unknown** - VSA X did not answer clearly. The move is never sent twice; press **Verify in VSA X**.
-- **Not moved** - VSA X refused it, or reading back showed the device still in its old group. Propose again if needed.
+- **Outcome unknown** - VSA X did not answer clearly (the reason is shown). It is not sent again automatically;
+  press **Verify in VSA X**.
+- **Not moved** - VSA X refused it (propose again if needed), or reading back showed the device still in its old
+  group: then **Execute move in VSA X…** is offered again, because sending the same move again is safe.
+- **Nothing was sent** - the portal server could not reach VSA X (for example its name could not be looked up). The
+  message says why; the move stays approved and can be sent again once the server can reach VSA X.
 
 Execution is refused when the approval is older than 24 hours, the device has changed group since it was proposed,
 the destination group is no longer active, or the inventory is stale. When execution is not enabled the page says why,

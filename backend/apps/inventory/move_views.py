@@ -3,6 +3,7 @@
 from typing import Any
 
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_field
@@ -141,7 +142,11 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
             if view == "waiting":  # needs a decision: pending and not expired
                 qs = qs.filter(state="pending", expires_at__gt=timezone.now())
             elif view == "to_move":  # approved, not sent yet
-                qs = qs.filter(state="approved", execution__isnull=True)
+                qs = qs.filter(
+                    Q(execution__isnull=True)
+                    | Q(execution__state="failed", execution__error_code=move_execution.RETRYABLE_ERROR),
+                    state="approved",
+                )
         return qs
 
     @extend_schema(request=ProposalInput, responses={201: MoveSerializer})

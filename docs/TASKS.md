@@ -160,6 +160,7 @@ fixture-verified only (no live VSA X validation).
 - [x] **CFA-04** Paste and TXT/CSV/XLSX import with column mapping (optional value per device); exact matching engine (device ID → serial → FQDN → hostname) with ambiguity resolution.
 - [x] **CFA-05** Live preview (device-level vs inherited via `/usage`), typed value validation, actions and summary, overwrite acknowledgement.
 - [x] **CFA-06** Gated writer (ADR-031): documented assign/update only, three switches + validated route + separate token; `vsa_custom_field_validate`.
+- [x] **OPS-06** Group move pre-send failures are *not sent* (retryable), verified not-moved moves can be sent again, outcome reasons shown (live incident, 2026-11-23).
 - [x] **PERF-01** Sync details only when needed (freshness rules, Refresh details now), default pace 5/s with audited migration, 15 s busy retry (product owner, 2026-11-23). LIVE_VALIDATION_PENDING: LastSeenOnline semantics, real sync durations.
 - [x] **OPS-05** Proxy re-resolves the backend after updates (fixes 502 / install stuck at "waiting for the portal to become ready"); install.sh restarts the proxy (2026-11-23).
 - [x] **UX-07** Group moves switched on in the portal: VSA_GROUP_MOVE_EXECUTION_ENABLED defaults to true (emergency stop); approvals page shows the exact reason moving is unavailable (product owner, 2026-11-23).

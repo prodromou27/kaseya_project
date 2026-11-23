@@ -217,3 +217,57 @@ def test_credential_references_cannot_name_server_secrets(world, monkeypatch, se
     monkeypatch.setenv("DJANGO_SECRET_KEY", "server-secret:value")
     with pytest.raises(CredentialUnavailable, match="VSA_, ITGLUE_ or AUTOTASK_"):
         resolve_basic("env:DJANGO_SECRET_KEY")  # a reference stored before this check is refused too
+
+
+def test_unreachable_vsa_is_not_sent_and_the_move_can_be_sent_again(world, enabled, monkeypatch):
+    """Live incident 2026-11-23: DNS failed before sending; it must say "not sent", not "outcome unknown"."""
+    from apps.integrations.http import VendorUnavailable
+    from apps.integrations.vsa import writer
+
+    proposal, _, _ = approved(world)
+
+    def no_dns(*args, **kwargs):
+        raise VendorUnavailable("DNS resolution failed.")
+
+    monkeypatch.setattr(writer, "check_egress", no_dns)
+    resp = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/")
+    assert resp.status_code == 400
+    assert "Nothing was sent" in str(resp.json()) and "DNS resolution failed" in str(resp.json())
+    assert not GroupMoveExecution.objects.filter(proposal_id=proposal["id"]).exists()
+    assert not fixtures.FIXTURE_MOVES
+    assert AuditEvent.objects.filter(target_id=proposal["id"], action="group_move.execute_not_sent").exists()
+    listed = world.client(world.admin_a).get(f"{base(world)}{proposal['id']}/").json()
+    assert listed["execution_enabled"] is True and listed["execution"] is None
+    waiting = world.client(world.admin_a).get(base(world), {"view": "to_move"}).json()
+    assert proposal["id"] in {p["id"] for p in waiting["results"]}
+
+    monkeypatch.undo()
+    body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/").json()
+    assert body["execution"]["state"] == "succeeded" and len(fixtures.FIXTURE_MOVES) == 1
+
+
+def test_move_confirmed_not_made_by_read_back_can_be_sent_again(world, enabled):
+    proposal, _, target = approved(world)
+    move_execution.execute_move(world.customer_a, world.admin_a, proposal["id"], None, transport=_Timeout())
+    verified = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/verify/").json()
+    assert verified["execution"]["error_code"] == "still_in_source_group"
+    assert verified["execution_enabled"] is True  # still in its old group: sending again is safe
+    waiting = world.client(world.admin_a).get(base(world), {"view": "to_move"}).json()
+    assert proposal["id"] in {p["id"] for p in waiting["results"]}
+
+    body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/").json()
+    assert body["execution"]["state"] == "succeeded"
+    assert body["execution"]["observed_group_id"] == target["external_id"]
+    started = AuditEvent.objects.filter(target_id=proposal["id"], action="group_move.execute_started").order_by(
+        "created_at"
+    )
+    assert started.count() == 2 and started.last().metadata["retry_of"]["error_code"] == "still_in_source_group"
+
+
+def test_move_rejected_by_vsa_is_not_sent_again(world, enabled):
+    proposal, _, _ = approved(world)
+    move_execution.execute_move(
+        world.customer_a, world.admin_a, proposal["id"], None, transport=fixtures.FixtureWriteTransport(enabled, 403)
+    )
+    again = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/")
+    assert again.status_code == 400 and "already sent" in str(again.json())

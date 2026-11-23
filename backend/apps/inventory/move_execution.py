@@ -25,6 +25,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from apps.audit.services import record_event
 from apps.integrations.vsa.writer import (
     MoveNotAvailable,
+    MoveNotSent,
     MoveOutcomeUnknown,
     MoveRejected,
     VsaMoveWriter,
@@ -37,6 +38,14 @@ from .queries import current_observations, stale_cutoff
 logger = logging.getLogger("portal.inventory")
 
 VERIFIABLE = ("unknown", "unverified", "sending")
+# A read-back confirmed the device never left its source group: sending the same move again is safe (idempotent).
+RETRYABLE_ERROR = "still_in_source_group"
+
+
+def retryable(execution: GroupMoveExecution | None) -> bool:
+    return execution is not None and execution.state == "failed" and execution.error_code == RETRYABLE_ERROR
+
+
 SENDING_GRACE = timedelta(minutes=2)
 
 
@@ -47,7 +56,7 @@ def execution_status(proposal: GroupMoveRequest) -> tuple[bool, str]:
         return False, reason
     if proposal.state != "approved":
         return False, "Only approved proposals can be executed."
-    if hasattr(proposal, "execution"):
+    if hasattr(proposal, "execution") and not retryable(proposal.execution):
         return False, "Already executed."
     if proposal.reviewed_at and proposal.reviewed_at + _window() <= timezone.now():
         return False, "The approval is too old. Submit a new proposal against fresh inventory."
@@ -83,7 +92,8 @@ def _start(customer: Any, user: Any, proposal_id: Any, request: Any) -> tuple[Gr
             raise NotFound()
         if proposal.state != "approved":
             raise ValidationError({"execute": "Only approved proposals can be executed."})
-        if GroupMoveExecution.objects.filter(proposal=proposal).exists():
+        previous = GroupMoveExecution.objects.filter(proposal=proposal).first()
+        if previous is not None and not retryable(previous):
             raise ValidationError({"execute": "This move was already sent to VSA X. Use Verify to check it."})
         if proposal.requested_by_id == user.id and settings.CATALOG_REQUIRE_SEPARATE_REVIEWER:
             raise ValidationError({"execute": "The person who proposed the move cannot execute it."})
@@ -106,6 +116,14 @@ def _start(customer: Any, user: Any, proposal_id: Any, request: Any) -> tuple[Gr
             is_active=True,
         ).exists():
             raise ValidationError({"execute": "The destination group is no longer active in VSA X. Nothing was sent."})
+        retry_of = None
+        if previous is not None:  # verified still in the source group: replace the failed attempt (audit keeps it)
+            retry_of = {
+                "state": previous.state,
+                "error_code": previous.error_code,
+                "started_at": str(previous.started_at),
+            }
+            previous.delete()
         execution = GroupMoveExecution.objects.create(
             proposal=proposal, customer=customer, executed_by=user, started_at=timezone.now()
         )
@@ -118,6 +136,7 @@ def _start(customer: Any, user: Any, proposal_id: Any, request: Any) -> tuple[Gr
             target_group_id=proposal.target_group.external_id,
             source_group_id=proposal.source_group_id,
             by_requester=proposal.requested_by_id == user.id,
+            retry_of=retry_of,
         )
     return proposal, execution
 
@@ -150,6 +169,11 @@ def execute_move(
     target = proposal.target_group.external_id
     try:
         writer.move(proposal.asset.external_id, target)
+    except MoveNotSent as exc:
+        # Nothing reached VSA X: drop the attempt so the approved move can be sent again, and say why.
+        execution.delete()
+        _audit("group_move.execute_not_sent", "failure", user, proposal, request, reason=str(exc)[:300])
+        raise ValidationError({"execute": str(exc)}) from exc
     except MoveRejected as exc:
         execution.state, execution.http_status, execution.error_code = (
             "failed",

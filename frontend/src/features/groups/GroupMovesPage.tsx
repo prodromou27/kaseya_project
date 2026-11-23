@@ -34,6 +34,20 @@ const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "wa
   unknown: { label: "Outcome unknown", tone: "warn", help: "VSA X did not answer clearly. The move is never sent twice; use Verify to read the device back." },
   failed: { label: "Not moved", tone: "bad", help: "The device was not moved. Submit a new proposal if it is still needed." },
 };
+/** Plain-language reason for an execution's error code (PERF/OPS 2026-11-23). */
+const EXECUTION_REASON: Record<string, string> = {
+  still_in_source_group: "Reading the device back showed it is still in its old group, so you can send the move again.",
+  timeout_or_connection: "VSA X did not answer in time or the connection dropped.",
+  unreadable_response: "VSA X accepted the request but its answer could not be read.",
+  internal_error: "The portal hit an error while sending.",
+};
+function executionReason(ex: Execution): string {
+  const known = EXECUTION_REASON[ex.error_code];
+  if (known) return known;
+  if (/^http_\d+$/.test(ex.error_code)) return `VSA X answered with HTTP ${ex.error_code.slice(5)}.`;
+  if (/^rejected_http_\d+$/.test(ex.error_code)) return `VSA X refused the move (HTTP ${ex.error_code.slice(14)}).`;
+  return "";
+}
 type MoveOptions = {
   source_group: string; policy_impact: string; execution_enabled: boolean;
   source_is_onboarding: boolean; suggestion_note: string; suggestions_ambiguous: boolean;
@@ -135,11 +149,12 @@ function ExecutionPanel({ proposal, customer }: { proposal: Proposal; customer: 
     {ex ? (
       <div className="space-y-1 text-sm">
         <p><Badge tone={EXECUTION_TEXT[ex.state].tone}>{EXECUTION_TEXT[ex.state].label}</Badge> <span className="text-xs text-slate-500">by {ex.executed_by} · {formatUtc(ex.started_at)}{ex.http_status ? ` · HTTP ${ex.http_status}` : ""}</span></p>
-        <p className="text-xs text-slate-600">{EXECUTION_TEXT[ex.state].help}</p>
+        <p className="text-xs text-slate-600">{ex.error_code === "still_in_source_group" ? "" : EXECUTION_TEXT[ex.state].help} {executionReason(ex)}</p>
         {ex.observed_group_id ? <p className="text-xs text-slate-500">Group reported by VSA X: ID {ex.observed_group_id}{ex.verified_at ? ` (read ${formatUtc(ex.verified_at)})` : ""}</p> : null}
         {["unknown", "unverified", "sending"].includes(ex.state) && canApprove ? <button type="button" className="btn-secondary" disabled={run.isPending} onClick={() => run.mutate("verify")}>Verify in VSA X</button> : null}
       </div>
-    ) : proposal.execution_enabled ? (
+    ) : null}
+    {(!ex || proposal.execution_enabled) && (proposal.execution_enabled ? (
       canApprove && (proposal.self_approval_allowed || me.email !== proposal.requested_by) ? (
         confirming ? (
           <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="group" aria-label="Confirm move">
@@ -151,7 +166,7 @@ function ExecutionPanel({ proposal, customer }: { proposal: Proposal; customer: 
           </div>
         ) : <button type="button" className="btn-primary" onClick={() => setConfirming(true)}>Execute move in VSA X…</button>
       ) : <p className="text-xs text-slate-500">An administrator other than the requester can execute this approved move.</p>
-    ) : <p className="text-xs text-slate-500">{proposal.execution_blocked_reason || "Execution is not available."} The move can be made manually in VSA X.</p>}
+    ) : <p className="text-xs text-slate-500">{proposal.execution_blocked_reason || "Execution is not available."} The move can be made manually in VSA X.</p>)}
     {run.isError ? <p role="alert" className="text-sm text-red-700">{describeError(run.error)}</p> : null}
   </section>;
 }
@@ -169,7 +184,7 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
   // Own proposals are skipped only when a second approver is required (REQUIRE_SECOND_APPROVER).
   const mine = (p: Proposal) => p.requested_by === me.email && !p.self_approval_allowed;
   const pending = rows.filter((p) => p.state === "pending" && !p.expired && !mine(p));
-  const approvedWaiting = rows.filter((p) => p.state === "approved" && !p.execution && p.execution_enabled && !mine(p));
+  const approvedWaiting = rows.filter((p) => p.state === "approved" && p.execution_enabled && !mine(p));
   const movable = [...pending.filter((p) => p.execution_available), ...approvedWaiting];
   const skipped = rows.length - pending.length - approvedWaiting.length;
   const base = `/customers/${customer.id}/group-moves`;

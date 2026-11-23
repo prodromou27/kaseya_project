@@ -1,5 +1,11 @@
 # Changelog
 
+## OPS-06 - 2026-11-23 - group moves: "nothing was sent" instead of "outcome unknown"
+
+- Fix (live incident): when the portal server could not look up the VSA X host before sending, the move was recorded as *Outcome unknown* and could not be sent again. A failure before sending (DNS or egress check) now says **Nothing was sent** with the reason, keeps the move approved and records `group_move.execute_not_sent`.
+- A move that **Verify in VSA X** shows is still in its old group can be sent again (audited `retry_of` on `group_move.execute_started`); it also appears under *Approved, not moved yet* and in **Approve and move (N)**. Moves VSA X refused still need a new proposal.
+- Group move approvals explain the outcome in plain words (timeout, unreadable answer, HTTP status, refused).
+
 ## PERF-01 - 2026-11-23 - faster syncs: details only when needed
 
 - Each sync still reads the whole device list, but per-device detail calls (installed updates, applied policies, notifications, custom fields) are made only for devices that need them: new devices, a **Refresh details now** request, or details older than 24 hours (updates, notifications) / 7 days (policies, custom fields) for devices seen online since. Offline devices wait, at most 7 days. Skipped devices keep their last values (carried forward). Intervals: `DETAIL_REFRESH_HOURS_*`, `DETAIL_REFRESH_MAX_HOURS`.
