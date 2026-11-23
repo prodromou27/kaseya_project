@@ -143,6 +143,30 @@ describe("group move execution", () => {
     expect(list?.url).toContain("page_size=200");
   });
 
+  it("verifies all sent-but-unconfirmed moves at once without sending them again", async () => {
+    const sent = (id: string, name: string) => ({ ...proposal, id, device_name: name, execution_enabled: false,
+      execution: { state: "unknown", executed_by: "admin@example.test", started_at: "2026-11-23T13:12:57Z", finished_at: "2026-11-23T13:12:58Z",
+        http_status: 200, error_code: "unreadable_response", observed_group_id: "", verified_at: null } });
+    const moved = { ...proposal, execution: { state: "succeeded" } };
+    const { calls } = mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
+      "GET /api/v1/customers/": { body: page([admin]) },
+      [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([sent("p1", "PC1"), sent("p2", "PC2")]) },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/verify/`]: { body: moved },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/verify/`]: { body: moved },
+    } as never);
+    window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
+    renderApp("/group-moves?view=to_verify");
+    await userEvent.click(await screen.findByLabelText("Select all rows on this page"));
+    const bar = screen.getByRole("group", { name: "Decide selected proposals" });
+    expect(bar).not.toHaveTextContent("skipped");
+    await userEvent.click(within(bar).getByRole("button", { name: "Verify in VSA X (2)" }));
+    expect(await within(bar).findByRole("list", { name: "Decision results" })).toHaveTextContent("PC2: Moved in VSA X");
+    expect(calls.filter((c) => c.url.includes("/verify/"))).toHaveLength(2);
+    expect(calls.some((c) => c.url.includes("/execute/"))).toBe(false);
+    expect(calls.find((c) => c.method === "GET" && c.url.includes("/group-moves/?"))?.url).toContain("view=to_verify");
+  });
+
   it("names the exact reason when moving is not available", async () => {
     const off = { ...proposal, state: "pending", reviewed_by: null, execution_enabled: false, execution_available: false, self_approval_allowed: true,
       execution_unavailable_reason: "Executing moves in VSA X is switched off on this server (VSA_GROUP_MOVE_EXECUTION_ENABLED=false in .env.prod; set it to true and redeploy)." };

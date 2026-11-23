@@ -186,8 +186,26 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
   const pending = rows.filter((p) => p.state === "pending" && !p.expired && !mine(p));
   const approvedWaiting = rows.filter((p) => p.state === "approved" && p.execution_enabled && !mine(p));
   const movable = [...pending.filter((p) => p.execution_available), ...approvedWaiting];
-  const skipped = rows.length - pending.length - approvedWaiting.length;
+  const unconfirmed = rows.filter((p) => p.execution && ["unknown", "unverified", "sending"].includes(p.execution.state));
+  const skipped = rows.length - pending.length - approvedWaiting.length - unconfirmed.length;
   const base = `/customers/${customer.id}/group-moves`;
+  const verifyAll = async () => {
+    setBusy(true);
+    setDone([]);
+    const results: Outcome[] = [];
+    for (const p of unconfirmed) {
+      try {
+        const after = await api.post<Proposal>(`${base}/${p.id}/verify/`, {});
+        const state = after.execution?.state ?? "unknown";
+        results.push({ device: p.device_name, ok: state === "succeeded", text: EXECUTION_TEXT[state].label });
+      } catch (error) {
+        results.push({ device: p.device_name, ok: false, text: describeError(error) });
+      }
+      setDone([...results]);
+    }
+    setBusy(false);
+    void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
+  };
   const run = async (mode: "move" | "approved" | "rejected") => {
     setBusy(true);
     setDone([]);
@@ -240,6 +258,12 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
           {pending.length ? <button type="button" className="btn-danger" disabled={busy || !reasonOk} onClick={() => void run("rejected")}>Reject ({pending.length})</button> : null}
         </div>
       ) : null}
+      {unconfirmed.length ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-secondary" disabled={busy} onClick={() => void verifyAll()}>Verify in VSA X ({unconfirmed.length})</button>
+          <span className="text-xs text-slate-600">Reads each device&apos;s group back from VSA X; nothing is sent again.</span>
+        </div>
+      ) : null}
       {done.length ? (
         <ul aria-label="Decision results" aria-live="polite" className="space-y-0.5 text-xs">
           {busy ? <li>Working… {done.length} done</li> : null}
@@ -259,13 +283,13 @@ function Requests({ customer }: { customer: Customer }) {
     queryFn: ({ signal }) => api.get<Paginated<Proposal>>(`/customers/${customer.id}/group-moves/`, { page, page_size: 200, ...(view ? { view } : {}) }, signal),
   });
   const selected = query.data?.results.find((proposal) => proposal.id === open);
-  const VIEWS: [string, string][] = [["waiting", "Waiting for decision"], ["to_move", "Approved, not moved yet"], ["", "All proposals"]];
+  const VIEWS: [string, string][] = [["waiting", "Waiting for decision"], ["to_move", "Approved, not moved yet"], ["to_verify", "Sent, not confirmed"], ["", "All proposals"]];
   return <div className="space-y-3">
     <div role="group" aria-label="Show" className="flex flex-wrap gap-2">
       {VIEWS.map(([v, label]) => <button key={v || "all"} type="button" aria-pressed={view === v} className="list-preset" onClick={() => update({ view: v }, true)}>{label}</button>)}
     </div>
     <QueryBoundary query={query}>{(data) => <div className="space-y-4">
-    {data.count && customer.my_capabilities.includes("customer.group_move.approve") ? <p className="text-xs text-slate-600">Tick the box in the table header to select all {Math.min(data.count, 200)} on this page, then choose Approve and move.</p> : null}
+    {data.count && customer.my_capabilities.includes("customer.group_move.approve") ? <p className="text-xs text-slate-600">Tick the box in the table header to select all {Math.min(data.count, 200)} on this page, then choose {view === "to_verify" ? "Verify in VSA X" : "Approve and move"}.</p> : null}
     <DataTable caption="Group move proposals" rows={data.results} total={data.count} page={page} pageSize={200} onPageChange={setPage} getRowId={(row) => row.id}
       selectable={customer.my_capabilities.includes("customer.group_move.approve")}
       selectionActions={(rows) => <BulkDecision customer={customer} rows={rows} />}

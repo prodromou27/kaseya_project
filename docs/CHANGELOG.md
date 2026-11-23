@@ -1,5 +1,10 @@
 # Changelog
 
+## OPS-07 - 2026-11-23 - group moves confirmed on the live tenant's answer
+
+- Fix (live tenant): VSA X answers a move with HTTP 200 but not the documented JSON body, so every accepted move showed *Outcome unknown*. A 2xx now counts as accepted whatever the body; the portal reads the device back straight away and shows **Moved in VSA X** or **Not confirmed yet**. The answer's content type and length (never the body) are logged as `group_move_answer_not_json`.
+- New view **Sent, not confirmed** (`view=to_verify`) and bulk **Verify in VSA X (N)** to resolve many moves at once (read-back only, nothing is sent again).
+
 ## OPS-06 - 2026-11-23 - group moves: "nothing was sent" instead of "outcome unknown"
 
 - Fix (live incident): when the portal server could not look up the VSA X host before sending, the move was recorded as *Outcome unknown* and could not be sent again. A failure before sending (DNS or egress check) now says **Nothing was sent** with the reason, keeps the move approved and records `group_move.execute_not_sent`.

@@ -271,3 +271,39 @@ def test_move_rejected_by_vsa_is_not_sent_again(world, enabled):
     )
     again = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/")
     assert again.status_code == 400 and "already sent" in str(again.json())
+
+
+class _AcceptedWithoutJson:
+    """Live tenant 2026-11-23: HTTP 200 whose body is not the documented JSON (e.g. empty)."""
+
+    def __init__(self, instance, apply=True):
+        self.instance, self.apply = instance, apply
+
+    def put(self, url, *, json, headers, auth):
+        if self.apply:
+            device = url.rstrip("/").split("/")[-2]
+            fixtures.FIXTURE_MOVES[(str(self.instance.id), device)] = (str(json["GroupId"]), "x")
+        return fixtures.FakeResponse(200, ValueError("no JSON body"))
+
+
+def test_200_without_json_body_is_accepted_and_confirmed_by_read_back(world, enabled):
+    proposal, _, target = approved(world)
+    execution = move_execution.execute_move(
+        world.customer_a, world.admin_a, proposal["id"], None, transport=_AcceptedWithoutJson(enabled)
+    )
+    assert execution.state == "succeeded" and execution.http_status == 200
+    assert execution.observed_group_id == target["external_id"] and execution.error_code == ""
+
+
+def test_200_without_json_body_not_yet_visible_is_unverified_and_listed_to_verify(world, enabled):
+    proposal, obs, target = approved(world)
+    execution = move_execution.execute_move(
+        world.customer_a, world.admin_a, proposal["id"], None, transport=_AcceptedWithoutJson(enabled, apply=False)
+    )
+    assert execution.state == "unverified"
+    listed = world.client(world.admin_a).get(base(world), {"view": "to_verify"}).json()
+    assert [p["id"] for p in listed["results"]] == [proposal["id"]]
+    fixtures.FIXTURE_MOVES[(str(enabled.id), obs.asset.external_id)] = (target["external_id"], "x")
+    body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/verify/").json()
+    assert body["execution"]["state"] == "succeeded"
+    assert world.client(world.admin_a).get(base(world), {"view": "to_verify"}).json()["results"] == []

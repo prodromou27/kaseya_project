@@ -15,6 +15,7 @@ Deliberately separate from the read-only adapter and client (which stay GET-only
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from collections.abc import Mapping
@@ -31,6 +32,8 @@ from apps.integrations.secrets import (
     can_write,
     resolve_write_auth,
 )
+
+logger = logging.getLogger("portal.integrations")
 
 MOVE_PATH = re.compile(r"/api/v3/devices/[A-Za-z0-9-]{1,64}/move")
 _DEVICE_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
@@ -148,10 +151,23 @@ class VsaMoveWriter:
             raise MoveOutcomeUnknown("timeout_or_connection") from exc
         status = int(resp.status_code)
         if 200 <= status < 300:
+            # A 2xx means VSA X accepted the move. Live tenant (2026-11-23) answers 200 with a body that is not the
+            # documented JSON, so the body is optional: the caller confirms by reading the device back either way.
             try:
-                data = (resp.json() or {}).get("Data") or {}
-            except ValueError as exc:
-                raise MoveOutcomeUnknown("unreadable_response", status) from exc
+                body = resp.json()
+                data = (body.get("Data") if isinstance(body, dict) else None) or {}
+            except ValueError:
+                logger.warning(
+                    "group_move_answer_not_json",
+                    extra={
+                        "http_status": status,
+                        "content_type": str(resp.headers.get("Content-Type", ""))[:100],
+                        "content_length": len(getattr(resp, "content", b"") or b""),
+                    },
+                )
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
             return {
                 "device": str(data.get("DeviceIdentifier") or "")[:64],
                 "group_id": str(data.get("GroupId") or "")[:20],

@@ -1,10 +1,11 @@
 # VSA live tenant validation log
 
-**Status:** no live VSA connection has been performed for this project. This file is intentionally blank beyond the template.
+**Status:** first live observations recorded 2026-11-23 (group move write). Everything else remains LIVE_VALIDATION_PENDING.
 
 | Date | VSA version/environment | Route/feature | Customer scope (sanitized) | Result | Observed fields | Fixture/test reference | Reviewer |
 |---|---|---|---|---|---|---|---|
 | TBD | TBD | TBD | TBD | LIVE_VALIDATION_PENDING | TBD | TBD | TBD |
+| 2026-11-23 | production tenant (version not recorded) | `PUT /api/v3/devices/{id}/move` | one customer, 5 devices | PARTIAL: HTTP 200 for each; response body is **not** the documented JSON (portal recorded `unreadable_response`). Device read-back (`GET /api/v3/devices/{id}`) still to be confirmed with Verify | status code only (body never stored) | `test_group_move_execution.py::test_200_without_json_body_*` | product owner (reported), OPS-07 |
 | — | unknown until pilot | `GET /api/v3/assets` (+ include sections) | — | LIVE_VALIDATION_PENDING | docs only | `test_vsa_adapter.py`, `assets_doc_example.json` | — |
 | — | unknown until pilot | `GET /api/v3/assets/:id?include=InstalledUpdates` | — | LIVE_VALIDATION_PENDING | docs only | `test_patching.py` | — |
 | — | unknown until pilot | `GET /api/v3/organizations`, `/sites`, `/groups`, `/devices` | — | LIVE_VALIDATION_PENDING | docs only | `test_vsa1_hierarchy_network.py` | — |

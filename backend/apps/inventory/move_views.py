@@ -147,6 +147,8 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
                     | Q(execution__state="failed", execution__error_code=move_execution.RETRYABLE_ERROR),
                     state="approved",
                 )
+            elif view == "to_verify":  # sent, but VSA X has not confirmed the new group yet
+                qs = qs.filter(execution__state__in=move_execution.VERIFIABLE)
         return qs
 
     @extend_schema(request=ProposalInput, responses={201: MoveSerializer})
