@@ -144,7 +144,7 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
             elif view == "to_move":  # approved, not sent yet
                 qs = qs.filter(
                     Q(execution__isnull=True)
-                    | Q(execution__state="failed", execution__error_code=move_execution.RETRYABLE_ERROR),
+                    | Q(execution__state="failed", execution__error_code__in=move_execution.RETRYABLE_ERRORS),
                     state="approved",
                 )
             elif view == "to_verify":  # sent, but VSA X has not confirmed the new group yet

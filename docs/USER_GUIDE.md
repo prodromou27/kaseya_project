@@ -302,6 +302,9 @@ move; the portal sends it to VSA X once and then reads the device back:
   group: then **Execute move in VSA X…** is offered again, because sending the same move again is safe.
 - To check many sent moves at once: **Group move approvals → Sent, not confirmed**, tick the header box and press
   **Verify in VSA X (N)**. Each device's group is read back; nothing is sent again.
+- **Not moved - VSA X answered OK but did not apply the move** - the device is still in its old group although VSA X
+  said OK. Usually the API token may not move devices, or a proxy/firewall in front of VSA X answers instead of the API.
+  An administrator fixes that, then sends the move again. A bulk move stops at the first such answer.
 - **Nothing was sent** - the portal server could not reach VSA X (for example its name could not be looked up). The
   message says why; the move stays approved and can be sent again once the server can reach VSA X.
 

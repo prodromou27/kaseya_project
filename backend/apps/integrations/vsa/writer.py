@@ -151,28 +151,31 @@ class VsaMoveWriter:
             raise MoveOutcomeUnknown("timeout_or_connection") from exc
         status = int(resp.status_code)
         if 200 <= status < 300:
-            # A 2xx means VSA X accepted the move. Live tenant (2026-11-23) answers 200 with a body that is not the
-            # documented JSON, so the body is optional: the caller confirms by reading the device back either way.
+            # A 2xx is not proof: live tenant (2026-11-23) answered 200 with a body that is not the documented JSON and
+            # did not move the device. The caller always reads the device back; the answer's shape is reported.
+            content_type = str(resp.headers.get("Content-Type", ""))[:100]
+            content_length = len(getattr(resp, "content", b"") or b"")
             try:
                 body = resp.json()
-                data = (body.get("Data") if isinstance(body, dict) else None) or {}
             except ValueError:
+                body = None
+            data = body.get("Data") if isinstance(body, dict) else None
+            documented = isinstance(data, dict) and "GroupId" in data
+            if not documented:
                 logger.warning(
                     "group_move_answer_not_json",
-                    extra={
-                        "http_status": status,
-                        "content_type": str(resp.headers.get("Content-Type", ""))[:100],
-                        "content_length": len(getattr(resp, "content", b"") or b""),
-                    },
+                    extra={"http_status": status, "content_type": content_type, "content_length": content_length},
                 )
-                data = {}
-            if not isinstance(data, dict):
-                data = {}
+            data = data if isinstance(data, dict) else {}
             return {
                 "device": str(data.get("DeviceIdentifier") or "")[:64],
                 "group_id": str(data.get("GroupId") or "")[:20],
                 "group_name": str(data.get("GroupName") or "")[:255],
                 "elapsed_ms": int((time.monotonic() - started) * 1000),
+                "http_status": status,
+                "documented_answer": documented,
+                "content_type": content_type,
+                "content_length": content_length,
             }
         if 300 <= status < 400 or status >= 500:
             raise MoveOutcomeUnknown(f"http_{status}", status)

@@ -1,5 +1,11 @@
 # Changelog
 
+## OPS-08 - 2026-11-23 - "VSA X answered OK but did not apply the move"
+
+- Live tenant: `PUT /devices/{id}/move` answers HTTP 200 without the documented JSON and the device stays in its group (read-back: still in the source group). Such a move is now **Not moved** with `accepted_not_applied` and the likely causes (API token without permission to move devices, or a proxy/firewall answering instead of the API), instead of *Not confirmed yet*. It can be sent again once the cause is fixed.
+- Bulk **Approve and move** stops after the first such answer instead of sending every selected move.
+- The audit event of each attempt records the answer's shape (`documented_answer`, content type, length; never the body), and the recorded HTTP status is the real one.
+
 ## OPS-07 - 2026-11-23 - group moves confirmed on the live tenant's answer
 
 - Fix (live tenant): VSA X answers a move with HTTP 200 but not the documented JSON body, so every accepted move showed *Outcome unknown*. A 2xx now counts as accepted whatever the body; the portal reads the device back straight away and shows **Moved in VSA X** or **Not confirmed yet**. The answer's content type and length (never the body) are logged as `group_move_answer_not_json`.

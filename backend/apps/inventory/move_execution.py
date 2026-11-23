@@ -40,10 +40,13 @@ logger = logging.getLogger("portal.inventory")
 VERIFIABLE = ("unknown", "unverified", "sending")
 # A read-back confirmed the device never left its source group: sending the same move again is safe (idempotent).
 RETRYABLE_ERROR = "still_in_source_group"
+# VSA X answered 2xx without the documented answer and the device stayed put (live tenant 2026-11-23).
+NOT_APPLIED_ERROR = "accepted_not_applied"
+RETRYABLE_ERRORS = (RETRYABLE_ERROR, NOT_APPLIED_ERROR)
 
 
 def retryable(execution: GroupMoveExecution | None) -> bool:
-    return execution is not None and execution.state == "failed" and execution.error_code == RETRYABLE_ERROR
+    return execution is not None and execution.state == "failed" and execution.error_code in RETRYABLE_ERRORS
 
 
 SENDING_GRACE = timedelta(minutes=2)
@@ -167,8 +170,9 @@ def execute_move(
         raise ValidationError({"execute": str(exc)}) from exc
     proposal, execution = _start(customer, user, proposal_id, request)
     target = proposal.target_group.external_id
+    answer: dict[str, Any] = {}
     try:
-        writer.move(proposal.asset.external_id, target)
+        answer = writer.move(proposal.asset.external_id, target)
     except MoveNotSent as exc:
         # Nothing reached VSA X: drop the attempt so the approved move can be sent again, and say why.
         execution.delete()
@@ -186,11 +190,15 @@ def execute_move(
         logger.exception("group_move_execute_error", extra={"proposal": str(proposal.id)})
         execution.state, execution.error_code = "unknown", "internal_error"
     else:
-        execution.http_status = 200
+        execution.http_status = int(answer.get("http_status") or 200)
         observed = _read_back(proposal)
         execution.observed_group_id = observed or ""
         if observed == target:
             execution.state, execution.verified_at = "succeeded", timezone.now()
+        elif observed == proposal.source_group_id and not answer.get("documented_answer", True):
+            # "OK" without the documented answer and the device did not move: it was not applied (proxy/WAF answer
+            # or a token without permission to move devices). Safe to send again once the cause is fixed.
+            execution.state, execution.error_code, execution.verified_at = "failed", NOT_APPLIED_ERROR, timezone.now()
         else:
             execution.state = "unverified"
     execution.finished_at = timezone.now()
@@ -204,6 +212,7 @@ def execute_move(
         http_status=execution.http_status,
         error_code=execution.error_code,
         target_group_id=target,
+        answer={k: answer[k] for k in ("documented_answer", "content_type", "content_length") if k in answer},
     )
     return execution
 

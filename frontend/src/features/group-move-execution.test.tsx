@@ -167,6 +167,29 @@ describe("group move execution", () => {
     expect(calls.find((c) => c.method === "GET" && c.url.includes("/group-moves/?"))?.url).toContain("view=to_verify");
   });
 
+  it("stops a bulk move when VSA X answers OK but does not apply the move", async () => {
+    const ready = (id: string, name: string) => ({ ...proposal, id, device_name: name, self_approval_allowed: true });
+    const notApplied = { ...proposal, execution: { state: "failed", executed_by: "admin@example.test", started_at: "2026-11-23T14:00:00Z",
+      finished_at: "2026-11-23T14:00:01Z", http_status: 200, error_code: "accepted_not_applied", observed_group_id: "89", verified_at: "2026-11-23T14:00:01Z" } };
+    const { calls } = mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
+      "GET /api/v1/customers/": { body: page([admin]) },
+      [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([ready("p1", "PC1"), ready("p2", "PC2"), ready("p3", "PC3")]) },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/execute/`]: { body: notApplied },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/execute/`]: { body: notApplied },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p3/execute/`]: { body: notApplied },
+    } as never);
+    window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
+    renderApp("/group-moves?view=to_move");
+    await userEvent.click(await screen.findByLabelText("Select all rows on this page"));
+    const bar = screen.getByRole("group", { name: "Decide selected proposals" });
+    await userEvent.click(within(bar).getByLabelText(/Move 3 devices in VSA X now/));
+    await userEvent.click(within(bar).getByRole("button", { name: "Approve and move (3)" }));
+    expect(await within(bar).findByRole("list", { name: "Decision results" })).toHaveTextContent("did not apply the move");
+    expect(within(bar).getByRole("list", { name: "Decision results" })).toHaveTextContent("Stopped: the remaining moves were not sent");
+    expect(calls.filter((c) => c.url.includes("/execute/"))).toHaveLength(1);
+  });
+
   it("names the exact reason when moving is not available", async () => {
     const off = { ...proposal, state: "pending", reviewed_by: null, execution_enabled: false, execution_available: false, self_approval_allowed: true,
       execution_unavailable_reason: "Executing moves in VSA X is switched off on this server (VSA_GROUP_MOVE_EXECUTION_ENABLED=false in .env.prod; set it to true and redeploy)." };

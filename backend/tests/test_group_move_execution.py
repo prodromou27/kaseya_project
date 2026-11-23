@@ -295,10 +295,29 @@ def test_200_without_json_body_is_accepted_and_confirmed_by_read_back(world, ena
     assert execution.observed_group_id == target["external_id"] and execution.error_code == ""
 
 
-def test_200_without_json_body_not_yet_visible_is_unverified_and_listed_to_verify(world, enabled):
+def test_200_without_documented_answer_and_device_not_moved_is_not_applied(world, enabled):
+    """Live tenant 2026-11-23: HTTP 200, no documented JSON, read-back shows the old group -> not moved, resendable."""
     proposal, obs, target = approved(world)
     execution = move_execution.execute_move(
         world.customer_a, world.admin_a, proposal["id"], None, transport=_AcceptedWithoutJson(enabled, apply=False)
+    )
+    assert execution.state == "failed" and execution.error_code == "accepted_not_applied"
+    assert execution.observed_group_id == obs.group_external_id
+    event = AuditEvent.objects.get(target_id=proposal["id"], action="group_move.execute_failed")
+    assert event.metadata["answer"]["documented_answer"] is False
+    assert world.client(world.admin_a).get(base(world), {"view": "to_verify"}).json()["results"] == []
+    waiting = world.client(world.admin_a).get(base(world), {"view": "to_move"}).json()
+    assert [p["id"] for p in waiting["results"]] == [proposal["id"]]
+    # Once the cause is fixed the same move can be sent again.
+    body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/").json()
+    assert body["execution"]["state"] == "succeeded"
+    assert body["execution"]["observed_group_id"] == target["external_id"]
+
+
+def test_documented_answer_not_yet_visible_stays_unverified_and_listed_to_verify(world, enabled):
+    proposal, obs, target = approved(world)
+    execution = move_execution.execute_move(
+        world.customer_a, world.admin_a, proposal["id"], None, transport=_AcceptedButNotApplied()
     )
     assert execution.state == "unverified"
     listed = world.client(world.admin_a).get(base(world), {"view": "to_verify"}).json()

@@ -37,6 +37,7 @@ const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "wa
 /** Plain-language reason for an execution's error code (PERF/OPS 2026-11-23). */
 const EXECUTION_REASON: Record<string, string> = {
   still_in_source_group: "Reading the device back showed it is still in its old group, so you can send the move again.",
+  accepted_not_applied: "VSA X answered OK but did not apply the move: the device is still in its old group. Usually the API token is not allowed to move devices, or a proxy/firewall in front of VSA X answers instead of the API. Fix that first, then send the move again.",
   timeout_or_connection: "VSA X did not answer in time or the connection dropped.",
   unreadable_response: "VSA X accepted the request but its answer could not be read.",
   internal_error: "The portal hit an error while sending.",
@@ -149,7 +150,7 @@ function ExecutionPanel({ proposal, customer }: { proposal: Proposal; customer: 
     {ex ? (
       <div className="space-y-1 text-sm">
         <p><Badge tone={EXECUTION_TEXT[ex.state].tone}>{EXECUTION_TEXT[ex.state].label}</Badge> <span className="text-xs text-slate-500">by {ex.executed_by} · {formatUtc(ex.started_at)}{ex.http_status ? ` · HTTP ${ex.http_status}` : ""}</span></p>
-        <p className="text-xs text-slate-600">{ex.error_code === "still_in_source_group" ? "" : EXECUTION_TEXT[ex.state].help} {executionReason(ex)}</p>
+        <p className="text-xs text-slate-600">{["still_in_source_group", "accepted_not_applied"].includes(ex.error_code) ? "" : EXECUTION_TEXT[ex.state].help} {executionReason(ex)}</p>
         {ex.observed_group_id ? <p className="text-xs text-slate-500">Group reported by VSA X: ID {ex.observed_group_id}{ex.verified_at ? ` (read ${formatUtc(ex.verified_at)})` : ""}</p> : null}
         {["unknown", "unverified", "sending"].includes(ex.state) && canApprove ? <button type="button" className="btn-secondary" disabled={run.isPending} onClick={() => run.mutate("verify")}>Verify in VSA X</button> : null}
       </div>
@@ -218,6 +219,12 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
         if (mode === "move") {
           const after = await api.post<Proposal>(`${base}/${p.id}/execute/`, {});
           const state = after.execution?.state ?? "sending";
+          if (after.execution?.error_code === "accepted_not_applied") {
+            // Every further move would be answered the same way: stop instead of sending them all.
+            results.push({ device: p.device_name, ok: false, text: `${EXECUTION_TEXT[state].label}. ${EXECUTION_REASON.accepted_not_applied} Stopped: the remaining moves were not sent.` });
+            setDone([...results]);
+            break;
+          }
           results.push({ device: p.device_name, ok: state === "succeeded", text: EXECUTION_TEXT[state].label });
         } else {
           results.push({ device: p.device_name, ok: true, text: current.state });
