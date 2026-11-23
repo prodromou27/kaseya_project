@@ -80,7 +80,10 @@ class RequestsWriteTransport:
 def availability(instance: IntegrationInstance) -> tuple[bool, str]:
     """(available, reason shown to users when not). Does not resolve the secret value."""
     if not getattr(settings, "VSA_GROUP_MOVE_EXECUTION_ENABLED", False):
-        return False, "Executing moves in VSA X is switched off on this server."
+        return False, (
+            "Executing moves in VSA X is switched off on this server (VSA_GROUP_MOVE_EXECUTION_ENABLED=false in "
+            ".env.prod; set it to true and redeploy)."
+        )
     if instance.provider != IntegrationInstance.Provider.VSA_X or not instance.enabled:
         return False, "The VSA X integration is not enabled."
     if not instance.group_move_execution_enabled:

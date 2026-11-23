@@ -242,12 +242,14 @@ Plan and API findings: `CUSTOM_FIELD_ASSIGNMENT_IMPLEMENTATION.md`.
 
 ## Enabling execution of approved group moves (VSA5-EXEC)
 
-Off by default. Both switches are required; removing either switches execution off again.
+Off by default: the per-integration switch below is off until a super admin ticks it. The server variable
+`VSA_GROUP_MOVE_EXECUTION_ENABLED` defaults to `true` (since 2026-11-23) and is only an emergency stop; if an older
+`.env.prod` still says `false`, change it to `true` (or delete the line) and redeploy.
 
 1. Token: moves use the integration's API token (its VSA X permissions must allow moving devices). Optionally enter a
    separate write token under **Settings → Integrations → Edit → Separate write token** (or as the server secret
    `env:VSA_WRITE_<NAME>`); when set, it is used instead.
-2. Set `VSA_GROUP_MOVE_EXECUTION_ENABLED=true` in the server environment and restart the web and worker containers.
+2. Make sure `.env.prod` does not set `VSA_GROUP_MOVE_EXECUTION_ENABLED=false` (the emergency stop).
 3. In **Settings → Integrations → Edit**, tick *Allow approved moves to be executed for this integration*. The change is
    audited. Changing the integration's base URL clears the
    switch.

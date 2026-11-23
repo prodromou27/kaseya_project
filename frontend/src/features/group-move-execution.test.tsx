@@ -121,4 +121,20 @@ describe("group move execution", () => {
     expect(list?.url).toContain("view=waiting");
     expect(list?.url).toContain("page_size=200");
   });
+
+  it("names the exact reason when moving is not available", async () => {
+    const off = { ...proposal, state: "pending", reviewed_by: null, execution_enabled: false, execution_available: false, self_approval_allowed: true,
+      execution_unavailable_reason: "Executing moves in VSA X is switched off on this server (VSA_GROUP_MOVE_EXECUTION_ENABLED=false in .env.prod; set it to true and redeploy)." };
+    mockFetch({
+      "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
+      "GET /api/v1/customers/": { body: page([admin]) },
+      [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([off]) },
+    } as never);
+    window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
+    renderApp("/group-moves");
+    await userEvent.click(await screen.findByLabelText("Select all rows on this page"));
+    const bar = screen.getByRole("group", { name: "Decide selected proposals" });
+    expect(bar).toHaveTextContent("VSA_GROUP_MOVE_EXECUTION_ENABLED=false in .env.prod");
+    expect(within(bar).queryByRole("button", { name: /Approve and move/ })).not.toBeInTheDocument();
+  });
 });

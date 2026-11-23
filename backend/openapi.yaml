@@ -8474,6 +8474,11 @@ components:
           description: Execution is set up for the integration (switches + token),
             whatever this proposal's state.
           readOnly: true
+        execution_unavailable_reason:
+          type: string
+          description: 'Why moving is not set up for the integration (empty when it
+            is): server stop, switch or token.'
+          readOnly: true
         self_approval_allowed:
           type: boolean
           description: The requester may approve and execute their own proposal (REQUIRE_SECOND_APPROVER
@@ -8495,6 +8500,7 @@ components:
       - execution_available
       - execution_blocked_reason
       - execution_enabled
+      - execution_unavailable_reason
       - expired
       - expires_at
       - generation

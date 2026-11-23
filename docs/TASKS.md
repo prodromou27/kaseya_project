@@ -160,6 +160,7 @@ fixture-verified only (no live VSA X validation).
 - [x] **CFA-04** Paste and TXT/CSV/XLSX import with column mapping (optional value per device); exact matching engine (device ID → serial → FQDN → hostname) with ambiguity resolution.
 - [x] **CFA-05** Live preview (device-level vs inherited via `/usage`), typed value validation, actions and summary, overwrite acknowledgement.
 - [x] **CFA-06** Gated writer (ADR-031): documented assign/update only, three switches + validated route + separate token; `vsa_custom_field_validate`.
+- [x] **UX-07** Group moves switched on in the portal: VSA_GROUP_MOVE_EXECUTION_ENABLED defaults to true (emergency stop); approvals page shows the exact reason moving is unavailable (product owner, 2026-11-23).
 - [x] **UX-06** Group moves follow REQUIRE_SECOND_APPROVER: a single administrator can select all suggested moves, approve and move them; approvals list opens on Waiting for decision, 200 per page (product owner, 2026-11-22).
 - [x] **UX-05** Shorter menu: daily work and VSA X changes always visible, other groups folded (current page's group opens itself; Find a page searches all; every URL unchanged) (product owner, 2026-11-22).
 - [x] **UX-04** Find a device from the header across all permitted customers (type-ahead, opens the device); dashboard shows every customer's health with none selected and the full customer summary with one selected (product owner, 2026-11-20).

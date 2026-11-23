@@ -1,5 +1,10 @@
 # Changelog
 
+## UX-07 - 2026-11-23 - switch group moves on in the portal
+
+- `VSA_GROUP_MOVE_EXECUTION_ENABLED` now defaults to `true` and is only a server-wide emergency stop; moves are switched on per integration in Settings → Integrations → Edit (still off until a super admin ticks it), as for custom field writes. **Existing installs:** an `.env.prod` created from the old example still contains `VSA_GROUP_MOVE_EXECUTION_ENABLED=false`; change it to `true` (or remove the line) and redeploy.
+- Group move approvals show the exact reason moving is unavailable (server stop with the variable and file to change, integration switch or missing token). API: proposals include `execution_unavailable_reason`.
+
 ## UX-06 - 2026-11-22 - approve all suggested moves as a single administrator
 
 - Fix: moves proposed by an administrator stayed pending because the requester could never approve them, even with single-administrator approvals. Group moves now follow `REQUIRE_SECOND_APPROVER` like every other approval: off (default) lets an administrator approve and move their own proposals; on requires a different administrator. Audit: `group_move.approved` records `self_approved`, `group_move.execute_started` records `by_requester`. Migration `inventory.0015` removes the database constraint that forbade requester = reviewer.

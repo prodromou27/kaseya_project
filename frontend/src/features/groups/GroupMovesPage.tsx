@@ -19,7 +19,7 @@ type Proposal = {
   target_group_name: string; target_group_external_id: string; reason: string; policy_impact: string;
   state: "pending" | "approved" | "rejected"; requested_by: string; reviewed_by: string | null;
   review_reason: string; created_at: string; expires_at: string; expired: boolean;
-  execution_enabled: boolean; execution_available: boolean; self_approval_allowed?: boolean; execution_blocked_reason: string; execution: Execution | null;
+  execution_enabled: boolean; execution_available: boolean; execution_unavailable_reason?: string; self_approval_allowed?: boolean; execution_blocked_reason: string; execution: Execution | null;
 };
 type ExecutionState = "sending" | "succeeded" | "unverified" | "unknown" | "failed";
 type Execution = {
@@ -205,8 +205,8 @@ function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[]
       {skipped ? <p className="text-xs text-slate-600">{skipped} selected proposal(s) skipped: expired, already decided or already sent{rows.some((p) => p.requested_by === me.email && !p.self_approval_allowed) ? ", or your own (a second administrator must approve)" : ""}.</p> : null}
       {pending.length && !movable.length ? (
         <p className="text-xs text-amber-900">
-          Moving in VSA X is not switched on for this integration, so approving only records the decision. A super
-          admin enables it under Settings → Integrations → Edit (and VSA_GROUP_MOVE_EXECUTION_ENABLED=true on the server).
+          Approving only records the decision: {pending[0]?.execution_unavailable_reason || "moving in VSA X is not available for this integration."}
+          {" "}A super admin switches moves on under Settings → Integrations → Edit.
         </p>
       ) : null}
       {pending.length || approvedWaiting.length ? (

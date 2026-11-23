@@ -54,11 +54,24 @@ def approved(world, proposer=None, reviewer=None):
     return proposal, obs, target
 
 
-def test_switched_off_by_default_and_nothing_is_sent(world, demo):  # noqa: F811
+def test_off_until_the_integration_switch_is_set_in_the_portal(world, demo):  # noqa: F811
+    # Server default: moves allowed; the per-integration switch (off by default) decides.
+    proposal, _, _ = approved(world)
+    assert proposal["execution_available"] is False
+    assert "not enabled for this VSA X integration" in proposal["execution_unavailable_reason"]
+    response = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/")
+    assert response.status_code == 400 and not fixtures.FIXTURE_MOVES
+
+
+def test_server_emergency_stop_blocks_moves_and_nothing_is_sent(world, demo, settings):  # noqa: F811
+    settings.VSA_GROUP_MOVE_EXECUTION_ENABLED = False
+    demo.group_move_execution_enabled = True
+    demo.save(update_fields=["group_move_execution_enabled"])
     proposal, _, _ = approved(world)
     assert proposal["execution_enabled"] is False and proposal["execution_available"] is False
     response = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/")
     assert response.status_code == 400 and "switched off on this server" in str(response.json())
+    assert "VSA_GROUP_MOVE_EXECUTION_ENABLED=false" in proposal["execution_unavailable_reason"]
     assert not GroupMoveExecution.objects.exists() and not fixtures.FIXTURE_MOVES
 
 

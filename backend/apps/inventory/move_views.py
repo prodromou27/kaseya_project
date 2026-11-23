@@ -44,6 +44,7 @@ class MoveSerializer(serializers.ModelSerializer):
     expired = serializers.SerializerMethodField()
     execution_enabled = serializers.SerializerMethodField()
     execution_available = serializers.SerializerMethodField()
+    execution_unavailable_reason = serializers.SerializerMethodField()
     self_approval_allowed = serializers.SerializerMethodField()
     execution_blocked_reason = serializers.SerializerMethodField()
     execution = serializers.SerializerMethodField()
@@ -72,6 +73,7 @@ class MoveSerializer(serializers.ModelSerializer):
             "expired",
             "execution_enabled",
             "execution_available",
+            "execution_unavailable_reason",
             "self_approval_allowed",
             "execution_blocked_reason",
             "execution",
@@ -87,6 +89,10 @@ class MoveSerializer(serializers.ModelSerializer):
     def get_self_approval_allowed(self, obj: GroupMoveRequest) -> bool:
         """The requester may approve and execute their own proposal (REQUIRE_SECOND_APPROVER is off)."""
         return not settings.CATALOG_REQUIRE_SEPARATE_REVIEWER
+
+    def get_execution_unavailable_reason(self, obj: GroupMoveRequest) -> str:
+        """Why moving is not set up for the integration (empty when it is): server stop, switch or token."""
+        return move_execution.availability(obj.asset.integration_instance)[1]
 
     def get_execution_available(self, obj: GroupMoveRequest) -> bool:
         """Execution is set up for the integration (switches + token), whatever this proposal's state."""
