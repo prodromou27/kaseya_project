@@ -148,7 +148,10 @@ def test_budget_zero_means_unknown_and_no_calls(world, env):  # noqa: F811
     ) == {("not_requested", "unknown")}
 
 
-def test_rotation_and_carry_forward(world, env):  # noqa: F811
+def test_rotation_and_carry_forward(world, env, settings):  # noqa: F811
+    # Budget rotation when every device is due (PERF-01 intervals at 0 = always refetch); freshness has its own tests.
+    settings.DETAIL_REFRESH_HOURS_APPLIED_POLICIES = 0
+    settings.DETAIL_REFRESH_MAX_HOURS = 0
     _set_budget(env, 3)
     r1 = run(env["ma"], world.engineer_a, FixtureVsaTransport(_assets(), patch_policies=POLICIES))
     first = dict(

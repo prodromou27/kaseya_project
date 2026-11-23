@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect } from "react";
 import { Link, useParams } from "react-router";
@@ -15,7 +15,7 @@ import { api } from "../../lib/api";
 import { AdapterList } from "../groups/GroupNetworkPage";
 import { ProposeGroupMove } from "../groups/GroupMovesPage";
 import { formatUtc } from "../../lib/format";
-import { PATCH_STATE_LABEL, STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
+import { CAP, PATCH_STATE_LABEL, STATE_LABEL, UPDATE_STATUS_LABEL, type AssetDetail, type SoftwareRow } from "../../lib/types";
 import { PolicyDefinitionView } from "../policies/PolicyDefinitionView";
 import { DeviceScriptData } from "./DeviceScriptData";
 
@@ -264,6 +264,19 @@ function OsUpdates({ detail }: { detail: AssetDetail }) {
   );
 }
 
+/** PERF-01: details are fetched only when needed; this asks the next sync to fetch this device's details now. */
+function RefreshDetails({ assetId }: { assetId: string }) {
+  const refresh = useMutation({ mutationFn: () => api.post<{ detail: string }>(`/assets/${assetId}/refresh-details/`) });
+  if (refresh.isSuccess) return <span role="status" className="text-emerald-800">Refresh requested: updates, policies, notifications and custom fields are fetched on the sync that just started.</span>;
+  return <span className="ml-auto inline-flex items-center gap-2">
+    {refresh.isError ? <span role="alert" className="text-rose-800">{refresh.error instanceof Error ? refresh.error.message : "Could not request a refresh."}</span> : null}
+    <button type="button" className="btn-secondary" disabled={refresh.isPending} onClick={() => refresh.mutate()}
+            title="Details are normally fetched once a day (patches, notifications) or once a week (policies, custom fields).">
+      {refresh.isPending ? "Requesting…" : "Refresh details now"}
+    </button>
+  </span>;
+}
+
 export function AssetDetailPage() {
   const { assetId = "" } = useParams();
   const { filters: { tab, inventory, return_to }, update } = useUrlFilters({ tab: "overview", inventory: "", return_to: "" });
@@ -290,6 +303,8 @@ export function AssetDetailPage() {
             <span><span className="text-slate-500">Site / group</span> {detail.asset.site_name || detail.asset.site_external_id || "not reported"} / {detail.asset.group_name || "not reported"}</span>
             <span><span className="text-slate-500">Source</span> {detail.asset.source} / <Badge tone="info">{detail.asset.data_basis}</Badge></span>
             <span><span className="text-slate-500">Published</span> {formatUtc(detail.asset.as_of)}</span>
+            {selected && detail.customer?.id === selected.id && detail.in_current_dataset && selected.my_capabilities.includes(CAP.sync)
+              ? <RefreshDetails assetId={detail.id} /> : null}
           </div> : null}
           <Tabs label="Device sections" active={tab} onChange={(value) => update({ tab: value })} tabs={[
             { id: "overview", label: "Overview", content: <Overview detail={detail} /> },

@@ -94,6 +94,8 @@ class Asset(models.Model):
     )
     external_id = models.CharField(max_length=128)
     active = models.BooleanField(default=True, help_text="False once absent from a complete, published inventory.")
+    # PERF-01: set by "Refresh details now"; the next sync fetches this device's details even if they are recent.
+    details_refresh_requested_at = models.DateTimeField(null=True, blank=True)
     last_generation = models.ForeignKey(
         "integrations.DatasetGeneration", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )

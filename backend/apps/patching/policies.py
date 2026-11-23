@@ -55,7 +55,9 @@ def ensure_observations(generation: Any) -> int:
 
 
 def pending(generation: Any, limit: int) -> list[AppliedPolicyObservation]:
-    """Devices not yet fetched this generation: never-collected first, then least recently collected (rotation)."""
+    """Devices due for a fetch (``freshness.only_due``): never-collected first, then least recently collected."""
+    from apps.integrations.freshness import only_due
+
     if limit <= 0:
         return []
     last = (
@@ -65,9 +67,11 @@ def pending(generation: Any, limit: int) -> list[AppliedPolicyObservation]:
         .annotate(m=Max("collected_at"))
         .values("m")
     )
+    qs = AppliedPolicyObservation.objects.filter(generation=generation, status=UpdateStatus.NOT_REQUESTED).annotate(
+        last=Subquery(last)
+    )
     return list(
-        AppliedPolicyObservation.objects.filter(generation=generation, status=UpdateStatus.NOT_REQUESTED)
-        .annotate(last=Subquery(last))
+        only_due(qs, "applied_policies")
         .select_related("asset")
         .order_by(F("last").asc(nulls_first=True), "asset__external_id")[:limit]
     )

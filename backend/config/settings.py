@@ -256,6 +256,16 @@ SYNC_REQUEUE_AFTER_MINUTES = env_int("SYNC_REQUEUE_AFTER_MINUTES", 10)
 DATA_STALE_AFTER_HOURS = env_int("DATA_STALE_AFTER_HOURS", 26)
 # SCR-01: device x script-collector pairs read per sync (2 GET calls each); oldest values first.
 SCRIPT_RESULTS_BUDGET = env_int("SCRIPT_RESULTS_BUDGET", 200)
+# PERF-01: per-device detail calls only when needed (apps/integrations/freshness.py). A device is fetched again when
+# its last collection is older than the interval and it was seen online since; offline devices wait, but never
+# longer than DETAIL_REFRESH_MAX_HOURS. New devices and "Refresh details now" are fetched on the next sync.
+DETAIL_REFRESH_HOURS_INSTALLED_UPDATES = env_int("DETAIL_REFRESH_HOURS_INSTALLED_UPDATES", 24)
+DETAIL_REFRESH_HOURS_NOTIFICATIONS = env_int("DETAIL_REFRESH_HOURS_NOTIFICATIONS", 24)
+DETAIL_REFRESH_HOURS_APPLIED_POLICIES = env_int("DETAIL_REFRESH_HOURS_APPLIED_POLICIES", 168)
+DETAIL_REFRESH_HOURS_CUSTOM_FIELDS = env_int("DETAIL_REFRESH_HOURS_CUSTOM_FIELDS", 168)
+DETAIL_REFRESH_MAX_HOURS = env_int("DETAIL_REFRESH_MAX_HOURS", 168)
+# Seconds before a sync waiting for another customer's run on the same integration tries again.
+SYNC_BUSY_RETRY_SECONDS = env_int("SYNC_BUSY_RETRY_SECONDS", 15)
 # VSA5-EXEC: emergency stop for executing approved group moves in VSA X. Moves are switched on per integration in the
 # portal (Settings -> Integrations -> Edit, super admin, audited); set this to false to block them on the whole server.
 # Default true since 2026-11-23 (product owner: set up in the portal, as for custom fields).

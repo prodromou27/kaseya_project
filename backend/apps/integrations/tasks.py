@@ -18,7 +18,7 @@ def run_sync(run_id: str) -> str:
         run = execute(run_id)
     except InstanceBusy:
         if not settings.CELERY_TASK_ALWAYS_EAGER:
-            run_sync.apply_async((run_id,), countdown=60)
+            run_sync.apply_async((run_id,), countdown=settings.SYNC_BUSY_RETRY_SECONDS)
         return "busy"
     if run.state == SyncRun.State.PARTIAL and run.attempts < MAX_ATTEMPTS and not settings.CELERY_TASK_ALWAYS_EAGER:
         # Rate limited / vendor unavailable: resume from the checkpoint later (bounded by MAX_ATTEMPTS).

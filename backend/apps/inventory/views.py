@@ -189,6 +189,48 @@ class AssetDetailViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             }
         )
 
+    @extend_schema(request=None, responses={202: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["post"], url_path="refresh-details")
+    def refresh_details(self, request: Request, pk: str | None = None) -> Response:
+        """PERF-01: fetch this device's details (updates, policies, notifications, custom fields) on the next sync,
+        even if they are recent, and start that sync. Needs the customer's sync permission; audited."""
+        from apps.audit.services import record_event
+
+        asset = Asset.objects.select_related("customer").filter(pk=_uuid(pk)).first()
+        scope.get_customer_or_404(request.user, asset.customer_id if asset else None, Cap.CUSTOMER_SYNC, request)
+        if asset is None:  # unreachable: get_customer_or_404 already raised; explicit for python -O
+            raise NotFound()
+        mapping = (
+            CustomerSourceMapping.objects.filter(
+                customer_id=asset.customer_id,
+                integration_instance_id=asset.integration_instance_id,
+                mapping_status="approved",
+            )
+            .select_related("integration_instance", "customer")
+            .first()
+        )
+        if mapping is None:
+            raise ValidationError({"detail": "This device's VSA X source is no longer approved for the customer."})
+        Asset.objects.filter(pk=asset.pk).update(details_refresh_requested_at=timezone.now())
+        try:
+            run, _ = request_sync(mapping, requested_by=request.user)
+        except SyncRefused as exc:
+            raise ValidationError({"detail": str(exc), "code": exc.code}) from exc
+        record_event(
+            action="asset.details_refresh_requested",
+            outcome="success",
+            actor=request.user,
+            customer=asset.customer,
+            target_type="asset",
+            target_id=str(asset.pk),
+            request=request,
+            metadata={"sync_run": str(run.id)},
+        )
+        return Response(
+            {"sync_run_id": str(run.id), "state": run.state, "detail": "Details are fetched on this sync."},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         asset = Asset.objects.select_related("customer").filter(pk=_uuid(kwargs["pk"])).first()

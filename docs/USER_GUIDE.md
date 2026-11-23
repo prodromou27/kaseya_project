@@ -51,6 +51,11 @@ To browse or filter instead:
 4. Use tabs: Overview, Hardware, Installed Software, Windows Updates, Documentation (if linked), Tickets (if linked), History.
 5. Use `Open in VSA` when supported to investigate directly in the system of record.
 
+**Fresh details for one device:** updates, policies, notifications and custom fields are fetched once a day (updates,
+notifications) or once a week (policies, custom fields), and only for devices that were online. If you need them now,
+for example after patching, open the device and press **Refresh details now** (needs sync permission). The sync starts
+straight away and fetches that device's details.
+
 **Do not** treat a device missing from the portal as definitely absent from VSA until the last full sync completed successfully and source mapping is verified.
 
 ## 4. Identify out-of-date third-party software

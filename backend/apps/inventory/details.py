@@ -71,7 +71,9 @@ def ensure_fetches(generation: Any, kind: str) -> None:
 
 
 def pending(generation: Any, kind: str, limit: int) -> list[DeviceDetailFetch]:
-    """Never-collected devices first, then least recently collected (rotation across syncs)."""
+    """Devices due for a fetch (``freshness.only_due``): never-collected first, then least recently collected."""
+    from apps.integrations.freshness import only_due
+
     if limit <= 0:
         return []
     last = (
@@ -83,11 +85,11 @@ def pending(generation: Any, kind: str, limit: int) -> list[DeviceDetailFetch]:
         .annotate(m=Max("collected_at"))
         .values("m")
     )
+    qs = DeviceDetailFetch.objects.filter(
+        generation=generation, kind=kind, status=DeviceDetailFetch.Status.NOT_REQUESTED
+    ).annotate(last=Subquery(last))
     return list(
-        DeviceDetailFetch.objects.filter(
-            generation=generation, kind=kind, status=DeviceDetailFetch.Status.NOT_REQUESTED
-        )
-        .annotate(last=Subquery(last))
+        only_due(qs, kind)
         .select_related("asset")
         .order_by(F("last").asc(nulls_first=True), "asset__external_id")[:limit]
     )

@@ -208,6 +208,32 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/assets/{id}/refresh-details/:
+    post:
+      operationId: assets_refresh_details_create
+      description: |-
+        PERF-01: fetch this device's details (updates, policies, notifications, custom fields) on the next sync,
+        even if they are recent, and start that sync. Needs the customer's sync permission; audited.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this asset.
+        required: true
+      tags:
+      - assets
+      security:
+      - sessionAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/assets/lookup/:
     get:
       operationId: assets_lookup_retrieve
@@ -7836,6 +7862,8 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          description: VSA X calls per second for this integration (documented budget
+            ~3,000 per 5 minutes per token).
         status:
           allOf:
           - $ref: '#/components/schemas/IntegrationInstanceStatusEnum'
@@ -9712,6 +9740,8 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          description: VSA X calls per second for this integration (documented budget
+            ~3,000 per 5 minutes per token).
         status:
           allOf:
           - $ref: '#/components/schemas/IntegrationInstanceStatusEnum'

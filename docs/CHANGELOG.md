@@ -1,5 +1,12 @@
 # Changelog
 
+## PERF-01 - 2026-11-23 - faster syncs: details only when needed
+
+- Each sync still reads the whole device list, but per-device detail calls (installed updates, applied policies, notifications, custom fields) are made only for devices that need them: new devices, a **Refresh details now** request, or details older than 24 hours (updates, notifications) / 7 days (policies, custom fields) for devices seen online since. Offline devices wait, at most 7 days. Skipped devices keep their last values (carried forward). Intervals: `DETAIL_REFRESH_HOURS_*`, `DETAIL_REFRESH_MAX_HOURS`.
+- Default pace raised from 0.5 to 5 VSA X calls per second. **Migration `integrations.0016`** raises integrations still on 0.5 to 5 and records `integration.pace_raised` in the audit log; other values are kept.
+- Device page: **Refresh details now** (`POST /api/v1/assets/{id}/refresh-details/`, sync permission on the device's customer, audited `asset.details_refresh_requested`); starts the customer's sync. Migration `inventory.0016` adds `Asset.details_refresh_requested_at`.
+- A customer's sync waiting for another customer's run on the same integration retries after 15 seconds instead of 60 (`SYNC_BUSY_RETRY_SECONDS`).
+
 ## OPS-05 - 2026-11-23 - updates no longer stop at "waiting for the portal to become ready"
 
 - Fix: after an update recreated the backend container, the proxy kept the backend's old IP address and every request failed with 502 (`connect() failed (111: Connection refused)`), so `install.sh` gave up after 5 minutes. The proxy now re-resolves `backend` through Docker's DNS (`resolver 127.0.0.11 valid=10s`), and `install.sh` restarts the proxy after starting the stack. **Existing stuck install:** `sudo docker compose -f compose.prod.yml --env-file .env.prod restart proxy`.

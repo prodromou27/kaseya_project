@@ -91,7 +91,9 @@ def record_list_sections(observation: Any, asset: VsaAsset) -> PatchObservation:
 
 
 def pending_installed(generation: Any, limit: int) -> list[PatchObservation]:
-    """Windows devices of this generation not yet fetched, least-recently-collected first (rotation)."""
+    """Windows devices of this generation that are due (``freshness.only_due``), least-recently-collected first."""
+    from apps.integrations.freshness import only_due
+
     if limit <= 0:
         return []
     last_collected = (
@@ -101,10 +103,13 @@ def pending_installed(generation: Any, limit: int) -> list[PatchObservation]:
         .annotate(m=Max("installed_collected_at"))
         .values("m")
     )
-    return list(
+    qs = (
         PatchObservation.objects.filter(generation=generation, installed_status=UpdateStatus.NOT_REQUESTED)
         .filter(Q(observation__device_type__iexact="windows"))
         .annotate(last=Subquery(last_collected))
+    )
+    return list(
+        only_due(qs, "installed_updates")
         .select_related("asset")
         # Never-collected devices first (PostgreSQL would otherwise sort NULLs last), then least recently collected.
         .order_by(F("last").asc(nulls_first=True), "asset__external_id")[:limit]

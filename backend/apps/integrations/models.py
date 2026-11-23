@@ -73,8 +73,9 @@ class IntegrationInstance(models.Model):
     max_rps = models.DecimalField(
         max_digits=6,
         decimal_places=2,
-        default=Decimal("0.50"),
+        default=Decimal("5.00"),
         validators=[MinValueValidator(Decimal("0.01")), MaxValueValidator(Decimal("20"))],
+        help_text="VSA X calls per second for this integration (documented budget ~3,000 per 5 minutes per token).",
     )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.IDLE)
     installed_updates_budget = models.PositiveIntegerField(

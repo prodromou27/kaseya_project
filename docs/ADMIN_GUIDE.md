@@ -119,6 +119,15 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
 
 7. **Installed updates:** set "InstalledUpdates budget / sync" on an integration (per-device calls per sync). Leave it at 0 until
    the API budget has been measured in a pilot. Devices outside the budget show *carried forward* or *not requested*.
+7a. **Details only when needed (PERF-01):** every sync reads the whole device list (100 devices per VSA X call), but
+   the per-device detail calls are made only for devices that need them: new devices; devices where someone pressed
+   **Refresh details now**; and devices seen online since their last fetch once it is older than 24 hours (installed
+   updates, notifications) or 7 days (applied policies, custom fields). Offline devices wait, but never more than 7 days.
+   The budgets above remain a per-sync ceiling. Change the intervals in `.env.prod` with
+   `DETAIL_REFRESH_HOURS_INSTALLED_UPDATES`, `DETAIL_REFRESH_HOURS_NOTIFICATIONS`, `DETAIL_REFRESH_HOURS_APPLIED_POLICIES`,
+   `DETAIL_REFRESH_HOURS_CUSTOM_FIELDS` and `DETAIL_REFRESH_MAX_HOURS` (hours). **Pace:** an integration makes at most
+   *max requests per second* calls (default 5; VSA X documents about 3,000 per 5 minutes per token). Lower it if other
+   tools share the token; a 429 from VSA X pauses the sync and it resumes later.
 8. **Scheduled syncs:** Administration → Sync schedules (approved mappings only). Requires the `beat` service in Compose.
 9. **Report schedules:** Reports → Definitions & schedules. Delivery is in-portal only (DEC-09). Recipients must currently have
    export access. Anyone who loses access is removed at the next run, and this is audited.
