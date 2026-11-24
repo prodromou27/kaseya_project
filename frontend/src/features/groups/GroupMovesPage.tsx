@@ -14,9 +14,9 @@ import { useUrlFilters } from "../../lib/useUrlFilters";
 import { SelectCustomer } from "../../components/SelectCustomer";
 import { SuggestionEvidence, type GroupSuggestion } from "./GroupSuggestions";
 
-type Proposal = {
+export type Proposal = {
   id: string; asset: string; device_name: string; source_group_name: string;
-  target_group_name: string; target_group_external_id: string; reason: string; policy_impact: string;
+  target_group: string; target_group_name: string; target_group_external_id: string; reason: string; policy_impact: string;
   state: "pending" | "approved" | "rejected"; requested_by: string; reviewed_by: string | null;
   review_reason: string; created_at: string; expires_at: string; expired: boolean;
   execution_enabled: boolean; execution_available: boolean; execution_unavailable_reason?: string; self_approval_allowed?: boolean; execution_blocked_reason: string; execution: Execution | null;
@@ -27,7 +27,7 @@ type Execution = {
   http_status: number | null; error_code: string; observed_group_id: string; verified_at: string | null;
 };
 
-const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "warn" | "bad" | "neutral"; help: string }> = {
+export const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "warn" | "bad" | "neutral"; help: string }> = {
   sending: { label: "Sending", tone: "neutral", help: "The move is being sent to VSA X." },
   succeeded: { label: "Moved in VSA X", tone: "good", help: "VSA X accepted the move and reading the device back confirmed the new group." },
   unverified: { label: "Not confirmed yet", tone: "warn", help: "VSA X accepted the move but the device still reported its old group. Verify again in a few minutes." },
@@ -35,14 +35,27 @@ const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "wa
   failed: { label: "Not moved", tone: "bad", help: "The device was not moved. Submit a new proposal if it is still needed." },
 };
 /** Plain-language reason for an execution's error code (PERF/OPS 2026-11-23). */
-const EXECUTION_REASON: Record<string, string> = {
+export const EXECUTION_REASON: Record<string, string> = {
   still_in_source_group: "Reading the device back showed it is still in its old group, so you can send the move again.",
   accepted_not_applied: "VSA X answered OK but did not apply the move: the device is still in its old group. Usually the API token is not allowed to move devices, or a proxy/firewall in front of VSA X answers instead of the API. Fix that first, then send the move again.",
   timeout_or_connection: "VSA X did not answer in time or the connection dropped.",
   unreadable_response: "VSA X accepted the request but its answer could not be read.",
   internal_error: "The portal hit an error while sending.",
 };
-function executionReason(ex: Execution): string {
+/** One-step move for administrators (2026-11-24): record, approve, send and read back in one call. */
+export function moveNow(customerId: string, asset: string, targetGroup: string, reason = "") {
+  return api.post<Proposal>(`/customers/${customerId}/group-moves/move-now/`, { asset, target_group: targetGroup, reason });
+}
+
+/** Short result text for a finished one-step move; ``stop`` when VSA X answers OK but does not apply moves. */
+export function moveOutcome(after: Proposal): { ok: boolean; text: string; stop: boolean } {
+  const ex = after.execution;
+  if (!ex) return { ok: false, text: "Not sent.", stop: false };
+  const reason = executionReason(ex);
+  return { ok: ex.state === "succeeded", text: `${EXECUTION_TEXT[ex.state].label}${reason ? `. ${reason}` : ""}`, stop: ex.error_code === "accepted_not_applied" };
+}
+
+export function executionReason(ex: Execution): string {
   const known = EXECUTION_REASON[ex.error_code];
   if (known) return known;
   if (/^http_\d+$/.test(ex.error_code)) return `VSA X answered with HTTP ${ex.error_code.slice(5)}.`;
@@ -51,6 +64,7 @@ function executionReason(ex: Execution): string {
 }
 type MoveOptions = {
   source_group: string; policy_impact: string; execution_enabled: boolean;
+  move_now_allowed?: boolean; execution_unavailable_reason?: string;
   source_is_onboarding: boolean; suggestion_note: string; suggestions_ambiguous: boolean;
   suggestions: GroupSuggestion[];
   groups: { id: string; name: string; external_id: string; site: string }[];
@@ -60,77 +74,121 @@ export function ProposeGroupMove({ customer, assetId }: { customer: Customer; as
   const qc = useQueryClient();
   const [target, setTarget] = useState("");
   const [reason, setReason] = useState("");
+  const [confirming, setConfirming] = useState(false);
   const options = useQuery({
     queryKey: ["group-move-options", customer.id, assetId],
     queryFn: ({ signal }) => api.get<MoveOptions>(`/customers/${customer.id}/group-moves/options/`, { asset: assetId }, signal),
   });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
+    void qc.invalidateQueries({ queryKey: ["asset", assetId] });
+  };
   const propose = useMutation({
     mutationFn: () => api.post<Proposal>(`/customers/${customer.id}/group-moves/`, { asset: assetId, target_group: target, reason }),
-    onSuccess: () => { setReason(""); void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] }); },
+    onSuccess: () => { setReason(""); refresh(); },
   });
-  return <QueryBoundary query={options}>{(data) => (
-    <section className="investigation-card space-y-3" aria-label="Propose group move">
-      <h2 className="text-sm font-semibold">Request a group assignment change</h2>
-      <Notice tone="warn">{data.policy_impact}</Notice>
-      <p className="text-xs text-slate-500">Source group: {data.source_group}. Destinations are restricted to active groups in the same customer, VSA instance and organization.</p>
-      <section aria-label="CIDR group suggestions" className="space-y-2 text-sm">
-        <h3 className="font-semibold">Suggested destination groups</h3>
-        {data.source_is_onboarding ? <p>This is an onboarding group, a valid temporary installation destination. Transfer is manual when an administrator is ready.</p> : null}
-        <p className="text-xs text-slate-500">{data.suggestion_note}</p>
-        {data.suggestions_ambiguous ? <Notice tone="warn">Several groups match. Review overlapping subnets and adapter evidence before choosing.</Notice> : null}
-        {data.suggestions?.length ? <ul>{data.suggestions.map((suggestion) => <li key={suggestion.id} className="mb-2">
-          <strong>{suggestion.name}</strong><SuggestionEvidence suggestion={suggestion} />
-          {customer.my_capabilities.includes("customer.group_move.propose") ? <button type="button" className="btn-secondary ml-2" onClick={() => setTarget(suggestion.id)}>Use {suggestion.name}{suggestion.external_id ? ` · ID ${suggestion.external_id}` : ""}</button> : null}
-        </li>)}</ul> : <p>No matching subnet or naming evidence. Placement is not classified as incorrect. Add approved subnets on destination groups to improve suggestions.</p>}
+  const move = useMutation({ mutationFn: () => moveNow(customer.id, assetId, target, reason), onSettled: () => { setConfirming(false); refresh(); } });
+  const canSuggest = customer.my_capabilities.includes("customer.group_move.propose");
+  const isAdmin = customer.my_capabilities.includes("customer.group_move.approve");
+  return <QueryBoundary query={options}>{(data) => {
+    const direct = Boolean(data.move_now_allowed);
+    const chosen = data.groups.find((g) => g.id === target);
+    const outcome = move.data ? moveOutcome(move.data) : null;
+    return (
+      <section className="investigation-card space-y-3" aria-label="Move to another group">
+        <h2 className="text-sm font-semibold">Move to another group</h2>
+        <p className="text-xs text-slate-500">Now in <strong>{data.source_group}</strong>. Only active groups of the same customer, VSA source and organization are offered. The new group&apos;s policies apply to the device.</p>
+        <section aria-label="CIDR group suggestions" className="space-y-1 text-sm">
+          <h3 className="font-semibold">Suggested</h3>
+          {data.source_is_onboarding ? <p className="text-xs text-slate-500">This is an onboarding group, a valid temporary installation destination. Move devices out when you are ready.</p> : null}
+          {data.suggestions_ambiguous ? <Notice tone="warn">Several groups match. Check the evidence before choosing.</Notice> : null}
+          {data.suggestions?.length ? <ul>{data.suggestions.map((suggestion) => <li key={suggestion.id} className="mb-1">
+            <button type="button" className="btn-secondary mr-2" onClick={() => { setTarget(suggestion.id); setConfirming(false); }}>
+              Use {suggestion.name}{suggestion.external_id ? ` · ID ${suggestion.external_id}` : ""}
+            </button>
+            <SuggestionEvidence suggestion={suggestion} />
+          </li>)}</ul> : <p className="text-xs text-slate-500">No matching subnet or naming evidence. Placement is not classified as incorrect. Add approved subnets on destination groups to improve suggestions.</p>}
+        </section>
+        {direct || canSuggest ? (
+          <form className="flex flex-wrap items-end gap-3" aria-label="Group move" onSubmit={(event) => { event.preventDefault(); if (direct) setConfirming(true); else propose.mutate(); }}>
+            <Field label="Destination group">{(id) => <select id={id} className="input" required value={target} onChange={(event) => { setTarget(event.target.value); setConfirming(false); }}>
+              <option value="">Select an active group…</option>
+              {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name} · site {group.site} · ID {group.external_id}</option>)}
+            </select>}</Field>
+            <Field label={direct ? "Note (optional)" : "Reason"} hint={direct ? "Kept in the audit log." : "At least 10 characters; an administrator applies it."}>
+              {(id, h) => <input id={id} aria-describedby={h} className="input w-72" required={!direct} minLength={direct ? undefined : 10} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />}
+            </Field>
+            <button type="submit" className="btn-primary" disabled={!target || propose.isPending || move.isPending}>{direct ? "Move in VSA X…" : "Suggest move"}</button>
+          </form>
+        ) : <p className="text-sm text-slate-600">Your role cannot move devices.</p>}
+        {!direct && isAdmin && data.execution_unavailable_reason
+          ? <p className="text-xs text-amber-900">Moving directly is not available: {data.execution_unavailable_reason}</p> : null}
+        {confirming && chosen ? (
+          <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="group" aria-label="Confirm move">
+            <p>Move this device from <strong>{data.source_group}</strong> to <strong>{chosen.name}</strong> (ID {chosen.external_id}) in VSA X now? The new group&apos;s policies apply.</p>
+            <div className="flex gap-2">
+              <button type="button" className="btn-danger" disabled={move.isPending} onClick={() => move.mutate()}>{move.isPending ? "Moving…" : "Move now"}</button>
+              <button type="button" className="btn-secondary" disabled={move.isPending} onClick={() => setConfirming(false)}>Cancel</button>
+            </div>
+          </div>
+        ) : null}
+        {outcome ? <p role="status" className={outcome.ok ? "text-sm text-emerald-800" : "text-sm text-amber-900"}>{outcome.text}</p> : null}
+        {move.isError ? <p role="alert" className="text-sm text-red-700">{describeError(move.error)}</p> : null}
+        {propose.isError ? <p role="alert" className="text-sm text-red-700">{describeError(propose.error)}</p> : null}
+        {propose.isSuccess ? <p role="status" className="text-sm text-emerald-800">Suggestion sent. An administrator applies it under <Link className="underline" to="/group-moves">Group moves</Link>.</p> : null}
       </section>
-      {customer.my_capabilities.includes("customer.group_move.propose") ? (
-        <form className="flex flex-wrap items-end gap-3" aria-label="Group move proposal" onSubmit={(event) => { event.preventDefault(); propose.mutate(); }}>
-          <Field label="Target group">{(id) => <select id={id} className="input" required value={target} onChange={(event) => setTarget(event.target.value)}>
-            <option value="">Select an active group…</option>
-            {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name} · site {group.site} · ID {group.external_id}</option>)}
-          </select>}</Field>
-          <Field label="Change reason" hint="At least 10 characters. An independent administrator must review.">{(id) => <input id={id} className="input w-80" required minLength={10} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
-          <button type="submit" className="btn-primary" disabled={propose.isPending || !target}>Submit proposal</button>
-        </form>
-      ) : <p className="text-sm text-slate-600">Your role cannot propose group moves.</p>}
-      {propose.isError ? <p role="alert" className="text-sm text-red-700">{describeError(propose.error)}</p> : null}
-      {propose.isSuccess ? <p role="status" className="text-sm text-emerald-800">Proposal submitted for independent review. No VSA change was executed.</p> : null}
-      <Link className="text-sm text-sky-800 underline" to="/group-moves">Review group move proposals</Link>
-    </section>
-  )}</QueryBoundary>;
+    );
+  }}</QueryBoundary>;
+}
+
+/** Administrators move or reject a suggestion in one step; without moving switched on they approve or reject. */
+function canMoveDirectly(proposal: Proposal, customer: Customer): boolean {
+  return customer.my_capabilities.includes("customer.group_move.approve") && Boolean(proposal.self_approval_allowed) && proposal.execution_available;
 }
 
 function Review({ proposal, customer }: { proposal: Proposal; customer: Customer }) {
   const me = useMe();
   const qc = useQueryClient();
-  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
   const decision = useMutation({
-    mutationFn: async (value: "approved" | "rejected" | "move") => {
-      const reviewed = await api.post<Proposal>(`/customers/${customer.id}/group-moves/${proposal.id}/review/`, { decision: value === "move" ? "approved" : value, reason });
-      // The same administrator may execute what they approved (never the requester); the server re-checks everything.
-      if (value === "move" && reviewed.execution_enabled) await api.post(`/customers/${customer.id}/group-moves/${proposal.id}/execute/`, {});
-    },
-    onSettled: () => void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] }),
+    mutationFn: (value: "approved" | "rejected") => api.post<Proposal>(`/customers/${customer.id}/group-moves/${proposal.id}/review/`, { decision: value, reason: note }),
+    onSettled: refresh,
   });
+  const move = useMutation({ mutationFn: () => moveNow(customer.id, proposal.asset, proposal.target_group, note), onSettled: () => { setConfirming(false); refresh(); } });
+  const mayDecide = customer.my_capabilities.includes("customer.group_move.approve") && (proposal.self_approval_allowed || me.email !== proposal.requested_by);
+  const direct = canMoveDirectly(proposal, customer);
+  const busy = decision.isPending || move.isPending;
+  const outcome = move.data ? moveOutcome(move.data) : null;
   return <div className="space-y-3">
     <p className="text-sm"><strong>Reason:</strong> {proposal.reason}</p>
-    <p className="text-sm text-amber-900">{proposal.policy_impact}</p>
-    <p className="text-xs text-slate-500">Requested {formatUtc(proposal.created_at)} · expires {formatUtc(proposal.expires_at)} · {proposal.requested_by}</p>
-    {proposal.reviewed_by ? <p className="text-sm">Reviewed by {proposal.reviewed_by}: {proposal.review_reason}</p> : null}
-    {proposal.state === "pending" && customer.my_capabilities.includes("customer.group_move.approve") && (proposal.self_approval_allowed || me.email !== proposal.requested_by) ? (
-      <form className="flex flex-wrap items-end gap-2" aria-label="Independent move review" onSubmit={(event) => { event.preventDefault(); decision.mutate(proposal.execution_available ? "move" : "approved"); }}>
-        <Field label="Review reason">{(id) => <input id={id} className="input w-80" required minLength={10} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
-        {proposal.execution_available ? (
-          <button type="submit" className="btn-primary" disabled={decision.isPending || proposal.expired || reason.trim().length < 10}>
-            {decision.isPending ? "Working…" : "Approve and move in VSA X"}
-          </button>
+    <p className="text-xs text-slate-500">Suggested {formatUtc(proposal.created_at)} by {proposal.requested_by} · expires {formatUtc(proposal.expires_at)}</p>
+    {proposal.reviewed_by ? <p className="text-sm">Decided by {proposal.reviewed_by}: {proposal.review_reason}</p> : null}
+    {proposal.state === "pending" && mayDecide ? (
+      <div className="space-y-2" role="group" aria-label="Decide">
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="Note (optional)" hint="Kept in the audit log.">{(id, h) => <input id={id} aria-describedby={h} className="input w-72" maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} />}</Field>
+          {direct
+            ? <button type="button" className="btn-primary" disabled={busy || proposal.expired} onClick={() => setConfirming(true)}>Move in VSA X…</button>
+            : <button type="button" className="btn-primary" disabled={busy || proposal.expired} onClick={() => decision.mutate("approved")}>Approve</button>}
+          <button type="button" className="btn-danger" disabled={busy} onClick={() => decision.mutate("rejected")}>Reject</button>
+        </div>
+        {!direct && proposal.execution_unavailable_reason ? <p className="text-xs text-amber-900">Approving only records the decision: {proposal.execution_unavailable_reason}</p> : null}
+        {confirming ? (
+          <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="group" aria-label="Confirm move">
+            <p>Move <strong>{proposal.device_name}</strong> from <strong>{proposal.source_group_name}</strong> to <strong>{proposal.target_group_name}</strong> (ID {proposal.target_group_external_id}) in VSA X now? The new group&apos;s policies apply.</p>
+            <div className="flex gap-2">
+              <button type="button" className="btn-danger" disabled={busy} onClick={() => move.mutate()}>{move.isPending ? "Moving…" : "Move now"}</button>
+              <button type="button" className="btn-secondary" disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
+            </div>
+          </div>
         ) : null}
-        <button type={proposal.execution_available ? "button" : "submit"} className={proposal.execution_available ? "btn-secondary" : "btn-primary"} disabled={decision.isPending || proposal.expired || reason.trim().length < 10}
-                onClick={proposal.execution_available ? () => decision.mutate("approved") : undefined}>Approve only</button>
-        <button type="button" className="btn-danger" disabled={decision.isPending || reason.trim().length < 10} onClick={() => decision.mutate("rejected")}>Reject proposal</button>
-      </form>
-    ) : proposal.state === "pending" ? <p className="text-xs text-slate-500">A different authorized administrator must review this proposal.</p> : null}
+      </div>
+    ) : proposal.state === "pending" ? <p className="text-xs text-slate-500">A different administrator must decide this suggestion.</p> : null}
+    {outcome ? <p role="status" className={outcome.ok ? "text-sm text-emerald-800" : "text-sm text-amber-900"}>{outcome.text}</p> : null}
     {decision.isError ? <p role="alert" className="text-sm text-red-700">{describeError(decision.error)}</p> : null}
+    {move.isError ? <p role="alert" className="text-sm text-red-700">{describeError(move.error)}</p> : null}
     {proposal.state === "approved" ? <ExecutionPanel proposal={proposal} customer={customer} /> : null}
   </div>;
 }
@@ -174,95 +232,80 @@ function ExecutionPanel({ proposal, customer }: { proposal: Proposal; customer: 
 
 type Outcome = { device: string; ok: boolean; text: string };
 
-/** Decide (and optionally execute) several selected proposals one after another; every call is the normal per-move API. */
+/** Act on several selected rows one after another; every call is the normal per-move API. */
 function BulkDecision({ customer, rows }: { customer: Customer; rows: Proposal[] }) {
   const me = useMe();
   const qc = useQueryClient();
-  const [reason, setReason] = useState("");
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Outcome[]>([]);
-  // Own proposals are skipped only when a second approver is required (REQUIRE_SECOND_APPROVER).
+  // Own suggestions are skipped only when a second approver is required (REQUIRE_SECOND_APPROVER).
   const mine = (p: Proposal) => p.requested_by === me.email && !p.self_approval_allowed;
   const pending = rows.filter((p) => p.state === "pending" && !p.expired && !mine(p));
   const approvedWaiting = rows.filter((p) => p.state === "approved" && p.execution_enabled && !mine(p));
-  const movable = [...pending.filter((p) => p.execution_available), ...approvedWaiting];
+  const movable = [...pending, ...approvedWaiting].filter((p) => canMoveDirectly(p, customer) || p.state === "approved");
+  const approvable = pending.filter((p) => !canMoveDirectly(p, customer));
   const unconfirmed = rows.filter((p) => p.execution && ["unknown", "unverified", "sending"].includes(p.execution.state));
-  const skipped = rows.length - pending.length - approvedWaiting.length - unconfirmed.length;
+  const skipped = rows.length - new Set([...pending, ...approvedWaiting, ...unconfirmed].map((p) => p.id)).size;
   const base = `/customers/${customer.id}/group-moves`;
-  const verifyAll = async () => {
-    setBusy(true);
-    setDone([]);
-    const results: Outcome[] = [];
-    for (const p of unconfirmed) {
-      try {
-        const after = await api.post<Proposal>(`${base}/${p.id}/verify/`, {});
-        const state = after.execution?.state ?? "unknown";
-        results.push({ device: p.device_name, ok: state === "succeeded", text: EXECUTION_TEXT[state].label });
-      } catch (error) {
-        results.push({ device: p.device_name, ok: false, text: describeError(error) });
-      }
-      setDone([...results]);
-    }
-    setBusy(false);
-    void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
+  const finish = (results: Outcome[]) => {
+    setDone([...results]);
   };
-  const run = async (mode: "move" | "approved" | "rejected") => {
+  const loop = async (list: Proposal[], step: (p: Proposal) => Promise<{ ok: boolean; text: string; stop?: boolean }>) => {
     setBusy(true);
     setDone([]);
-    const list = mode === "move" ? movable : pending;
     const results: Outcome[] = [];
     for (const p of list) {
       try {
-        let current = p;
-        if (p.state === "pending") current = await api.post<Proposal>(`${base}/${p.id}/review/`, { decision: mode === "move" ? "approved" : mode, reason });
-        if (mode === "move") {
-          const after = await api.post<Proposal>(`${base}/${p.id}/execute/`, {});
-          const state = after.execution?.state ?? "sending";
-          if (after.execution?.error_code === "accepted_not_applied") {
-            // Every further move would be answered the same way: stop instead of sending them all.
-            results.push({ device: p.device_name, ok: false, text: `${EXECUTION_TEXT[state].label}. ${EXECUTION_REASON.accepted_not_applied} Stopped: the remaining moves were not sent.` });
-            setDone([...results]);
-            break;
-          }
-          results.push({ device: p.device_name, ok: state === "succeeded", text: EXECUTION_TEXT[state].label });
-        } else {
-          results.push({ device: p.device_name, ok: true, text: current.state });
-        }
+        const r = await step(p);
+        results.push({ device: p.device_name, ok: r.ok, text: r.stop ? `${r.text} Stopped: the remaining moves were not sent.` : r.text });
+        finish(results);
+        if (r.stop) break;
       } catch (error) {
         results.push({ device: p.device_name, ok: false, text: describeError(error) });
+        finish(results);
       }
-      setDone([...results]);
     }
     setBusy(false);
     setSure(false);
     void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
   };
-  const needsReason = pending.length > 0;
-  const reasonOk = !needsReason || reason.trim().length >= 10;
+  const moveAll = () => loop(movable, async (p) => moveOutcome(
+    p.state === "approved"
+      ? await api.post<Proposal>(`${base}/${p.id}/execute/`, {})
+      : await moveNow(customer.id, p.asset, p.target_group),
+  ));
+  const decideAll = (value: "approved" | "rejected", list: Proposal[]) => loop(list, async (p) => {
+    const after = await api.post<Proposal>(`${base}/${p.id}/review/`, { decision: value });
+    return { ok: true, text: after.state === "approved" ? "Approved" : "Rejected" };
+  });
+  const verifyAll = () => loop(unconfirmed, async (p) => {
+    const after = await api.post<Proposal>(`${base}/${p.id}/verify/`, {});
+    const state = after.execution?.state ?? "unknown";
+    return { ok: state === "succeeded", text: EXECUTION_TEXT[state].label };
+  });
   return (
     <div className="flex w-full flex-col gap-2 text-sm" role="group" aria-label="Decide selected proposals">
-      {skipped ? <p className="text-xs text-slate-600">{skipped} selected proposal(s) skipped: expired, already decided or already sent{rows.some((p) => p.requested_by === me.email && !p.self_approval_allowed) ? ", or your own (a second administrator must approve)" : ""}.</p> : null}
-      {pending.length && !movable.length ? (
+      {skipped ? <p className="text-xs text-slate-600">{skipped} selected row(s) skipped: expired, already decided or already sent{rows.some((p) => p.requested_by === me.email && !p.self_approval_allowed) ? ", or your own (a second administrator must decide)" : ""}.</p> : null}
+      {approvable.length && !movable.length ? (
         <p className="text-xs text-amber-900">
-          Approving only records the decision: {pending[0]?.execution_unavailable_reason || "moving in VSA X is not available for this integration."}
+          Approving only records the decision: {approvable[0]?.execution_unavailable_reason || "moving in VSA X is not available for this integration."}
           {" "}A super admin switches moves on under Settings → Integrations → Edit.
         </p>
       ) : null}
-      {pending.length || approvedWaiting.length ? (
-        <div className="flex flex-wrap items-end gap-2">
-          {needsReason ? (
-            <Field label="Review reason (all selected)">{(id) => <input id={id} className="input w-72" minLength={10} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
-          ) : null}
+      {movable.length || pending.length ? (
+        <div className="flex flex-wrap items-center gap-2">
           {movable.length ? (
-            <label className="flex items-center gap-1">
-              <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
-              Move {movable.length} device{movable.length === 1 ? "" : "s"} in VSA X now (sent once; the new group&apos;s policies apply)
-            </label>
+            <>
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
+                Move {movable.length} device{movable.length === 1 ? "" : "s"} in VSA X now (the new group&apos;s policies apply)
+              </label>
+              <button type="button" className="btn-primary" disabled={busy || !sure} onClick={() => void moveAll()}>Move in VSA X ({movable.length})</button>
+            </>
           ) : null}
-          {movable.length ? <button type="button" className="btn-primary" disabled={busy || !sure || !reasonOk} onClick={() => void run("move")}>Approve and move ({movable.length})</button> : null}
-          {pending.length ? <button type="button" className="btn-secondary" disabled={busy || !reasonOk} onClick={() => void run("approved")}>Approve only ({pending.length})</button> : null}
-          {pending.length ? <button type="button" className="btn-danger" disabled={busy || !reasonOk} onClick={() => void run("rejected")}>Reject ({pending.length})</button> : null}
+          {approvable.length ? <button type="button" className="btn-secondary" disabled={busy} onClick={() => void decideAll("approved", approvable)}>Approve ({approvable.length})</button> : null}
+          {pending.length ? <button type="button" className="btn-danger" disabled={busy} onClick={() => void decideAll("rejected", pending)}>Reject ({pending.length})</button> : null}
         </div>
       ) : null}
       {unconfirmed.length ? (
@@ -296,7 +339,7 @@ function Requests({ customer }: { customer: Customer }) {
       {VIEWS.map(([v, label]) => <button key={v || "all"} type="button" aria-pressed={view === v} className="list-preset" onClick={() => update({ view: v }, true)}>{label}</button>)}
     </div>
     <QueryBoundary query={query}>{(data) => <div className="space-y-4">
-    {data.count && customer.my_capabilities.includes("customer.group_move.approve") ? <p className="text-xs text-slate-600">Tick the box in the table header to select all {Math.min(data.count, 200)} on this page, then choose {view === "to_verify" ? "Verify in VSA X" : "Approve and move"}.</p> : null}
+    {data.count && customer.my_capabilities.includes("customer.group_move.approve") ? <p className="text-xs text-slate-600">Tick the box in the table header to select all {Math.min(data.count, 200)} on this page, then choose {view === "to_verify" ? "Verify in VSA X" : "Move in VSA X"}.</p> : null}
     <DataTable caption="Group move proposals" rows={data.results} total={data.count} page={page} pageSize={200} onPageChange={setPage} getRowId={(row) => row.id}
       selectable={customer.my_capabilities.includes("customer.group_move.approve")}
       selectionActions={(rows) => <BulkDecision customer={customer} rows={rows} />}
@@ -317,7 +360,7 @@ function Requests({ customer }: { customer: Customer }) {
 export function GroupMovesPage() {
   const { selected } = useCustomers();
   return <>
-    <PageHeader title="Group move proposals" subtitle="Customer-scoped requests and independent approvals. Approved moves can be executed in VSA X only where an administrator enabled it." />
+    <PageHeader title="Group moves" subtitle="Suggestions from engineers and the result of every move. Administrators move devices directly from the device page or the onboarding plan." />
     {!selected ? <SelectCustomer /> : <Requests key={selected.id} customer={selected} />}
   </>;
 }

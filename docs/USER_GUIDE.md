@@ -279,16 +279,22 @@ covers and which tasks or workflows use it (scopes used by nothing are flagged),
 A global software rule counts as third-party patch coverage ("Global rule") for devices that have a patch policy
 assigned. This is configuration only: whether VSA deployed an update is not available from the API.
 
-## Executing an approved group move
+## Moving devices to another group
 
-**Fewer steps.** On an onboarding group's *Destinations* view, each destination lists its devices with tick boxes and
-a prefilled reason: **Propose moving N devices** sends one proposal per ticked device for approval. On **Group move
-proposals** (it opens on *Waiting for decision*, up to 200 per page), an administrator ticks the box in the table
-header to select all, then uses **Approve and move (N)** (one reason, one confirmation), **Approve only** or
-**Reject**; expired or already decided ones are skipped and the result is listed per device. Administrators may
-approve their own proposals unless the server requires a second approver (`REQUIRE_SECOND_APPROVER`). If moving is not
-switched on for the integration, approving only records the decision and the page says so. For a single proposal, **Review proposal → Approve and move in VSA X** approves and
-executes in one step.
+**Administrators move in one step** (since 2026-11-24). No proposal, approval or verify step:
+
+- **One device:** open the device → **Operations** → pick the destination (or press a suggested group) → **Move in VSA
+  X…** → **Move now**. The result appears right there (*Moved in VSA X*, or why not).
+- **Onboarding:** on an onboarding group's *Destinations* view, each destination lists its devices with tick boxes:
+  tick **Move N devices to <group> in VSA X now** and press **Move N devices now**. Progress and the result per device are
+  shown; if VSA X answers OK but does not apply moves, it stops after the first device.
+- **Engineers** cannot move devices; they press **Suggest move** (with a reason). Suggestions wait under **Group moves**,
+  where an administrator selects them (header box selects all) and presses **Move in VSA X (N)** or **Reject (N)**, or
+  opens one and presses **Move in VSA X…**. A note is optional.
+
+Every step is still recorded in the audit log (proposed, approved with `self_approved`, sent, result). When the server
+requires a second approver (`REQUIRE_SECOND_APPROVER=true`) or moving is not switched on for the integration, the
+portal falls back to suggestions and approvals and says why.
 
 When execution is enabled for the VSA X integration, an approved proposal shows **Execute move in VSA X…** under
 **Group move proposals → Review proposal**. An administrator with approval permission (not the requester when a second approver is required) confirms the

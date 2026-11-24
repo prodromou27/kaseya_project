@@ -721,8 +721,26 @@ class CustomerGroupViewSet(CustomerScopedMixin, viewsets.GenericViewSet):
         ).select_related("adapter"):
             by_observation[ip.adapter.observation_id].append(ip)
         result = plan(context, members, by_observation, context.site_names)
+        from django.conf import settings as dj_settings
+
+        from .move_execution import availability
+
+        can_move, why_not = availability(group.generation.integration_instance)
+        move_now_allowed = (
+            can_move
+            and not dj_settings.CATALOG_REQUIRE_SEPARATE_REVIEWER
+            and scope.has_customer_capability(request.user, customer.id, Cap.CUSTOMER_APPROVE_MOVE)
+        )
         return Response(
-            {"is_onboarding": True, **result, "devices": len(members), "truncated": truncated, "suggestion_note": NOTE}
+            {
+                "is_onboarding": True,
+                **result,
+                "devices": len(members),
+                "truncated": truncated,
+                "suggestion_note": NOTE,
+                "move_now_allowed": move_now_allowed,
+                "execution_unavailable_reason": why_not,
+            }
         )
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})

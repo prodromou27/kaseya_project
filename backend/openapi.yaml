@@ -2767,6 +2767,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/Move'
           description: ''
+  /api/v1/customers/{customer_pk}/group-moves/move-now/:
+    post:
+      operationId: customers_group_moves_move_now_create
+      description: 'Administrators: move one device in VSA X now (record, approve,
+        send, read back) in a single step.'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveNowInput'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Move'
+          description: ''
   /api/v1/customers/{customer_pk}/group-moves/options/:
     get:
       operationId: customers_group_moves_options_retrieve
@@ -8546,6 +8574,22 @@ components:
       - target_group
       - target_group_external_id
       - target_group_name
+    MoveNowInput:
+      type: object
+      properties:
+        asset:
+          type: string
+          format: uuid
+        target_group:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          default: ''
+          maxLength: 1000
+      required:
+      - asset
+      - target_group
     MoveStateEnum:
       enum:
       - pending
@@ -10738,11 +10782,10 @@ components:
           $ref: '#/components/schemas/ReviewInputDecisionEnum'
         reason:
           type: string
+          default: ''
           maxLength: 1000
-          minLength: 10
       required:
       - decision
-      - reason
     ReviewInputDecisionEnum:
       enum:
       - approved

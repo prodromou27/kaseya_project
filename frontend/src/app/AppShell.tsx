@@ -19,7 +19,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[]; folded?: boolean }[]
     { to: "/reports", label: "Reports" },
   ] },
   { label: "Changes in VSA X", items: [
-    { to: "/custom-fields", label: "Custom fields" }, { to: "/group-moves", label: "Group move approvals" },
+    { to: "/custom-fields", label: "Custom fields" }, { to: "/group-moves", label: "Group moves" },
   ] },
   { label: "Patching & software", folded: true, items: [
     { to: "/windows-updates", label: "Windows updates" }, { to: "/software", label: "Software" },

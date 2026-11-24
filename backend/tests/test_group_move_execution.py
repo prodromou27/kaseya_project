@@ -326,3 +326,117 @@ def test_documented_answer_not_yet_visible_stays_unverified_and_listed_to_verify
     body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/verify/").json()
     assert body["execution"]["state"] == "succeeded"
     assert world.client(world.admin_a).get(base(world), {"view": "to_verify"}).json()["results"] == []
+
+
+# ---------------------------------------------------------------- one step for administrators (2026-11-24)
+
+
+@pytest.fixture(autouse=False)
+def single_admin(settings):
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = False  # production default (REQUIRE_SECOND_APPROVER off)
+
+
+def _device_and_targets(world):
+    obs = current_observations(world.customer_a.id).exclude(group_external_id="").order_by("hostname").first()
+    options = world.client(world.admin_a).get(f"{base(world)}options/", {"asset": str(obs.asset_id)}).json()
+    return obs, options
+
+
+def test_admin_moves_a_device_in_one_step(world, enabled, single_admin):
+    from apps.inventory.models import GroupMoveRequest
+
+    obs, options = _device_and_targets(world)
+    assert options["move_now_allowed"] is True
+    target = options["groups"][0]
+    resp = world.client(world.admin_a).post(
+        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": target["id"]}, format="json"
+    )
+    assert resp.status_code == 200, resp.content
+    body = resp.json()
+    assert body["state"] == "approved" and body["execution"]["state"] == "succeeded"
+    assert body["reason"] == "Moved directly by an administrator."
+    proposal = GroupMoveRequest.objects.get(pk=body["id"])
+    assert proposal.requested_by_id == proposal.reviewed_by_id == world.admin_a.id
+    actions = list(
+        AuditEvent.objects.filter(target_id=body["id"]).order_by("created_at").values_list("action", flat=True)
+    )
+    assert actions == [
+        "group_move.proposed",
+        "group_move.approved",
+        "group_move.execute_started",
+        "group_move.execute_succeeded",
+    ]
+    assert AuditEvent.objects.get(target_id=body["id"], action="group_move.approved").metadata["self_approved"] is True
+
+
+def test_engineers_cannot_move_in_one_step(world, enabled, single_admin):
+    from apps.inventory.models import GroupMoveRequest
+
+    obs, options = _device_and_targets(world)
+    engineer_options = world.client(world.engineer_a).get(f"{base(world)}options/", {"asset": str(obs.asset_id)})
+    assert engineer_options.json()["move_now_allowed"] is False
+    resp = world.client(world.engineer_a).post(
+        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": options["groups"][0]["id"]}, format="json"
+    )
+    assert resp.status_code in (403, 404)
+    assert not GroupMoveRequest.objects.exists() and not fixtures.FIXTURE_MOVES
+
+
+def test_one_step_refused_without_recording_when_moving_is_off_or_two_people_are_required(world, demo, settings):  # noqa: F811
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = False
+    from apps.inventory.models import GroupMoveRequest
+
+    obs, options = _device_and_targets(world)
+    payload = {"asset": str(obs.asset_id), "target_group": options["groups"][0]["id"]}
+    off = world.client(world.admin_a).post(f"{base(world)}move-now/", payload, format="json")
+    assert off.status_code == 400 and "Nothing was sent" in str(off.json())
+    settings.VSA_GROUP_MOVE_EXECUTION_ENABLED = True
+    demo.group_move_execution_enabled = True
+    demo.save(update_fields=["group_move_execution_enabled"])
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = True
+    two = world.client(world.admin_a).post(f"{base(world)}move-now/", payload, format="json")
+    assert two.status_code == 400 and "second administrator" in str(two.json())
+    assert not GroupMoveRequest.objects.exists() and not fixtures.FIXTURE_MOVES
+
+
+def test_one_step_uses_an_engineers_suggestion_or_closes_a_different_one(world, enabled, single_admin):
+    from apps.inventory.models import GroupMoveRequest
+
+    obs, options = _device_and_targets(world)
+    first, second = options["groups"][0], options["groups"][1]
+    suggested = world.client(world.engineer_a).post(
+        base(world), {"asset": str(obs.asset_id), "target_group": first["id"], "reason": "Engineer suggestion"}
+    ).json()
+    same = world.client(world.admin_a).post(
+        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": first["id"]}, format="json"
+    ).json()
+    assert same["id"] == suggested["id"] and same["execution"]["state"] == "succeeded"
+    assert same["reason"] == "Engineer suggestion"
+
+    resync(world, enabled)
+    obs = current_observations(world.customer_a.id).get(asset_id=obs.asset_id)
+    other = world.client(world.engineer_a).post(
+        base(world), {"asset": str(obs.asset_id), "target_group": _device_and_targets(world)[1]["groups"][0]["id"],
+                      "reason": "Another engineer suggestion"}
+    ).json()
+    groups = world.client(world.admin_a).get(f"{base(world)}options/", {"asset": str(obs.asset_id)}).json()["groups"]
+    destination = next(g for g in groups if g["id"] != other["target_group"])
+    moved = world.client(world.admin_a).post(
+        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": destination["id"]}, format="json"
+    ).json()
+    assert moved["id"] != other["id"] and moved["execution"]["state"] == "succeeded"
+    closed = GroupMoveRequest.objects.get(pk=other["id"])
+    assert closed.state == "rejected" and "Superseded" in closed.review_reason
+    assert second  # two destinations exist in the demo hierarchy
+
+
+def test_one_step_resends_a_move_that_vsa_did_not_apply(world, enabled, single_admin):
+    proposal, obs, target = approved(world)
+    first = move_execution.execute_move(
+        world.customer_a, world.admin_a, proposal["id"], None, transport=_AcceptedWithoutJson(enabled, apply=False)
+    )
+    assert first.error_code == "accepted_not_applied"
+    again = world.client(world.admin_a).post(
+        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": target["id"]}, format="json"
+    ).json()
+    assert again["id"] == proposal["id"] and again["execution"]["state"] == "succeeded"

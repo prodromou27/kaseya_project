@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
@@ -123,3 +123,65 @@ def review(customer: Any, user: Any, proposal_id: Any, decision: str, reason: st
         metadata={"execution_enabled": False, "self_approved": self_review},
     )
     return proposal
+
+
+DIRECT_REASON = "Moved directly by an administrator."
+
+
+def move_now(customer: Any, user: Any, asset_id: Any, target_id: Any, reason: str, request: Any) -> GroupMoveRequest:
+    """One step for administrators (product owner, 2026-11-24): record, approve and send the move to VSA X, then read
+    the device back. Uses the same propose/review/execute steps, so every check and audit event still applies.
+
+    Refused (nothing recorded) when executing moves is not available, or when the server requires a second approver.
+    An engineer's open suggestion for the same device is reused when it has the same destination, otherwise it is
+    closed as superseded.
+    """
+    from . import move_execution
+
+    if settings.CATALOG_REQUIRE_SEPARATE_REVIEWER:
+        raise ValidationError(
+            {"move": "This server requires a second administrator (REQUIRE_SECOND_APPROVER). Suggest the move instead."}
+        )
+    asset = Asset.objects.select_related("integration_instance").filter(customer=customer, pk=asset_id).first()
+    if asset is None:
+        raise NotFound()
+    ok, why = move_execution.availability(asset.integration_instance)
+    if not ok:
+        raise ValidationError({"move": f"Nothing was sent: {why}"})
+    reason = (reason or "").strip() or DIRECT_REASON
+    now = timezone.now()
+    open_ones = GroupMoveRequest.objects.filter(customer=customer, asset_id=asset_id)
+    reusable = (
+        open_ones.filter(target_group_id=target_id)
+        .filter(
+            models.Q(state="pending", expires_at__gt=now)
+            | models.Q(state="approved", execution__isnull=True)
+            | models.Q(
+                state="approved",
+                execution__state="failed",
+                execution__error_code__in=move_execution.RETRYABLE_ERRORS,
+            )
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    for stale in open_ones.filter(state="pending", expires_at__gt=now).exclude(pk=getattr(reusable, "pk", None)):
+        review(customer, user, stale.id, "rejected", "Superseded by a direct move by an administrator.", request)
+    proposal = reusable or propose(customer, user, asset_id, target_id, reason, request)
+    if proposal.state == "pending":
+        proposal = review(customer, user, proposal.id, "approved", reason, request)
+    elif (
+        proposal.reviewed_at
+        and proposal.reviewed_at + timedelta(hours=settings.GROUP_MOVE_EXECUTION_WINDOW_HOURS) <= now
+    ):
+        # An old approval cannot be executed; record a fresh one for the same device and destination.
+        proposal = review(
+            customer,
+            user,
+            propose(customer, user, asset_id, target_id, reason, request).id,
+            "approved",
+            reason,
+            request,
+        )
+    move_execution.execute_move(customer, user, proposal.id, request)
+    return GroupMoveRequest.objects.get(pk=proposal.pk)

@@ -88,7 +88,7 @@ it("groups onboarding devices by destination and lists ties separately", async (
   expect(screen.getByRole("button", { name: "Download move list (CSV)" })).toBeInTheDocument();
 });
 
-it("proposes all ticked devices of one destination in one action", async () => {
+it("lets an engineer suggest all ticked devices of one destination in one action", async () => {
   const proposer = { ...customerA, my_capabilities: ["customer.read", "customer.group_move.propose"] };
   const { calls } = mockFetch({
     [`GET /api/v1/customers/${customerA.id}/groups/51/suggestions/plan/`]: { body: {
@@ -107,11 +107,40 @@ it("proposes all ticked devices of one destination in one action", async () => {
   </QueryClientProvider>);
   const finance = await screen.findByRole("region", { name: "Move to Finance" });
   await userEvent.click(within(finance).getByLabelText("Include FINUSR03"));
-  await userEvent.click(within(finance).getByRole("button", { name: "Propose moving 2 devices" }));
-  expect(await within(finance).findByText(/2 proposal\(s\) sent for approval/)).toBeInTheDocument();
+  await userEvent.click(within(finance).getByRole("button", { name: "Suggest moving 2 devices" }));
+  expect(await within(finance).findByText(/2 suggestion\(s\) sent/)).toBeInTheDocument();
   const posts = calls.filter((c) => c.method === "POST").map((c) => JSON.parse(String(c.init?.body)));
   expect(posts).toEqual([
     { asset: "a1", target_group: "g61", reason: "Onboarding: move to Finance (subnet/name evidence)" },
     { asset: "a2", target_group: "g61", reason: "Onboarding: move to Finance (subnet/name evidence)" },
   ]);
+});
+
+it("lets an administrator move all ticked devices of one destination now", async () => {
+  const admin = { ...customerA, my_capabilities: ["customer.read", "customer.group_move.propose", "customer.group_move.approve"] };
+  const moved = { id: "p", execution: { state: "succeeded", executed_by: "a", started_at: "2026-11-24T10:00:00Z", finished_at: null,
+    http_status: 200, error_code: "", observed_group_id: "61", verified_at: null } };
+  const { calls } = mockFetch({
+    [`GET /api/v1/customers/${customerA.id}/groups/51/suggestions/plan/`]: { body: {
+      is_onboarding: true, devices: 2, truncated: false, suggestion_note: "Network first.", move_now_allowed: true,
+      destinations: [{ id: "g61", external_id: "61", name: "Finance", site_external_id: "6", site_name: "Nicosia", devices: [
+        { asset_id: "a1", hostname: "FINUSR01", basis: "naming", evidence: [] },
+        { asset_id: "a2", hostname: "FINUSR02", basis: "observed_subnet", evidence: [] },
+      ] }],
+      ambiguous: [], unmatched: [],
+    } },
+    [`POST /api/v1/customers/${customerA.id}/group-moves/move-now/`]: { body: moved },
+  });
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <MemoryRouter><GroupSuggestions customer={admin} groupId="51" instance="source-a" /></MemoryRouter>
+  </QueryClientProvider>);
+  const finance = await screen.findByRole("region", { name: "Move to Finance" });
+  const go = within(finance).getByRole("button", { name: "Move 2 devices now" });
+  expect(go).toBeDisabled();
+  await userEvent.click(within(finance).getByLabelText(/Move 2 devices to Finance in VSA X now/));
+  await userEvent.click(go);
+  expect(await within(finance).findByText(/2 device\(s\) moved and confirmed in VSA X/)).toBeInTheDocument();
+  const posts = calls.filter((c) => c.method === "POST");
+  expect(posts.every((c) => c.url.endsWith("/group-moves/move-now/"))).toBe(true);
+  expect(posts.map((c) => JSON.parse(String(c.init?.body)).asset)).toEqual(["a1", "a2"]);
 });

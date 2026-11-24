@@ -6,12 +6,14 @@ import { QueryBoundary } from "../../components/States";
 import { Badge, Field } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import type { Customer } from "../../lib/types";
+import { moveNow, moveOutcome } from "./GroupMovesPage";
 
 type PlanDevice = { asset_id: string; hostname: string; basis?: string; evidence?: string[]; candidates?: string[] };
 type Destination = { id: string; external_id: string; name: string; site_external_id: string; site_name: string; devices: PlanDevice[] };
 export type Plan = {
   is_onboarding: boolean; destinations: Destination[]; ambiguous: PlanDevice[]; unmatched: PlanDevice[];
   devices: number; truncated: boolean; suggestion_note: string;
+  move_now_allowed?: boolean; execution_unavailable_reason?: string;
 };
 
 const BASIS: Record<string, string> = { approved_subnet: "Approved subnet", observed_subnet: "Observed subnet", naming: "Name" };
@@ -36,13 +38,14 @@ function downloadCsv(plan: Plan, groupLabel: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Propose every ticked device of one destination for approval (one normal proposal per device). */
-function ProposeAll({ customer, destination }: { customer: Customer; destination: Destination }) {
+/** Move (administrators, one step) or suggest (engineers) every ticked device of one destination. */
+function ProposeAll({ customer, destination, direct }: { customer: Customer; destination: Destination; direct: boolean }) {
   const qc = useQueryClient();
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(destination.devices.map((d) => d.asset_id)));
   const [reason, setReason] = useState(`Onboarding: move to ${destination.name} (subnet/name evidence)`);
+  const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ ok: number; problems: string[] } | null>(null);
+  const [result, setResult] = useState<{ ok: number; problems: string[]; stopped: string } | null>(null);
   const toggle = (id: string) => setChosen((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -51,19 +54,31 @@ function ProposeAll({ customer, destination }: { customer: Customer; destination
   const run = async () => {
     setBusy(true);
     let ok = 0;
+    let stopped = "";
     const problems: string[] = [];
     for (const dev of destination.devices.filter((d) => chosen.has(d.asset_id))) {
       try {
-        await api.post(`/customers/${customer.id}/group-moves/`, { asset: dev.asset_id, target_group: destination.id, reason });
-        ok += 1;
+        if (direct) {
+          const outcome = moveOutcome(await moveNow(customer.id, dev.asset_id, destination.id, reason));
+          if (outcome.ok) ok += 1; else problems.push(`${dev.hostname}: ${outcome.text}`);
+          if (outcome.stop) stopped = "Stopped: VSA X answers OK but does not apply moves, so the remaining devices were not sent.";
+        } else {
+          await api.post(`/customers/${customer.id}/group-moves/`, { asset: dev.asset_id, target_group: destination.id, reason });
+          ok += 1;
+        }
       } catch (error) {
         problems.push(`${dev.hostname}: ${describeError(error)}`);
       }
-      setResult({ ok, problems: [...problems] });
+      setResult({ ok, problems: [...problems], stopped });
+      if (stopped) break;
     }
     setBusy(false);
+    setSure(false);
     void qc.invalidateQueries({ queryKey: ["group-moves", customer.id] });
+    if (direct) void qc.invalidateQueries({ queryKey: ["group-destination-plan", customer.id] });
   };
+  const count = chosen.size;
+  const label = `${count} device${count === 1 ? "" : "s"}`;
   return (
     <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
       <ul className="max-h-72 space-y-1 overflow-auto text-sm">
@@ -81,16 +96,31 @@ function ProposeAll({ customer, destination }: { customer: Customer; destination
         ))}
       </ul>
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="Reason" hint="At least 10 characters; another administrator approves.">
-          {(id, h) => <input id={id} aria-describedby={h} className="input w-72" minLength={10} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />}
+        <Field label={direct ? "Note (optional)" : "Reason"} hint={direct ? "Kept in the audit log." : "At least 10 characters; an administrator applies it."}>
+          {(id, h) => <input id={id} aria-describedby={h} className="input w-72" maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
-        <button type="button" className="btn-primary" disabled={busy || !chosen.size || reason.trim().length < 10} onClick={() => void run()}>
-          {busy ? "Proposing…" : `Propose moving ${chosen.size} device${chosen.size === 1 ? "" : "s"}`}
-        </button>
+        {direct ? (
+          <>
+            <label className="flex items-center gap-1 text-sm">
+              <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
+              Move {label} to {destination.name} in VSA X now
+            </label>
+            <button type="button" className="btn-primary" disabled={busy || !count || !sure} onClick={() => void run()}>
+              {busy ? `Moving… ${result ? result.ok + result.problems.length : 0}/${count}` : `Move ${label} now`}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn-primary" disabled={busy || !count || reason.trim().length < 10} onClick={() => void run()}>
+            {busy ? "Sending…" : `Suggest moving ${label}`}
+          </button>
+        )}
       </div>
       {result ? (
         <div role="status" className="text-sm">
-          {result.ok ? <p className="text-emerald-800">{result.ok} proposal(s) sent for approval. <Link className="text-sky-800 underline" to="/group-moves">Open approvals</Link></p> : null}
+          {result.ok ? (direct
+            ? <p className="text-emerald-800">{result.ok} device(s) moved and confirmed in VSA X.</p>
+            : <p className="text-emerald-800">{result.ok} suggestion(s) sent. An administrator applies them under <Link className="text-sky-800 underline" to="/group-moves">Group moves</Link>.</p>) : null}
+          {result.stopped ? <p className="text-amber-900">{result.stopped}</p> : null}
           {result.problems.length ? <ul className="text-xs text-red-700">{result.problems.map((m) => <li key={m}>{m}</li>)}</ul> : null}
         </div>
       ) : null}
@@ -126,7 +156,7 @@ export function DestinationPlan({ customer, groupId, instance }: { customer: Cus
                   Move {d.devices.length} device(s) to <span className="text-sky-800">{d.name}</span>
                 </h3>
                 <p className="mb-2 text-xs text-slate-500">Site {d.site_name || d.site_external_id || "not reported"} · group ID {d.external_id}</p>
-                {canPropose && d.id ? <ProposeAll customer={customer} destination={d} /> : (
+                {(plan.move_now_allowed || canPropose) && d.id ? <ProposeAll customer={customer} destination={d} direct={Boolean(plan.move_now_allowed)} /> : (
                 <ul className="max-h-72 space-y-1 overflow-auto text-sm">
                   {d.devices.map((dev) => (
                     <li key={dev.asset_id} className="flex flex-wrap items-baseline justify-between gap-2 border-t border-slate-100 pt-1">

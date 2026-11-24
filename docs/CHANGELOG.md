@@ -1,5 +1,11 @@
 # Changelog
 
+## UX-08 - 2026-11-24 - group moves in one step for administrators
+
+- Product owner: no multiple authorizations. An administrator moves a device with one confirmation: device page **Operations → Move in VSA X… → Move now**, or an onboarding destination's **Move N devices now**. The portal records, approves, sends and reads back in one call (`POST /api/v1/customers/{id}/group-moves/move-now/`, administrators only; refused without recording anything when moving is off or a second approver is required). Every step stays in the audit log.
+- Engineers **Suggest move**; administrators act on suggestions with **Move in VSA X (N)** / **Reject (N)** (the review note is optional). An engineer's open suggestion for the same device and destination is reused; a different one is closed as superseded.
+- Menu entry renamed **Group moves**; move options and the onboarding plan return `move_now_allowed` and `execution_unavailable_reason`.
+
 ## OPS-08 - 2026-11-23 - "VSA X answered OK but did not apply the move"
 
 - Live tenant: `PUT /devices/{id}/move` answers HTTP 200 without the documented JSON and the device stays in its group (read-back: still in the source group). Such a move is now **Not moved** with `accepted_not_applied` and the likely causes (API token without permission to move devices, or a proxy/firewall answering instead of the API), instead of *Not confirmed yet*. It can be sent again once the cause is fixed.

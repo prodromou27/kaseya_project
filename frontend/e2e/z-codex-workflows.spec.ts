@@ -71,24 +71,24 @@ test("narrow screens keep tables and tabs inside the viewport and Escape closes 
   await expect(menu).toBeFocused();
 });
 
-test("group assignment proposal requires independent review and never executes a VSA change", async ({ page }) => {
+test("an engineer's group move suggestion waits for an administrator and never executes a VSA change", async ({ page }) => {
   await login(page);
   await page.goto("/assets?search=DEMOA-WS001");
   await page.getByRole("table", { name: "DEMO-A assets" }).getByRole("link", { name: "DEMOA-WS001" }).click();
   await page.getByRole("tab", { name: "Operations", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Propose group move" })).toBeVisible();
-  const targets = page.getByLabel("Target group");
+  await expect(page.getByRole("region", { name: "Move to another group" })).toBeVisible();
+  const targets = page.getByLabel("Destination group");
   const target = await targets.locator("option").nth(1).getAttribute("value");
   await targets.selectOption(target!);
-  await page.getByLabel("Change reason").fill("Correct placement after onboarding review");
-  await page.getByRole("button", { name: "Submit proposal" }).click();
-  await expect(page.getByRole("status")).toContainText("No VSA change was executed");
+  await page.getByLabel("Reason").fill("Correct placement after onboarding review");
+  await page.getByRole("button", { name: "Suggest move" }).click();
+  await expect(page.getByRole("status")).toContainText("Suggestion sent");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await login(page, "demo.admin.a@demo.invalid");
   await page.goto("/group-moves");
   await page.getByRole("row").filter({ hasText: "DEMOA-WS001" }).getByRole("button", { name: "Review proposal" }).click();
-  await page.getByLabel("Review reason").fill("Independent review completed; execution remains disabled");
-  await page.getByRole("button", { name: "Approve only" }).click();
+  await page.getByLabel("Note (optional)").fill("Independent review completed; execution remains disabled");
+  await page.getByRole("group", { name: "Decide" }).getByRole("button", { name: "Approve", exact: true }).click();
   await page.getByRole("button", { name: "Approved, not moved yet" }).click(); // it left "Waiting for decision"
   await expect(page.getByRole("row").filter({ hasText: "DEMOA-WS001" })).toContainText("approved");
   const customers = await (await page.request.get("/api/v1/customers/")).json();

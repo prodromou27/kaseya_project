@@ -12,6 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from apps.accounts import scope
 from apps.accounts.roles import Cap
 from apps.customers.views import CustomerScopedMixin
 
@@ -114,9 +115,19 @@ class ProposalInput(serializers.Serializer):
     reason = serializers.CharField(min_length=10, max_length=1000)
 
 
+class MoveNowInput(serializers.Serializer):
+    asset = serializers.UUIDField()
+    target_group = serializers.UUIDField()
+    reason = serializers.CharField(max_length=1000, required=False, allow_blank=True, default="")
+
+
 class ReviewInput(serializers.Serializer):
     decision = serializers.ChoiceField(choices=["approved", "rejected"])
-    reason = serializers.CharField(min_length=10, max_length=1000)
+    # Optional since 2026-11-24 (one step for administrators); a default note is recorded in the audit log.
+    reason = serializers.CharField(max_length=1000, required=False, allow_blank=True, default="")
+
+
+REVIEW_DEFAULT = {"approved": "Approved by an administrator.", "rejected": "Rejected by an administrator."}
 
 
 class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -128,6 +139,7 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
             "review": Cap.CUSTOMER_APPROVE_MOVE,
             "execute": Cap.CUSTOMER_APPROVE_MOVE,
             "verify": Cap.CUSTOMER_APPROVE_MOVE,
+            "move_now": Cap.CUSTOMER_APPROVE_MOVE,
         }.get(self.action, Cap.CUSTOMER_READ)
         return super().get_customer()
 
@@ -166,6 +178,23 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         )
         return Response(MoveSerializer(proposal).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(request=MoveNowInput, responses={200: MoveSerializer})
+    @action(detail=False, methods=["post"], url_path="move-now")
+    def move_now(self, request: Any, **kwargs: Any) -> Response:
+        """Administrators: move one device in VSA X now (record, approve, send, read back) in a single step."""
+        customer = self.get_customer()
+        data = MoveNowInput(data=request.data)
+        data.is_valid(raise_exception=True)
+        proposal = moves.move_now(
+            customer,
+            request.user,
+            data.validated_data["asset"],
+            data.validated_data["target_group"],
+            data.validated_data["reason"],
+            request,
+        )
+        return Response(MoveSerializer(self.get_queryset().get(pk=proposal.pk)).data)
+
     @extend_schema(request=ReviewInput, responses={200: MoveSerializer})
     @action(detail=True, methods=["post"])
     def review(self, request: Any, pk: str | None = None, **kwargs: Any) -> Response:
@@ -173,9 +202,9 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         original = self.get_object()  # scoped lookup before input validation
         data = ReviewInput(data=request.data)
         data.is_valid(raise_exception=True)
-        proposal = moves.review(
-            customer, request.user, original.id, data.validated_data["decision"], data.validated_data["reason"], request
-        )
+        decision = data.validated_data["decision"]
+        reason = data.validated_data["reason"].strip() or REVIEW_DEFAULT[decision]
+        proposal = moves.review(customer, request.user, original.id, decision, reason, request)
         return Response(MoveSerializer(proposal).data)
 
     @extend_schema(request=None, responses={200: MoveSerializer})
@@ -216,6 +245,14 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
                 "source_group": observation.group_name,
                 "policy_impact": moves.POLICY_IMPACT,
                 "execution_enabled": move_execution.availability(observation.asset.integration_instance)[0],
+                "execution_unavailable_reason": move_execution.availability(observation.asset.integration_instance)[1],
+                # One step (product owner, 2026-11-24): administrators move directly unless a second approver is
+                # required on this server.
+                "move_now_allowed": (
+                    not settings.CATALOG_REQUIRE_SEPARATE_REVIEWER
+                    and scope.has_customer_capability(request.user, customer.id, Cap.CUSTOMER_APPROVE_MOVE)
+                    and move_execution.availability(observation.asset.integration_instance)[0]
+                ),
                 "groups": [
                     {"id": str(g.id), "external_id": g.external_id, "name": g.name, "site": g.site_external_id}
                     for g in groups

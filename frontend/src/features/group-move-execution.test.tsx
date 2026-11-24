@@ -6,7 +6,7 @@ import { customerA, makeMe, mockFetch, page, renderApp } from "../test/utils";
 
 const admin = { ...customerA, my_capabilities: ["customer.read", "customer.group_move.approve"] };
 const proposal = {
-  id: "p1", asset: "a1", device_name: "SALESPC01", source_group_name: "Onboarding", target_group_name: "Sales",
+  id: "p1", asset: "a1", target_group: "tg52", device_name: "SALESPC01", source_group_name: "Onboarding", target_group_name: "Sales",
   target_group_external_id: "52", reason: "Correct onboarding placement", policy_impact: "Policies may change.",
   state: "approved", requested_by: "eng@example.test", reviewed_by: "admin@example.test", review_reason: "Checked",
   created_at: "2026-11-16T08:00:00Z", expires_at: "2026-11-17T08:00:00Z", expired: false,
@@ -71,73 +71,71 @@ describe("group move execution", () => {
     expect(screen.queryByRole("button", { name: /Execute move/ })).not.toBeInTheDocument();
   });
 
-  it("approves and moves one proposal in one step", async () => {
-    const pending = { ...proposal, state: "pending", reviewed_by: null, review_reason: "", execution_enabled: false, execution_blocked_reason: "Only approved proposals can be executed." };
+  it("moves an engineer's suggestion in one step after one confirmation", async () => {
+    const pending = { ...proposal, state: "pending", reviewed_by: null, review_reason: "", execution_enabled: false, self_approval_allowed: true };
+    const moved = { ...proposal, execution: { state: "succeeded", executed_by: "admin@example.test", started_at: "2026-11-24T09:00:00Z",
+      finished_at: "2026-11-24T09:00:01Z", http_status: 200, error_code: "", observed_group_id: "52", verified_at: "2026-11-24T09:00:01Z" } };
     const { calls } = mockFetch({
       "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
       "GET /api/v1/customers/": { body: page([admin]) },
       [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([pending]) },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/review/`]: { body: { ...proposal } },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/execute/`]: { body: { ...proposal, execution: { state: "succeeded" } } },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/move-now/`]: { body: moved },
     } as never);
     window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
     renderApp("/group-moves");
     await userEvent.click(await screen.findByRole("button", { name: "Review proposal" }));
-    const form = screen.getByRole("form", { name: "Independent move review" });
-    await userEvent.type(within(form).getByLabelText("Review reason"), "Checked the subnet evidence");
-    await userEvent.click(within(form).getByRole("button", { name: "Approve and move in VSA X" }));
-    await waitFor(() => expect(calls.filter((c) => c.url.includes("/execute/"))).toHaveLength(1));
-    const review = calls.find((c) => c.url.includes("/review/"));
-    expect(JSON.parse(String(review?.init?.body))).toEqual({ decision: "approved", reason: "Checked the subnet evidence" });
+    const decide = screen.getByRole("group", { name: "Decide" });
+    await userEvent.click(within(decide).getByRole("button", { name: "Move in VSA X…" }));
+    await userEvent.click(within(screen.getByRole("group", { name: "Confirm move" })).getByRole("button", { name: "Move now" }));
+    expect(await screen.findByText(/^Moved in VSA X/)).toBeInTheDocument();
+    const posts = calls.filter((c) => c.method === "POST");
+    expect(posts.map((c) => c.url)).toEqual([`/api/v1/customers/${customerA.id}/group-moves/move-now/`]);
+    expect(JSON.parse(String(posts[0]?.init?.body))).toEqual({ asset: "a1", target_group: "tg52", reason: "" });
   });
 
-  it("decides several selected proposals at once and skips the reviewer's own", async () => {
-    const pend = (id: string, name: string, by = "eng@example.test") => ({ ...proposal, id, device_name: name, requested_by: by, state: "pending", reviewed_by: null, execution_enabled: false });
+  it("with a second approver required, approves several selected suggestions at once and skips the reviewer's own", async () => {
+    const pend = (id: string, name: string, by = "eng@example.test") => ({ ...proposal, id, device_name: name, requested_by: by, state: "pending", reviewed_by: null, execution_enabled: false, self_approval_allowed: false });
     const { calls } = mockFetch({
       "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
       "GET /api/v1/customers/": { body: page([admin]) },
       [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([pend("p1", "PC1"), pend("p2", "PC2"), pend("p3", "PC3", "admin@example.test")]) },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/review/`]: { body: proposal },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/review/`]: { body: proposal },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/execute/`]: { body: { ...proposal, execution: { state: "succeeded" } } },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/execute/`]: { status: 400, body: { error: { code: "validation_error", message: "Invalid input.", details: { execute: ["Inventory is missing or stale. Synchronize before executing."] }, request_id: "r" } } },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/review/`]: { body: { ...proposal, state: "approved" } },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/review/`]: { body: { ...proposal, state: "approved" } },
     } as never);
     window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
     renderApp("/group-moves");
     for (const n of [1, 2, 3]) await userEvent.click(await screen.findByLabelText(`Select row ${n}`));
     const bar = screen.getByRole("group", { name: "Decide selected proposals" });
-    expect(bar).toHaveTextContent("1 selected proposal(s) skipped");
-    await userEvent.type(within(bar).getByLabelText("Review reason (all selected)"), "Bulk onboarding review");
-    const go = within(bar).getByRole("button", { name: "Approve and move (2)" });
-    expect(go).toBeDisabled();
-    await userEvent.click(within(bar).getByLabelText(/Move 2 devices in VSA X now/));
-    await userEvent.click(go);
+    expect(bar).toHaveTextContent("1 selected row(s) skipped");
+    expect(within(bar).queryByRole("button", { name: /Move in VSA X/ })).not.toBeInTheDocument();
+    await userEvent.click(within(bar).getByRole("button", { name: "Approve (2)" }));
     const results = await screen.findByRole("list", { name: "Decision results" });
-    await waitFor(() => expect(results).toHaveTextContent(/PC2: .*Inventory is missing or stale/));
-    expect(results).toHaveTextContent("PC1: Moved in VSA X");
+    await waitFor(() => expect(results).toHaveTextContent("PC2: Approved"));
+    expect(calls.filter((c) => c.method === "POST").map((c) => JSON.parse(String(c.init?.body)))).toEqual([{ decision: "approved" }, { decision: "approved" }]);
     expect(calls.filter((c) => c.url.includes("/p3/"))).toHaveLength(0);
   });
 
-  it("lets a single administrator select all their own proposals and approve and move them", async () => {
+  it("lets a single administrator select all suggestions and move them in one action", async () => {
     const own = (id: string, name: string) => ({ ...proposal, id, device_name: name, requested_by: "admin@example.test", state: "pending", reviewed_by: null, execution_enabled: false, self_approval_allowed: true });
+    const moved = { ...proposal, execution: { state: "succeeded", executed_by: "admin@example.test", started_at: "2026-11-24T09:00:00Z",
+      finished_at: null, http_status: 200, error_code: "", observed_group_id: "52", verified_at: null } };
     const { calls } = mockFetch({
       "GET /api/v1/auth/me/": { body: makeMe({ email: "admin@example.test" }) },
       "GET /api/v1/customers/": { body: page([admin]) },
       [`GET /api/v1/customers/${customerA.id}/group-moves/`]: { body: page([own("p1", "PC1"), own("p2", "PC2")]) },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/review/`]: { body: proposal },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/review/`]: { body: proposal },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p1/execute/`]: { body: { ...proposal, execution: { state: "succeeded" } } },
-      [`POST /api/v1/customers/${customerA.id}/group-moves/p2/execute/`]: { body: { ...proposal, execution: { state: "succeeded" } } },
+      [`POST /api/v1/customers/${customerA.id}/group-moves/move-now/`]: { body: moved },
     } as never);
     window.sessionStorage.setItem("okp.selectedCustomer", customerA.id);
     renderApp("/group-moves");
     await userEvent.click(await screen.findByLabelText("Select all rows on this page"));
     const bar = screen.getByRole("group", { name: "Decide selected proposals" });
     expect(bar).not.toHaveTextContent("skipped");
-    await userEvent.type(within(bar).getByLabelText("Review reason (all selected)"), "Suggested destinations checked");
+    const go = within(bar).getByRole("button", { name: "Move in VSA X (2)" });
+    expect(go).toBeDisabled();
     await userEvent.click(within(bar).getByLabelText(/Move 2 devices in VSA X now/));
-    await userEvent.click(within(bar).getByRole("button", { name: "Approve and move (2)" }));
-    await waitFor(() => expect(calls.filter((c) => c.url.includes("/execute/"))).toHaveLength(2));
+    await userEvent.click(go);
+    await waitFor(() => expect(calls.filter((c) => c.url.endsWith("/move-now/"))).toHaveLength(2));
+    expect(calls.some((c) => c.url.includes("/review/") || c.url.includes("/execute/"))).toBe(false);
     const list = calls.find((c) => c.method === "GET" && c.url.startsWith(`/api/v1/customers/${customerA.id}/group-moves/?`));
     expect(list?.url).toContain("view=waiting");
     expect(list?.url).toContain("page_size=200");
@@ -184,7 +182,7 @@ describe("group move execution", () => {
     await userEvent.click(await screen.findByLabelText("Select all rows on this page"));
     const bar = screen.getByRole("group", { name: "Decide selected proposals" });
     await userEvent.click(within(bar).getByLabelText(/Move 3 devices in VSA X now/));
-    await userEvent.click(within(bar).getByRole("button", { name: "Approve and move (3)" }));
+    await userEvent.click(within(bar).getByRole("button", { name: "Move in VSA X (3)" }));
     expect(await within(bar).findByRole("list", { name: "Decision results" })).toHaveTextContent("did not apply the move");
     expect(within(bar).getByRole("list", { name: "Decision results" })).toHaveTextContent("Stopped: the remaining moves were not sent");
     expect(calls.filter((c) => c.url.includes("/execute/"))).toHaveLength(1);
@@ -203,6 +201,6 @@ describe("group move execution", () => {
     await userEvent.click(await screen.findByLabelText("Select all rows on this page"));
     const bar = screen.getByRole("group", { name: "Decide selected proposals" });
     expect(bar).toHaveTextContent("VSA_GROUP_MOVE_EXECUTION_ENABLED=false in .env.prod");
-    expect(within(bar).queryByRole("button", { name: /Approve and move/ })).not.toBeInTheDocument();
+    expect(within(bar).queryByRole("button", { name: /Move in VSA X/ })).not.toBeInTheDocument();
   });
 });

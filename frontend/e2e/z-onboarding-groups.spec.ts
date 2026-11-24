@@ -63,7 +63,7 @@ test("onboarding is temporary and reviewed CIDR rules suggest a manual destinati
   await expect(suggestions).toContainText("valid temporary installation destination");
   await expect(suggestions).toContainText(`${ip.address} in ${ip.address}/32`);
   await suggestions.getByRole("button", { name: `Use ${target.name} · ID ${target.external_id}`, exact: true }).click();
-  await expect(page.getByLabel("Target group")).not.toHaveValue("");
+  await expect(page.getByLabel("Destination group")).not.toHaveValue("");
   const actual: GroupNetwork = await (await page.request.get(`${base}/groups/${source.external_id}/network/?instance=${org.instance_id}`)).json();
   expect(actual.devices.some((row) => row.asset_id === device.asset_id)).toBe(true);
   await page.screenshot({ path: "../backend/var/codex-audit/onboarding-group-suggestions.png", fullPage: true });
