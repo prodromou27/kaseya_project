@@ -8,6 +8,7 @@ import { Badge, Field, statusTone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import { formatUtc } from "../../lib/format";
 import { CAP, type Customer, type ExpectedSubnet, type GroupNetwork } from "../../lib/types";
+import { useOneStep } from "../../lib/auth";
 
 const FLAG_LABEL: Record<string, string> = {
   duplicate_ip: "Duplicate IP addresses",
@@ -37,6 +38,7 @@ export function NetworkReview({ customer, groupId, net }: { customer: Customer; 
     void qc.invalidateQueries({ queryKey: ["expected-subnets", customer.id] });
     void qc.invalidateQueries({ queryKey: ["group-network", customer.id, groupId] });
   };
+  const oneStep = useOneStep();
   const propose = useMutation({
     mutationFn: () => api.post<ExpectedSubnet>(base, { scope_type: scopeType, scope_external_id: scopeType === "group" ? groupId : siteId, cidr, reason, integration_instance: net.instance_id }),
     onSuccess: () => { setCidr(""); setReason(""); refresh(); },
@@ -116,8 +118,8 @@ export function NetworkReview({ customer, groupId, net }: { customer: Customer; 
             </select>)}</Field>
           <Field label="Subnet (CIDR)">{(id) => <input id={id} className="input w-44" placeholder="10.1.10.0/24" value={cidr} onChange={(e) => setCidr(e.target.value)} required />}</Field>
           <Field label="Reason">{(id) => <input id={id} className="input" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} required />}</Field>
-          <button type="submit" className="btn-primary" disabled={propose.isPending}>Propose subnet</button>
-          <p className="w-full text-xs text-slate-500">A different administrator must approve before the subnet is used.</p>
+          <button type="submit" className="btn-primary" disabled={propose.isPending}>{oneStep ? "Add subnet" : "Propose subnet"}</button>
+          <p className="w-full text-xs text-slate-500">{oneStep ? "Used straight away; recorded in the audit log." : "A different administrator must approve before the subnet is used."}</p>
           {propose.isError ? <p role="alert" className="w-full text-red-700">{describeError(propose.error)}</p> : null}
         </form>
       ) : null}

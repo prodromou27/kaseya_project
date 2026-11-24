@@ -9,6 +9,7 @@ import { useMe } from "../../lib/auth";
 import { formatUtc } from "../../lib/format";
 import type { CatalogAlias, CatalogImport, CatalogProduct, Paginated } from "../../lib/types";
 import { VsaCatalogImport } from "./VsaCatalogImport";
+import { useOneStep } from "../../lib/auth";
 
 const EXAMPLE = JSON.stringify(
   [
@@ -63,6 +64,7 @@ function ImportForm() {
     }
   };
   const doPreview = useMutation({ mutationFn: (rows: unknown[]) => api.post<Preview>("/catalog/imports/preview/", { rows }), onSuccess: setPreview });
+  const oneStep = useOneStep();
   const submit = useMutation({
     mutationFn: (rows: unknown[]) => api.post<CatalogImport>("/catalog/imports/", { rows }),
     onSuccess: () => { setPreview(null); void queryClient.invalidateQueries({ queryKey: ["catalog"] }); },
@@ -79,7 +81,7 @@ function ImportForm() {
       {parseError ? <p role="alert" className="text-sm text-red-700">{parseError}</p> : null}
       {doPreview.isError ? <p role="alert" className="text-sm text-red-700">{describeError(doPreview.error)}</p> : null}
       {submit.isError ? <p role="alert" className="text-sm text-red-700">{describeError(submit.error)}</p> : null}
-      {submit.isSuccess ? <p role="status" className="text-sm text-emerald-700">Submitted. A different administrator must approve it.</p> : null}
+      {submit.isSuccess ? <p role="status" className="text-sm text-emerald-700">{oneStep ? "Saved and applied." : "Submitted. A different administrator must approve it."}</p> : null}
       {preview ? <PreviewTable rows={preview.rows} /> : null}
     </div>
   );

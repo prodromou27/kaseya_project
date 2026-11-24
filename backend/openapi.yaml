@@ -8131,6 +8131,11 @@ components:
           description: After this the preview must be refreshed before it can be applied
             (``jobs.confirm`` enforces it).
           readOnly: true
+        self_approval_allowed:
+          type: boolean
+          description: 'One authorization (2026-11-24): administrators approve their
+            own jobs unless REQUIRE_SECOND_APPROVER.'
+          readOnly: true
         confirmed_by:
           type: string
           nullable: true
@@ -8179,6 +8184,7 @@ components:
       - id
       - integration
       - preview_expires_at
+      - self_approval_allowed
       - source
       - source_label
       - state_label

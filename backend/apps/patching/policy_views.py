@@ -23,6 +23,7 @@ from rest_framework.response import Response
 
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
+from apps.core.approval import approve_on_save
 from apps.customers.views import CustomerScopedMixin
 from apps.inventory.models import GroupNode, OrganizationNode, SiteNode
 from apps.inventory.queries import current_generations
@@ -154,6 +155,7 @@ class ExpectedPatchPolicyViewSet(
                 {"scope_external_id": "An active expectation already exists for this scope."}
             ) from exc
         self._audit("patch_baseline.proposed", obj)
+        approve_on_save(obj, self.request.user, self._audit, "patch_baseline")
 
     def _audit(self, action_name: str, obj: ExpectedPatchPolicy) -> None:
         record_event(

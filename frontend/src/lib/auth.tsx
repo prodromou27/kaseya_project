@@ -26,6 +26,16 @@ export function useMe(): Me {
   return me;
 }
 
+/** The signed-in user when inside RequireAuth, otherwise null (safe in isolated component tests). */
+export function useOptionalMe(): Me | null {
+  return useContext(MeContext);
+}
+
+/** One authorization (2026-11-24): what an approver saves takes effect at once (unless REQUIRE_SECOND_APPROVER). */
+export function useOneStep(): boolean {
+  return Boolean(useContext(MeContext)?.one_step_approval);
+}
+
 export function RequireAuth({ children, fallback }: { children: ReactNode; fallback: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();

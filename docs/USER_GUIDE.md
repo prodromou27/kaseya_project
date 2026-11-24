@@ -279,6 +279,15 @@ covers and which tasks or workflows use it (scopes used by nothing are flagged),
 A global software rule counts as third-party patch coverage ("Global rule") for devices that have a patch policy
 assigned. This is configuration only: whether VSA deployed an update is not available from the API.
 
+## One authorization
+
+Administrators do things in one step (since 2026-11-24): what you save takes effect straight away and is recorded in
+the audit log as proposed and approved by you. This covers expected subnets, health thresholds, patch policy
+expectations, approved custom field names, software lifecycle entries, catalog imports and aliases, custom field changes
+and group moves. Buttons therefore say **Add**, **Save** or **Move** rather than **Propose**. Engineers still suggest
+changes that need an administrator, and a customer administrator's source mapping waits for a super administrator. If
+your server is set to require a second approver, the screens say **Propose** and a different administrator approves.
+
 ## Moving devices to another group
 
 **Administrators move in one step** (since 2026-11-24). No proposal, approval or verify step:
@@ -337,7 +346,7 @@ date).
 4. **Apply (administrators only).** Engineers prepare and preview a job; a customer administrator then opens it under
    from **Waiting for you to apply** at the top of the Custom fields page, checks the preview and applies it with one
    confirmation (which also names how many devices have a different value that will be overwritten). A preview older
-   than 30 minutes is refreshed automatically when the job is opened. Large jobs may wait for a second administrator. Progress is shown; you can cancel the devices not started yet.
+   than 30 minutes is refreshed automatically when the job is opened. When you are an administrator, **Apply changes** also approves the job (one step); it only waits for a second administrator when the server requires one (`REQUIRE_SECOND_APPROVER`). Progress is shown; you can cancel the devices not started yet.
 5. **Results.** *Verified success* only when the value was read back from VSA X. *Unknown outcome* means VSA X did not
    answer clearly; the change is never sent twice. Download the results (Excel with Summary, Successful, Skipped, Failed,
    Not found and Ambiguous sheets, or CSV), and *Prepare a new job for the failed devices* if needed.

@@ -376,7 +376,9 @@ def test_engineers_cannot_move_in_one_step(world, enabled, single_admin):
     engineer_options = world.client(world.engineer_a).get(f"{base(world)}options/", {"asset": str(obs.asset_id)})
     assert engineer_options.json()["move_now_allowed"] is False
     resp = world.client(world.engineer_a).post(
-        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": options["groups"][0]["id"]}, format="json"
+        f"{base(world)}move-now/",
+        {"asset": str(obs.asset_id), "target_group": options["groups"][0]["id"]},
+        format="json",
     )
     assert resp.status_code in (403, 404)
     assert not GroupMoveRequest.objects.exists() and not fixtures.FIXTURE_MOVES
@@ -404,26 +406,40 @@ def test_one_step_uses_an_engineers_suggestion_or_closes_a_different_one(world, 
 
     obs, options = _device_and_targets(world)
     first, second = options["groups"][0], options["groups"][1]
-    suggested = world.client(world.engineer_a).post(
-        base(world), {"asset": str(obs.asset_id), "target_group": first["id"], "reason": "Engineer suggestion"}
-    ).json()
-    same = world.client(world.admin_a).post(
-        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": first["id"]}, format="json"
-    ).json()
+    suggested = (
+        world.client(world.engineer_a)
+        .post(base(world), {"asset": str(obs.asset_id), "target_group": first["id"], "reason": "Engineer suggestion"})
+        .json()
+    )
+    same = (
+        world.client(world.admin_a)
+        .post(f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": first["id"]}, format="json")
+        .json()
+    )
     assert same["id"] == suggested["id"] and same["execution"]["state"] == "succeeded"
     assert same["reason"] == "Engineer suggestion"
 
     resync(world, enabled)
     obs = current_observations(world.customer_a.id).get(asset_id=obs.asset_id)
-    other = world.client(world.engineer_a).post(
-        base(world), {"asset": str(obs.asset_id), "target_group": _device_and_targets(world)[1]["groups"][0]["id"],
-                      "reason": "Another engineer suggestion"}
-    ).json()
+    other = (
+        world.client(world.engineer_a)
+        .post(
+            base(world),
+            {
+                "asset": str(obs.asset_id),
+                "target_group": _device_and_targets(world)[1]["groups"][0]["id"],
+                "reason": "Another engineer suggestion",
+            },
+        )
+        .json()
+    )
     groups = world.client(world.admin_a).get(f"{base(world)}options/", {"asset": str(obs.asset_id)}).json()["groups"]
     destination = next(g for g in groups if g["id"] != other["target_group"])
-    moved = world.client(world.admin_a).post(
-        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": destination["id"]}, format="json"
-    ).json()
+    moved = (
+        world.client(world.admin_a)
+        .post(f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": destination["id"]}, format="json")
+        .json()
+    )
     assert moved["id"] != other["id"] and moved["execution"]["state"] == "succeeded"
     closed = GroupMoveRequest.objects.get(pk=other["id"])
     assert closed.state == "rejected" and "Superseded" in closed.review_reason
@@ -436,7 +452,9 @@ def test_one_step_resends_a_move_that_vsa_did_not_apply(world, enabled, single_a
         world.customer_a, world.admin_a, proposal["id"], None, transport=_AcceptedWithoutJson(enabled, apply=False)
     )
     assert first.error_code == "accepted_not_applied"
-    again = world.client(world.admin_a).post(
-        f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": target["id"]}, format="json"
-    ).json()
+    again = (
+        world.client(world.admin_a)
+        .post(f"{base(world)}move-now/", {"asset": str(obs.asset_id), "target_group": target["id"]}, format="json")
+        .json()
+    )
     assert again["id"] == proposal["id"] and again["execution"]["state"] == "succeeded"

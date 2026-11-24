@@ -21,6 +21,7 @@ import {
 } from "../../lib/types";
 import { PolicyDefinitionView } from "./PolicyDefinitionView";
 import { SelectCustomer } from "../../components/SelectCustomer";
+import { useOneStep } from "../../lib/auth";
 
 const DRIFT_TONE: Record<DriftState, Tone> = {
   no_baseline: "neutral",
@@ -54,6 +55,7 @@ function Baselines({ customer, summary }: { customer: Customer; summary: PolicyS
     void qc.invalidateQueries({ queryKey: ["patch-baselines", customer.id] });
     void qc.invalidateQueries({ queryKey: ["patch-policies", customer.id] });
   };
+  const oneStep = useOneStep();
   const propose = useMutation({
     mutationFn: () =>
       api.post<PatchBaseline>(base, {
@@ -116,7 +118,7 @@ function Baselines({ customer, summary }: { customer: Customer; summary: PolicyS
               {summary.definitions.filter((d) => d.status === "collected").map((d) => <option key={d.policy_id} value={d.policy_id}>{d.name} (ID {d.policy_id})</option>)}
             </select>)}</Field>
           <Field label="Reason">{(id) => <input id={id} className="input" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} required />}</Field>
-          <button type="submit" className="btn-primary" disabled={propose.isPending}>Propose expectation</button>
+          <button type="submit" className="btn-primary" disabled={propose.isPending}>{oneStep ? "Save expectation" : "Propose expectation"}</button>
           {propose.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(propose.error)}</p> : null}
         </form>
       ) : null}

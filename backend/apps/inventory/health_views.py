@@ -23,6 +23,7 @@ from rest_framework.response import Response
 
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
+from apps.core.approval import one_step
 from apps.customers.views import CustomerScopedMixin
 from apps.software.comparator import parse_dotted
 
@@ -134,6 +135,19 @@ class HealthThresholdsViewSet(
         except IntegrityError as exc:
             raise ValidationError({"detail": "A proposal is already awaiting review."}) from exc
         self._audit("health_thresholds.proposed", obj)
+        # One authorization: the proposer's thresholds apply now (previous ones superseded, history kept).
+        if one_step():
+            with transaction.atomic():
+                HealthThresholds.objects.filter(
+                    customer_id=obj.customer_id, state=HealthThresholds.State.APPROVED
+                ).update(state=HealthThresholds.State.SUPERSEDED)
+                obj.state, obj.reviewed_by, obj.reviewed_at = (
+                    HealthThresholds.State.APPROVED,
+                    self.request.user,
+                    timezone.now(),
+                )
+                obj.save(update_fields=["state", "reviewed_by", "reviewed_at"])
+            self._audit("health_thresholds.approved", obj)
 
     def _audit(self, name: str, obj: HealthThresholds) -> None:
         record_event(

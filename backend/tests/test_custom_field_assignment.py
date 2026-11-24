@@ -605,3 +605,31 @@ def test_preview_expiry_is_shown_and_waiting_jobs_can_be_listed(world, ready, dj
     waiting = admin.get(f"{base(world)}/custom-field-jobs/", {"state": "previewed,awaiting_approval"}).json()
     assert [j["id"] for j in waiting["results"]] == [job["id"]]
     assert not admin.get(f"{base(world)}/custom-field-jobs/", {"state": "completed"}).json()["results"]
+
+
+def test_administrator_applies_above_the_threshold_in_one_step(
+    world, ready, settings, django_capture_on_commit_callbacks
+):
+    """Product owner 2026-11-24: one authorization. Without REQUIRE_SECOND_APPROVER the administrator's confirm is
+    also the approval; it is audited as self_approved. An engineer's job still waits for an administrator."""
+    from apps.audit.models import AuditEvent
+
+    settings.CATALOG_REQUIRE_SEPARATE_REVIEWER = False
+    ready.custom_field_approval_threshold = 1
+    ready.save()
+    ws = workstations(world, 3)
+    payload = {"field": str(ring(world).id), "value": "Ring 0", "assets": [str(o.asset_id) for o in ws[1:3]]}
+    admin = world.client(world.admin_a)
+    job = admin.post(f"{base(world)}/custom-field-jobs/", payload, format="json").json()
+    with django_capture_on_commit_callbacks(execute=True):
+        admin.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    with django_capture_on_commit_callbacks(execute=True):
+        body = admin.post(
+            f"{base(world)}/custom-field-jobs/{job['id']}/confirm/", {"confirm": True}, format="json"
+        ).json()
+    assert body["state"] in ("queued", "running", "completed")
+    stored = AssignmentJob.objects.get(pk=job["id"])
+    assert stored.state == "completed" and stored.approved_by_id == world.admin_a.id
+    assert len(fixtures.FIXTURE_CUSTOM_FIELDS) == 2
+    confirmed = AuditEvent.objects.filter(target_id=job["id"], action__endswith="confirmed").get()
+    assert confirmed.metadata["self_approved"] is True and confirmed.metadata["approval_required"] is True

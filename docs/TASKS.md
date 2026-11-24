@@ -160,6 +160,8 @@ fixture-verified only (no live VSA X validation).
 - [x] **CFA-04** Paste and TXT/CSV/XLSX import with column mapping (optional value per device); exact matching engine (device ID → serial → FQDN → hostname) with ambiguity resolution.
 - [x] **CFA-05** Live preview (device-level vs inherited via `/usage`), typed value validation, actions and summary, overwrite acknowledgement.
 - [x] **CFA-06** Gated writer (ADR-031): documented assign/update only, three switches + validated route + separate token; `vsa_custom_field_validate`.
+- [x] **UX-09** One authorization for administrators everywhere (settings saved = applied; custom field jobs self-approved), wording follows `one_step_approval` (product owner, 2026-11-24).
+- [x] **PERF-02** Fix: carry forward notifications and approved custom fields for skipped devices (regression from PERF-01, 2026-11-24).
 - [x] **UX-08** Group moves in one step for administrators (move-now; device page, onboarding plan, suggestions list); engineers suggest (product owner, 2026-11-24).
 - [x] **OPS-08** 2xx move answers without the documented JSON whose read-back shows the old group are *not applied* (resendable); bulk move stops on the first; answer shape audited (live tenant, 2026-11-23). OPEN: cause on the tenant side (token permission or proxy/WAF).
 - [x] **OPS-07** 2xx move answers without the documented JSON are accepted and confirmed by read-back; Sent, not confirmed view and bulk Verify (live tenant, 2026-11-23). Live evidence: PUT /devices/{id}/move returns 200 with a non-JSON body.

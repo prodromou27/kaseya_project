@@ -9,6 +9,7 @@ import { Badge } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { CAP, type Customer } from "../../lib/types";
+import { useOneStep } from "../../lib/auth";
 
 type Status = "assigned" | "contained" | "unassigned";
 type Subnet = {
@@ -57,6 +58,7 @@ function SubnetDevices({ customer, subnet, onClose }: { customer: Customer; subn
 export function SubnetInventory({ customer }: { customer: Customer }) {
   const qc = useQueryClient();
   const canPropose = customer.my_capabilities.includes(CAP.manageExceptions);
+  const oneStep = useOneStep();
   const propose = useMutation({
     mutationFn: (s: Subnet) => api.post(`/customers/${customer.id}/expected-subnets/`, {
       scope_type: "group", scope_external_id: s.dominant_group.group_external_id, cidr: s.cidr,
@@ -94,7 +96,7 @@ export function SubnetInventory({ customer }: { customer: Customer }) {
         {row.original.proposed.length ? <span className="text-xs text-sky-800">Proposed for {row.original.proposed.map((p) => `${p.scope_type} ${p.scope_external_id}`).join(", ")}; awaiting approval</span> : null}
         {canPropose && row.original.status === "unassigned" && !row.original.proposed.length && row.original.dominant_group.group_external_id ? (
           <button type="button" className="w-fit text-xs font-medium text-sky-800 underline disabled:opacity-50" disabled={propose.isPending}
-            onClick={() => propose.mutate(row.original)}>Propose for {row.original.dominant_group.group_name || `group ${row.original.dominant_group.group_external_id}`}</button>
+            onClick={() => propose.mutate(row.original)}>{oneStep ? "Add to " : "Propose for "}{row.original.dominant_group.group_name || `group ${row.original.dominant_group.group_external_id}`}</button>
         ) : null}
       </span>
     ) },

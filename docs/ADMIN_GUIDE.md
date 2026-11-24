@@ -124,6 +124,7 @@ Weekly: failed sync review, quarantine mappings, stale dataset queue. Monthly: r
    the per-device detail calls are made only for devices that need them: new devices; devices where someone pressed
    **Refresh details now**; and devices seen online since their last fetch once it is older than 24 hours (installed
    updates, notifications) or 7 days (applied policies, custom fields). Offline devices wait, but never more than 7 days.
+   Skipped devices keep their last values (updates, policies, notifications, approved custom fields).
    The budgets above remain a per-sync ceiling. Change the intervals in `.env.prod` with
    `DETAIL_REFRESH_HOURS_INSTALLED_UPDATES`, `DETAIL_REFRESH_HOURS_NOTIFICATIONS`, `DETAIL_REFRESH_HOURS_APPLIED_POLICIES`,
    `DETAIL_REFRESH_HOURS_CUSTOM_FIELDS` and `DETAIL_REFRESH_MAX_HOURS` (hours). **Pace:** an integration makes at most

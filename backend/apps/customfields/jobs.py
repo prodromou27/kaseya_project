@@ -339,8 +339,17 @@ def confirm(job: Job, user: Any, *, acknowledge_overwrite: bool, request: Any = 
         threshold = job.integration_instance.custom_field_approval_threshold
         job.approval_required = job.field.requires_approval or bool(threshold and to_change > threshold)
         job.confirmed_by, job.confirmed_at = user, timezone.now()
-        job.state = Job.State.AWAITING_APPROVAL if job.approval_required else Job.State.QUEUED
-        job.save(update_fields=["approval_required", "confirmed_by", "confirmed_at", "state"])
+        # One authorization (product owner, 2026-11-24): an administrator who may approve confirms AND approves in one
+        # step unless a second approver is required on this server. Engineers' jobs still wait for an administrator.
+        self_approved = (
+            job.approval_required and Cap.CUSTOMER_CF_APPROVE in caps and not settings.CATALOG_REQUIRE_SEPARATE_REVIEWER
+        )
+        if self_approved:
+            job.approved_by, job.approved_at = user, job.confirmed_at
+        job.state = Job.State.AWAITING_APPROVAL if job.approval_required and not self_approved else Job.State.QUEUED
+        job.save(
+            update_fields=["approval_required", "confirmed_by", "confirmed_at", "approved_by", "approved_at", "state"]
+        )
         job.items.filter(included=True, action=Item.Action.SKIP).update(result=Item.Result.ALREADY_CORRECT)
         job.items.filter(result=Item.Result.PENDING).exclude(
             included=True, action__in=(Item.Action.ASSIGN, Item.Action.UPDATE)
@@ -348,7 +357,15 @@ def confirm(job: Job, user: Any, *, acknowledge_overwrite: bool, request: Any = 
         _count(job)
         if job.state == Job.State.QUEUED:
             _enqueue(job)
-    _audit(job, "confirmed", user, request, to_change=to_change, approval_required=job.approval_required)
+    _audit(
+        job,
+        "confirmed",
+        user,
+        request,
+        to_change=to_change,
+        approval_required=job.approval_required,
+        self_approved=bool(self_approved),
+    )
     return job
 
 
@@ -363,7 +380,8 @@ def decide(job: Job, user: Any, *, approve: bool, request: Any = None) -> Job:
         job = Job.objects.select_for_update().get(pk=job.pk)
         if job.state != Job.State.AWAITING_APPROVAL:
             raise serializers.ValidationError({"state": "This job is not waiting for approval."})
-        if user.pk in (job.created_by_id, job.confirmed_by_id):
+        own = user.pk in (job.created_by_id, job.confirmed_by_id)
+        if own and settings.CATALOG_REQUIRE_SEPARATE_REVIEWER:
             raise PermissionDenied("A different administrator must approve this job.")
         job.approved_by, job.approved_at = user, timezone.now()
         job.state = Job.State.QUEUED if approve else Job.State.REJECTED
@@ -373,7 +391,7 @@ def decide(job: Job, user: Any, *, approve: bool, request: Any = None) -> Job:
         else:
             job.items.filter(result=Item.Result.PENDING).update(result=Item.Result.NOT_RUN)
             _count(job)
-    _audit(job, "approved" if approve else "rejected", user, request)
+    _audit(job, "approved" if approve else "rejected", user, request, self_approved=own)
     return job
 
 

@@ -19,6 +19,7 @@ import {
   type Paginated,
 } from "../../lib/types";
 import { SelectCustomer } from "../../components/SelectCustomer";
+import { useOneStep } from "../../lib/auth";
 
 const DIMENSION_TITLE: Record<HealthDimension, string> = {
   connectivity: "Connectivity (last seen)",
@@ -81,6 +82,7 @@ function Thresholds({ customer, summary }: { customer: Customer; summary: Health
     void qc.invalidateQueries({ queryKey: ["health-thresholds", customer.id] });
     void qc.invalidateQueries({ queryKey: ["device-health", customer.id] });
   };
+  const oneStep = useOneStep();
   const propose = useMutation({
     mutationFn: () => api.post<HealthThresholdsRow>(base, {
       offline_hours: Number(form.offline_hours), stale_days: Number(form.stale_days),
@@ -130,8 +132,8 @@ function Thresholds({ customer, summary }: { customer: Customer; summary: Health
           {field("disk_critical_free_pct", "Disk critical (% free)")}
           {field("minimum_agent_version", "Minimum agent version", "text")}
           <Field label="Reason">{(id) => <input id={id} className="input" value={form.reason} maxLength={500} onChange={(e) => setForm({ ...form, reason: e.target.value })} required />}</Field>
-          <button type="submit" className="btn-primary" disabled={propose.isPending}>Propose thresholds</button>
-          <p className="w-full text-xs text-slate-500">A different administrator must approve before the thresholds take effect.</p>
+          <button type="submit" className="btn-primary" disabled={propose.isPending}>{oneStep ? "Save thresholds" : "Propose thresholds"}</button>
+          <p className="w-full text-xs text-slate-500">{oneStep ? "Take effect straight away; the previous thresholds are kept in the history." : "A different administrator must approve before the thresholds take effect."}</p>
           {propose.isError ? <p role="alert" className="w-full text-sm text-red-700">{describeError(propose.error)}</p> : null}
         </form>
       ) : null}

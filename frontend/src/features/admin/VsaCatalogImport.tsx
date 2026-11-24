@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { api, describeError } from "../../lib/api";
 import { formatUtc } from "../../lib/format";
+import { useOneStep } from "../../lib/auth";
 
 export const VSA_CATALOG_URL = "https://help.vsa10.kaseya.com/help/Content/1-Modules/patch-management/application-catalog.htm";
 
@@ -104,6 +105,7 @@ export function VsaCatalogImport() {
   const [text, setText] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const match = useMutation({ mutationFn: () => api.post<Result>("/catalog/imports/from-vsa-catalog/", { text }), onSuccess: setResult });
+  const oneStep = useOneStep();
   const submit = useMutation({
     mutationFn: (rows: unknown[]) => api.post("/catalog/imports/", { rows }),
     onSuccess: () => { setResult(null); setText(""); void queryClient.invalidateQueries({ queryKey: ["catalog"] }); },
@@ -123,7 +125,7 @@ export function VsaCatalogImport() {
       <ol className="list-decimal space-y-0.5 pl-5 text-sm text-slate-700">
         <li>Open the VSA 10 application catalog, select the whole table and copy it.</li>
         <li>Paste it below and choose <strong>Match installed programs</strong>. Only programs installed on your devices are kept.</li>
-        <li>Check the versions, submit, and have a different administrator approve the import.</li>
+        <li>{oneStep ? "Check the versions and submit; they apply straight away." : "Check the versions, submit, and have a different administrator approve the import."}</li>
       </ol>
       <label htmlFor="vsa-catalog-text" className="sr-only">VSA application catalog table</label>
       <textarea id="vsa-catalog-text" className="input h-32 w-full font-mono text-xs" value={text}
@@ -141,7 +143,7 @@ export function VsaCatalogImport() {
       </div>
       {match.isError ? <p role="alert" className="text-sm text-red-700">{describeError(match.error)}</p> : null}
       {submit.isError ? <p role="alert" className="text-sm text-red-700">{describeError(submit.error)}</p> : null}
-      {submit.isSuccess ? <p role="status" className="text-sm text-emerald-700">Submitted. A different administrator must approve it below.</p> : null}
+      {submit.isSuccess ? <p role="status" className="text-sm text-emerald-700">{oneStep ? "Saved and applied." : "Submitted. A different administrator must approve it below."}</p> : null}
       {s ? (
         <p role="status" className="text-sm">
           {s.catalog_entries} catalog entries read: <strong>{s.matched_programs} installed program{s.matched_programs === 1 ? "" : "s"} to add or update</strong>,{" "}

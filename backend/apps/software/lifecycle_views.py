@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from apps.accounts.permissions import IsSystemAdmin
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
+from apps.core.approval import one_step
 from apps.customers.views import CustomerScopedMixin
 
 from . import lifecycle
@@ -139,6 +140,17 @@ class LifecycleEntryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, view
     def perform_create(self, serializer: LifecycleEntrySerializer) -> None:
         entry = serializer.save(created_by=self.request.user)
         self._audit("proposed", entry)
+        self._approve_now([entry])
+
+    def _approve_now(self, entries: list[LifecycleEntry]) -> None:
+        """One authorization (2026-11-24): the proposer's entries apply now unless a second approver is required."""
+        if not one_step():
+            return
+        now = timezone.now()
+        for entry in entries:
+            entry.state, entry.reviewed_by, entry.reviewed_at = LifecycleEntry.State.APPROVED, self.request.user, now
+            entry.save(update_fields=["state", "reviewed_by", "reviewed_at"])
+            self._audit("approved", entry, self_approved=True)
 
     @extend_schema(request=LifecycleEntrySerializer(many=True), responses={201: LifecycleEntrySerializer(many=True)})
     @action(detail=False, methods=["post"])
@@ -156,6 +168,7 @@ class LifecycleEntryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, view
             entries = s.save(created_by=request.user)
         for e in entries:
             self._audit("proposed", e, bulk=True)
+        self._approve_now(entries)
         return Response(LifecycleEntrySerializer(entries, many=True).data, status=status.HTTP_201_CREATED)
 
     def _transition(self, pk: str | None, *, to: str, allowed_from: tuple[str, ...]) -> LifecycleEntry:

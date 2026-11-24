@@ -8,6 +8,7 @@ import { Badge, Field, Notice, statusTone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import { formatUtc } from "../../lib/format";
 import { PROVIDER_LABEL, type Customer, type IntegrationOption, type Paginated, type SourceMapping } from "../../lib/types";
+import { useOneStep, useOptionalMe } from "../../lib/auth";
 
 export const mappingColumns: ColumnDef<SourceMapping, unknown>[] = [
   {
@@ -43,6 +44,10 @@ export function MappingsPanel({ customer }: { customer: Customer }) {
   const [integration, setIntegration] = useState("");
   const [externalId, setExternalId] = useState("");
   const [externalName, setExternalName] = useState("");
+  const oneStep = useOneStep();
+  const me = useOptionalMe();
+  // Only a super admin's mapping takes effect when saved; a customer admin's waits for a super admin.
+  const direct = oneStep && Boolean(me?.is_super_admin);
   const propose = useMutation({
     mutationFn: () =>
       api.post<SourceMapping>(path, { integration_instance: integration, external_org_id: externalId, external_org_name: externalName }),
@@ -60,8 +65,9 @@ export function MappingsPanel({ customer }: { customer: Customer }) {
   return (
     <div className="space-y-4">
       <Notice tone="warn">
-        Only <strong>approved</strong> mappings route source data to this customer. Proposals are reviewed by a super
-        administrator. Match on the vendor organisation <em>ID</em>, never on display name.
+        Only <strong>approved</strong> mappings route source data to this customer.{" "}
+        {direct ? "As a super administrator, a mapping you add applies straight away." : "Proposals are reviewed by a super administrator."}
+        {" "}Match on the vendor organisation <em>ID</em>, never on display name.
       </Notice>
       <form onSubmit={submit} aria-label="Propose source mapping" className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-3">
         <Field label="Integration">
@@ -84,7 +90,7 @@ export function MappingsPanel({ customer }: { customer: Customer }) {
           {(id) => <input id={id} className="input w-56" maxLength={255} value={externalName} onChange={(e) => setExternalName(e.target.value)} />}
         </Field>
         <button type="submit" className="btn-primary" disabled={propose.isPending}>
-          Propose mapping
+          {direct ? "Add mapping" : "Propose mapping"}
         </button>
         {propose.isError ? (
           <p role="alert" className="w-full text-sm text-red-700">

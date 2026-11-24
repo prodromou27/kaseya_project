@@ -18,6 +18,7 @@ from apps.accounts import scope
 from apps.accounts.permissions import IsSystemAdmin
 from apps.accounts.roles import DELEGABLE_ROLES, Cap
 from apps.audit.services import record_event
+from apps.core.approval import one_step
 
 from .models import Customer, CustomerMembership, CustomerSourceMapping
 from .serializers import CustomerSerializer, MembershipSerializer, ReviewSerializer, SourceMappingSerializer
@@ -270,6 +271,27 @@ class SourceMappingViewSet(
             request=self.request,
             metadata={"integration": str(mapping.integration_instance_id), "external_org_id": mapping.external_org_id},
         )
+        # One authorization (2026-11-24): a super admin's mapping applies now; a customer admin's waits for one.
+        if one_step() and scope.has_global_capability(self.request.user, Cap.SYSTEM_MANAGE):
+            with transaction.atomic():
+                mapping.mapping_status = CustomerSourceMapping.Status.APPROVED
+                mapping.reviewed_by, mapping.reviewed_at = self.request.user, timezone.now()
+                mapping.save(update_fields=["mapping_status", "reviewed_by", "reviewed_at"])
+                ensure_sync_schedule(mapping)
+            record_event(
+                action="mapping.approved",
+                outcome="success",
+                actor=self.request.user,
+                customer=customer,
+                target_type="source_mapping",
+                target_id=str(mapping.id),
+                request=self.request,
+                metadata={
+                    "integration": str(mapping.integration_instance_id),
+                    "external_org_id": mapping.external_org_id,
+                    "self_approved": True,
+                },
+            )
 
 
 def ensure_sync_schedule(mapping: CustomerSourceMapping) -> None:

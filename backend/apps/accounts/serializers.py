@@ -85,6 +85,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 def me_payload(user: User, membership_caps: dict[Any, frozenset[str]]) -> dict[str, Any]:
+    from apps.core.approval import one_step
     from apps.customers.models import CustomerMembership
 
     memberships = (
@@ -100,6 +101,8 @@ def me_payload(user: User, membership_caps: dict[Any, frozenset[str]]) -> dict[s
         "global_role": user.global_role.key if user.global_role_id else None,
         "global_capabilities": sorted(user.global_capabilities),
         "is_super_admin": user.is_super_admin,
+        # One authorization (2026-11-24): what an approver saves takes effect at once unless REQUIRE_SECOND_APPROVER.
+        "one_step_approval": one_step(),
         "memberships": [
             {
                 "customer": {"id": str(m.customer_id), "code": m.customer.code, "name": m.customer.name},

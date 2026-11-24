@@ -19,6 +19,7 @@ from rest_framework.response import Response
 
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
+from apps.core.approval import approve_on_save
 from apps.customers.views import CustomerScopedMixin
 
 from . import details
@@ -142,6 +143,7 @@ class CustomFieldAllowlistViewSet(
         except IntegrityError as exc:
             raise ValidationError({"name": "This field is already proposed or approved."}) from exc
         self._audit("custom_field_allowlist.proposed", obj)
+        approve_on_save(obj, self.request.user, self._audit, "custom_field_allowlist")
 
     def _audit(self, name: str, obj: CustomFieldAllowlist) -> None:
         record_event(

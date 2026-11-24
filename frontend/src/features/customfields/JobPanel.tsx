@@ -247,8 +247,8 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
 
             {j.state === "awaiting_approval" ? (
               <Notice tone="info">
-                Waiting for a different administrator to approve ({c.to_change} devices{j.approval_required ? "" : ""}).
-                {caps.includes(CAP.cfApprove) && !ownJob ? (
+                {j.self_approval_allowed ? `Waiting for an administrator to apply (${c.to_change} devices).` : `Waiting for a different administrator to approve (${c.to_change} devices).`}
+                {caps.includes(CAP.cfApprove) && (!ownJob || j.self_approval_allowed) ? (
                   <span className="mt-2 flex gap-2">
                     <button type="button" className="btn-primary" onClick={() => act.mutate({ path: "approve" })}>Approve and run</button>
                     <button type="button" className="btn-danger" onClick={() => act.mutate({ path: "reject" })}>Reject</button>

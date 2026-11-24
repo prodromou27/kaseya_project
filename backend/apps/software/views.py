@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from apps.accounts.permissions import IsSystemAdmin
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
+from apps.core.approval import one_step
 from apps.customers.views import CustomerScopedMixin
 from apps.inventory.models import Asset
 
@@ -336,6 +337,24 @@ class AliasViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.Gene
             request=self.request,
             metadata={"pattern": alias.name_pattern, "product": str(alias.product_id)},
         )
+        if one_step():  # one authorization (2026-11-24): the system administrator's alias applies now
+            with transaction.atomic():
+                alias.review_status, alias.reviewed_by, alias.reviewed_at = (
+                    ReviewStatus.APPROVED,
+                    self.request.user,
+                    timezone.now(),
+                )
+                alias.save(update_fields=["review_status", "reviewed_by", "reviewed_at"])
+                schedule_reevaluation()
+            record_event(
+                action="catalog.alias_approved",
+                outcome="success",
+                actor=self.request.user,
+                target_type="software_alias",
+                target_id=str(alias.id),
+                request=self.request,
+                metadata={"self_approved": True},
+            )
 
     def _review(self, request: Request, new_status: str) -> Response:
         alias = self.get_object()
@@ -518,6 +537,18 @@ class ImportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
             request=self.request,
             metadata={"rows": len(imp.rows)},
         )
+        if one_step():  # one authorization (2026-11-24): the system administrator's import applies now
+            revisions = approve_import(imp, self.request.user)
+            imp.refresh_from_db()
+            record_event(
+                action="catalog.import_approved",
+                outcome="success",
+                actor=self.request.user,
+                target_type="catalog_import",
+                target_id=str(imp.id),
+                request=self.request,
+                metadata={"revisions": [str(r.id) for r in revisions], "self_approved": True},
+            )
 
     @extend_schema(request=None, responses={200: ImportSerializer})
     @action(detail=True, methods=["post"])

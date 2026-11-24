@@ -1,5 +1,14 @@
 # Changelog
 
+## UX-09 - 2026-11-24 - one authorization everywhere for administrators
+
+- Product owner: no multiple authorizations. With `REQUIRE_SECOND_APPROVER` off (the default), what an administrator saves takes effect at once and both steps are audited (proposed + approved, `self_approved`): expected subnets, health thresholds (previous ones superseded), patch policy expectations, approved custom field names, software lifecycle entries, catalog imports and aliases, and source mappings added by a super admin (a customer admin's mapping still waits for a super admin). Buttons say **Add / Save** instead of **Propose**; `/auth/me` returns `one_step_approval`. With `REQUIRE_SECOND_APPROVER=true` everything waits for a different administrator as before.
+- Custom fields: an administrator's **Apply changes** also approves a job above the approval threshold (audited `self_approved`); jobs already waiting can be applied by the same administrator.
+
+## PERF-02 - 2026-11-24 - fix: skipped devices kept no notifications or custom fields
+
+- Regression from PERF-01 (found by the browser tests): devices skipped because their details were recent lost their notifications and approved custom-field values in the new sync. They are now copied forward like installed updates and policies (status *carried forward*, original collection time kept); notifications outside the 14-day window and custom fields whose name is no longer approved are not copied. Migration `inventory.0017` (status choice only). Device pages show *from an earlier sync*.
+
 ## UX-08 - 2026-11-24 - group moves in one step for administrators
 
 - Product owner: no multiple authorizations. An administrator moves a device with one confirmation: device page **Operations → Move in VSA X… → Move now**, or an onboarding destination's **Move N devices now**. The portal records, approves, sends and reads back in one call (`POST /api/v1/customers/{id}/group-moves/move-now/`, administrators only; refused without recording anything when moving is off or a second approver is required). Every step stays in the audit log.

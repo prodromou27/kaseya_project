@@ -7,6 +7,7 @@ import { QueryBoundary } from "../../components/States";
 import { Badge, Field, Notice, type Tone } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
 import type { LifecycleCatalogEntry, Paginated } from "../../lib/types";
+import { useOneStep } from "../../lib/auth";
 
 type Product = { id: string; vendor: string; product: string; edition: string; channel: string };
 const STATE_TONE: Record<LifecycleCatalogEntry["state"], Tone> = { proposed: "warn", approved: "good", rejected: "bad", retired: "neutral" };
@@ -45,6 +46,7 @@ export function LifecycleCatalogPanel() {
     queryFn: ({ signal }) => api.get<Paginated<Product>>("/catalog/products/", { page_size: 200 }, signal),
   });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["lifecycle-catalog"] });
+  const oneStep = useOneStep();
   const propose = useMutation({
     mutationFn: () =>
       api.post<LifecycleCatalogEntry>("/catalog/lifecycle/", {
@@ -118,7 +120,7 @@ export function LifecycleCatalogPanel() {
         Entries with a <em>secondary</em> source are kept for reference but never classify a device (shown as unknown).
       </Notice>
       <form onSubmit={submit} aria-label="Propose lifecycle entry" className="space-y-2 rounded border border-slate-200 bg-white p-3">
-        <h3 className="font-semibold">Propose an entry</h3>
+        <h3 className="font-semibold">{oneStep ? "Add an entry" : "Propose an entry"}</h3>
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Type">
             {(id) => (
@@ -169,7 +171,7 @@ export function LifecycleCatalogPanel() {
               </select>
             )}
           </Field>
-          <button type="submit" className="btn-primary" disabled={propose.isPending}>Propose</button>
+          <button type="submit" className="btn-primary" disabled={propose.isPending}>{oneStep ? "Save" : "Propose"}</button>
         </div>
         {propose.isError ? <p role="alert" className="text-sm text-red-700">{describeError(propose.error)}</p> : null}
       </form>

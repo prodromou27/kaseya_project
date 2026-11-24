@@ -23,6 +23,7 @@ from rest_framework.response import Response
 
 from apps.accounts.roles import Cap
 from apps.audit.services import record_event
+from apps.core.approval import approve_on_save
 from apps.customers.views import CustomerScopedMixin
 
 from .models import ExpectedSubnet, GroupNode, SiteNode
@@ -122,6 +123,7 @@ class ExpectedSubnetViewSet(
         except IntegrityError as exc:
             raise ValidationError({"cidr": "This subnet is already proposed or approved for the scope."}) from exc
         self._audit("expected_subnet.proposed", obj)
+        approve_on_save(obj, self.request.user, self._audit, "expected_subnet")
 
     def _audit(self, name: str, obj: ExpectedSubnet) -> None:
         record_event(

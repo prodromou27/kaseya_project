@@ -133,6 +133,7 @@ class JobSerializer(serializers.ModelSerializer):
     source_label = serializers.CharField(source="get_source_display", read_only=True)
     writes = serializers.SerializerMethodField()
     preview_expires_at = serializers.SerializerMethodField()
+    self_approval_allowed = serializers.SerializerMethodField()
 
     class Meta:
         model = AssignmentJob
@@ -155,6 +156,7 @@ class JobSerializer(serializers.ModelSerializer):
             "created_at",
             "previewed_at",
             "preview_expires_at",
+            "self_approval_allowed",
             "confirmed_by",
             "confirmed_at",
             "approval_required",
@@ -173,6 +175,10 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_approved_by(self, obj: AssignmentJob) -> str | None:
         return obj.approved_by.email if obj.approved_by else None
+
+    def get_self_approval_allowed(self, obj: AssignmentJob) -> bool:
+        """One authorization (2026-11-24): administrators approve their own jobs unless REQUIRE_SECOND_APPROVER."""
+        return not settings.CATALOG_REQUIRE_SEPARATE_REVIEWER
 
     def get_preview_expires_at(self, obj: AssignmentJob) -> datetime | None:
         """After this the preview must be refreshed before it can be applied (``jobs.confirm`` enforces it)."""
