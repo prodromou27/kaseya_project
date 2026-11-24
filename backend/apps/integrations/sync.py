@@ -554,6 +554,7 @@ def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter
                 guard.unavailable()
     except DetailsAbandoned as exc:  # notifications failing must not skip custom fields
         _details_incomplete(run, exc.kind)
+    details.carry_forward(generation, "notifications")
 
     details.ensure_fetches(generation, "custom_fields")
     approved = details.approved_field_keys(run.customer_id)
@@ -573,6 +574,7 @@ def _collect_device_details(run: SyncRun, generation: DatasetGeneration, adapter
             except (VendorUnavailable, VendorBadResponse):
                 details.record_failure(fetch)
                 guard.unavailable()
+    details.carry_forward(generation, "custom_fields", approved)
     run.refresh_from_db()
 
 
@@ -670,6 +672,8 @@ def _details_incomplete(run: SyncRun, kind: str) -> None:
         policies.carry_forward(generation)
         for fetch_kind in ("notifications", "custom_fields"):
             details.ensure_fetches(generation, fetch_kind)
+        details.carry_forward(generation, "notifications")
+        details.carry_forward(generation, "custom_fields", details.approved_field_keys(run.customer_id))
     logger.warning("sync_details_incomplete", extra={"sync_run_id": str(run.id), "kind": kind})
     record_event(
         action="sync.details_incomplete",

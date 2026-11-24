@@ -36,7 +36,7 @@ function View({ customer }: { customer: Customer }) {
               {[
                 ["Notifications (last " + s.window_days + " days)", s.notifications],
                 ["Devices with notifications", s.devices_with_notifications],
-                ["Devices collected", s.collection_status.collected ?? 0],
+                ["Devices collected", (s.collection_status.collected ?? 0) + (s.collection_status.carried_forward ?? 0)],
                 ["Devices not collected", notCollected],
               ].map(([label, value]) => (
                 <div key={String(label)} className="rounded border border-slate-200 bg-white px-3 py-2">

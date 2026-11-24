@@ -153,6 +153,82 @@ def record_failure(fetch: DeviceDetailFetch) -> None:
     DeviceDetailFetch.objects.filter(pk=fetch.pk).update(status=DeviceDetailFetch.Status.FAILED)
 
 
+def carry_forward(generation: Any, kind: str, approved: set[str] | None = None) -> int:
+    """PERF-01: devices not fetched this sync keep their latest collected values (copied into this generation).
+
+    Notifications outside the retention window are not copied; custom fields are copied only for names that are
+    still approved (``approved``; nothing is copied when it is empty). Returns the number of devices carried.
+    """
+    status = DeviceDetailFetch.Status
+    waiting = {
+        f.asset_id: f
+        for f in DeviceDetailFetch.objects.filter(generation=generation, kind=kind, status=status.NOT_REQUESTED)
+    }
+    if not waiting or (kind == "custom_fields" and not approved):
+        return 0
+    previous = {
+        f.asset_id: f
+        for f in DeviceDetailFetch.objects.filter(
+            asset_id__in=list(waiting), kind=kind, status__in=(status.COLLECTED, status.CARRIED_FORWARD)
+        )
+        .exclude(generation_id=generation.pk)
+        .order_by("asset_id", "-collected_at", "-pk")
+        .distinct("asset_id")
+    }
+    if not previous:
+        return 0
+    by_fetch = {p.pk: waiting[a] for a, p in previous.items()}
+    with transaction.atomic():
+        if kind == "notifications":
+            cutoff = timezone.now() - timedelta(days=settings.NOTIFICATION_WINDOW_DAYS)
+            rows = [
+                DeviceNotification(
+                    fetch=by_fetch[n.fetch_id],
+                    customer_id=n.customer_id,
+                    asset_id=n.asset_id,
+                    generation_id=generation.pk,
+                    vendor_id=n.vendor_id,
+                    priority=n.priority,
+                    occurred_at=n.occurred_at,
+                    occurred_raw=n.occurred_raw,
+                    message=n.message,
+                    redactions=n.redactions,
+                )
+                for n in DeviceNotification.objects.filter(fetch_id__in=list(by_fetch))
+                if n.occurred_at is None or n.occurred_at >= cutoff
+            ]
+            DeviceNotification.objects.bulk_create(rows, batch_size=1000)
+        else:
+            rows = [
+                DeviceCustomField(
+                    fetch=by_fetch[c.fetch_id],
+                    customer_id=c.customer_id,
+                    asset_id=c.asset_id,
+                    generation_id=generation.pk,
+                    field_id=c.field_id,
+                    name=c.name,
+                    value=c.value,
+                    type=c.type,
+                )
+                for c in DeviceCustomField.objects.filter(fetch_id__in=list(by_fetch))
+                if c.name.casefold() in (approved or set()) and not is_sensitive_field_name(c.name)
+            ]
+            DeviceCustomField.objects.bulk_create(rows, batch_size=1000)
+        stored: dict[Any, int] = {}
+        for r in rows:
+            stored[r.fetch.pk] = stored.get(r.fetch.pk, 0) + 1
+        updated = []
+        for asset_id, prev in previous.items():
+            fetch = waiting[asset_id]
+            fetch.status, fetch.collected_at = status.CARRIED_FORWARD, prev.collected_at
+            fetch.reported, fetch.stored, fetch.dropped = prev.reported, stored.get(fetch.pk, 0), prev.dropped
+            updated.append(fetch)
+        DeviceDetailFetch.objects.bulk_update(
+            updated, ["status", "collected_at", "reported", "stored", "dropped"], batch_size=1000
+        )
+    return len(updated)
+
+
 # ---------------------------------------------------------------------------------------------- read model
 
 

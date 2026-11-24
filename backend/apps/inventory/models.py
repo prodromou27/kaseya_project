@@ -457,6 +457,8 @@ class DeviceDetailFetch(models.Model):
         COLLECTED = "collected", "Collected"
         NOT_REQUESTED = "not_requested", "Not requested (disabled, outside budget or nothing approved)"
         FAILED = "failed", "Collection failed"
+        # PERF-01: not due this sync; the last collected values are copied into this generation.
+        CARRIED_FORWARD = "carried_forward", "Carried forward from an earlier sync"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     observation = models.ForeignKey(AssetObservation, on_delete=models.CASCADE, related_name="detail_fetches")

@@ -235,3 +235,55 @@ def test_r15_report(world, synced, django_capture_on_commit_callbacks):
     provenance, rows = csv_rows(b"".join(raw.streaming_content))
     assert len(rows) == 1 and rows[0][2] == "critical" and "ops@example.com" not in rows[0][4]
     assert any("redacted" in p for p in provenance)
+
+
+# ---------------------------------------------------------------- PERF-01 carry-forward (regression, 2026-11-24)
+
+
+def test_skipped_devices_keep_notifications_and_approved_custom_fields(world, env):  # noqa: F811
+    """Devices not due on the next sync keep their notifications and approved custom fields (copied forward);
+    found in E2E after PERF-01 made most syncs skip the per-device calls."""
+    _budgets(env)
+    CustomFieldAllowlist.objects.create(
+        customer=world.customer_a,
+        name="Rack",
+        name_key="rack",
+        reason="asset location",
+        state="approved",
+        proposed_by=world.admin_a,
+        reviewed_by=world.super_admin,
+    )
+    first = run(env["ma"], world.engineer_a, FixtureVsaTransport(_assets()))
+    t = FixtureVsaTransport(_assets())
+    second = run(env["ma"], world.engineer_a, t)
+    assert second.state == "completed"
+    assert not [p for p, _ in t.calls if "/devices/" in p and p.endswith(("/notifications", "/customfields"))]
+    note = DeviceNotification.objects.get(generation_id=second.generation_id)
+    assert note.message == "Logon failure for [account] reported by [email]" and note.priority == "critical"
+    fetch = note.fetch
+    assert fetch.status == "carried_forward" and fetch.generation_id == second.generation_id
+    first_fetch = DeviceDetailFetch.objects.get(
+        generation_id=first.generation_id, asset_id=fetch.asset_id, kind="notifications"
+    )
+    assert fetch.collected_at == first_fetch.collected_at
+    rack = DeviceCustomField.objects.filter(generation_id=second.generation_id)
+    assert set(rack.values_list("name", "value")) == {("Rack", "R1")} and rack.count() == 3
+
+    # A name that is no longer approved is not carried forward.
+    CustomFieldAllowlist.objects.filter(customer=world.customer_a).update(state="retired")
+    third = run(env["ma"], world.engineer_a, FixtureVsaTransport(_assets()))
+    assert not DeviceCustomField.objects.filter(generation_id=third.generation_id).exists()
+    assert DeviceNotification.objects.filter(generation_id=third.generation_id).count() == 1
+
+
+def test_carried_notifications_outside_the_window_are_dropped(world, env, settings):  # noqa: F811
+    _budgets(env)
+    run(env["ma"], world.engineer_a, FixtureVsaTransport(_assets()))
+    DeviceNotification.objects.update(occurred_at=datetime.now(UTC) - timedelta(days=30))
+    second = run(env["ma"], world.engineer_a, FixtureVsaTransport(_assets()))
+    assert not DeviceNotification.objects.filter(generation_id=second.generation_id).exists()
+    assert set(
+        DeviceDetailFetch.objects.filter(generation_id=second.generation_id, kind="notifications").values_list(
+            "status", flat=True
+        )
+    ) == {"carried_forward"}

@@ -185,11 +185,11 @@ function DeviceNotifications({ detail }: { detail: AssetDetail }) {
   return (
     <div className="space-y-3">
       <p className="text-sm">
-        <Badge tone={n.status === "collected" ? "good" : n.status === "failed" ? "bad" : "neutral"}>{n.status.replace(/_/g, " ")}</Badge>
+        <Badge tone={n.status === "collected" || n.status === "carried_forward" ? "good" : n.status === "failed" ? "bad" : "neutral"}>{n.status === "carried_forward" ? "from an earlier sync" : n.status.replace(/_/g, " ")}</Badge>
         {n.collected_at ? ` · fetched ${formatUtc(n.collected_at)}` : ""}
-        {n.status === "collected" ? ` · ${n.reported ?? 0} returned, ${n.dropped ?? 0} older than ${n.window_days} days not stored` : ""}
+        {n.status === "collected" || n.status === "carried_forward" ? ` · ${n.reported ?? 0} returned, ${n.dropped ?? 0} older than ${n.window_days} days not stored` : ""}
       </p>
-      {n.status !== "collected" ? <p className="text-xs text-slate-500">Not collected in this sync (outside the per-sync budget or failed). This does not mean the device has no notifications.</p> : null}
+      {n.status !== "collected" && n.status !== "carried_forward" ? <p className="text-xs text-slate-500">Not collected in this sync (outside the per-sync budget or failed). This does not mean the device has no notifications.</p> : null}
       <DataTable caption="Notifications for this device" rows={n.items} getRowId={(r) => `${r.occurred_raw}-${r.message}`} emptyTitle="No notifications in the window."
         columns={[
           { header: "When", cell: ({ row }) => row.original.occurred_at ? formatUtc(row.original.occurred_at) : (row.original.occurred_raw || "unknown") },
@@ -199,7 +199,7 @@ function DeviceNotifications({ detail }: { detail: AssetDetail }) {
       {cf ? (
         <section aria-label="Approved custom fields">
           <h3 className="mb-1 text-sm font-semibold">Approved custom fields</h3>
-          {cf.status === "collected" ? (
+          {cf.status === "collected" || cf.status === "carried_forward" ? (
             <dl className="grid max-w-xl grid-cols-[12rem_1fr] gap-y-1 text-sm">
               {cf.items.map((i) => <div key={i.name} className="contents"><dt className="text-slate-500">{i.name}</dt><dd>{i.value || "—"}</dd></div>)}
               {cf.items.length === 0 ? <dd className="col-span-2 text-xs text-slate-500">None of the approved fields are set on this device.</dd> : null}
