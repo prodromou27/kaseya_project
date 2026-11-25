@@ -33,32 +33,54 @@ const ATTENTION = new Set(["offline", "stale", "never_seen", "not_installed", "o
 const GOOD = new Set(["seen_recently", "installed", "current", "ok", "enabled_up_to_date", "enabled"]);
 const tone = (v: string) => (GOOD.has(v) ? "good" : ATTENTION.has(v) ? "warn" : "neutral");
 
-/** One dimension = one complete partition of the device population (counts always sum to the total). */
+const FILL = { good: "bg-emerald-500", warn: "bg-amber-500", neutral: "bg-slate-300" } as const;
+
+/**
+ * One dimension = one complete partition of the device population (counts always sum to the total). The bar shows
+ * the split at a glance (decorative: the rows carry the numbers); categories with no devices fold away.
+ */
 function Partition({ dim, summary, onPick }: { dim: HealthDimension; summary: HealthSummary; onPick: (dim: HealthDimension, v: string) => void }) {
-  const values = summary.dimensions[dim];
+  const [showEmpty, setShowEmpty] = useState(false);
+  const entries = Object.entries(summary.dimensions[dim]);
   const total = summary.devices;
+  const empty = entries.filter(([, n]) => n === 0).length;
+  const rows = showEmpty ? entries : entries.filter(([, n]) => n > 0);
+  const attention = entries.reduce((n, [k, v]) => n + (tone(k) === "warn" ? v : 0), 0);
   return (
-    <section aria-label={DIMENSION_TITLE[dim]} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-2 text-sm font-semibold text-slate-900">{DIMENSION_TITLE[dim]}</h3>
+    <section aria-label={DIMENSION_TITLE[dim]} className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-900">{DIMENSION_TITLE[dim]}</h3>
+        <span className={`text-xs font-medium ${attention ? "text-amber-800" : "text-emerald-800"}`}>{attention ? `${attention} need attention` : "All good"}</span>
+      </div>
+      <div aria-hidden="true" className="mb-2 flex h-2 gap-0.5 overflow-hidden rounded-full bg-slate-100">
+        {total ? entries.filter(([, n]) => n > 0).map(([k, n]) => <span key={k} className={FILL[tone(k)]} style={{ width: `${(100 * n) / total}%` }} />) : null}
+      </div>
       <table className="w-full text-xs">
         <caption className="sr-only">{`${DIMENSION_TITLE[dim]} — ${total} devices`}</caption>
         <tbody>
-          {Object.entries(values).map(([k, n]) => (
+          {rows.map(([k, n]) => (
             <tr key={k}>
               <td className="py-0.5">
+                <span aria-hidden="true" className={`mr-1.5 inline-block h-2 w-2 rounded-full ${n === 0 ? "bg-slate-200" : FILL[tone(k)]}`} />
                 <button type="button" className="text-left text-sky-800 hover:underline disabled:text-slate-400 disabled:no-underline" disabled={n === 0}
                   onClick={() => onPick(dim, k)}>{summary.labels[dim][k] ?? k}</button>
               </td>
-              <td className="w-12 text-right"><Badge tone={n === 0 ? "neutral" : tone(k)}>{n}</Badge></td>
-              <td className="w-12 text-right text-slate-500">{total ? `${Math.round((100 * n) / total)}%` : "—"}</td>
+              <td className="w-12 text-right font-semibold tabular-nums text-slate-900">{n}</td>
+              <td className="w-12 text-right tabular-nums text-slate-500">{total ? `${Math.round((100 * n) / total)}%` : "—"}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="mt-1 text-[11px] text-slate-500">of {total} devices</p>
+      <p className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-500">
+        <span>of {total} devices</span>
+        {empty ? <button type="button" className="text-sky-800 hover:underline" aria-expanded={showEmpty} onClick={() => setShowEmpty(!showEmpty)}>
+          {showEmpty ? "Hide empty categories" : `${empty} empty ${empty === 1 ? "category" : "categories"}`}
+        </button> : null}
+      </p>
     </section>
   );
 }
+
 
 function Thresholds({ customer, summary }: { customer: Customer; summary: HealthSummary }) {
   const qc = useQueryClient();
@@ -166,7 +188,7 @@ function Devices({ customer, summary, filter, setFilter }: {
             columns={[
               { header: "Device", cell: ({ row }) => <Link className="text-sky-800 hover:underline" to={`/assets/${row.original.asset_id}`}>{row.original.hostname}</Link> },
               { header: "Group", cell: ({ row }) => row.original.group_name || row.original.group_external_id || "no group" },
-              { header: "Last seen", cell: ({ row }) => <span>{formatUtc(row.original.last_seen_online)}<span className="block text-xs text-slate-500">{row.original.connectivity.replace(/_/g, " ")}</span></span> },
+              { header: "Last seen", cell: ({ row }) => <span className="whitespace-nowrap">{formatUtc(row.original.last_seen_online)} <Badge tone={tone(row.original.connectivity)}>{row.original.connectivity.replace(/_/g, " ")}</Badge></span> },
               { header: "Agent", cell: ({ row }) => <span className="text-xs">{row.original.client_version || "—"} · {row.original.agent_version.replace(/_/g, " ")}</span> },
               { header: "Disk", cell: ({ row }) => <Badge tone={tone(row.original.disk)}>{row.original.disk.replace(/_/g, " ")}{row.original.worst_disk_free_pct !== null ? ` ${row.original.worst_disk_free_pct}%` : ""}</Badge> },
               { header: "Antivirus", cell: ({ row }) => <Badge tone={tone(row.original.antivirus)}>{row.original.antivirus.replace(/_/g, " ")}</Badge> },
@@ -204,7 +226,7 @@ function View({ customer }: { customer: Customer }) {
             </div>
           )}
           <Devices customer={customer} summary={s} filter={filter} setFilter={setFilter} />
-          <h2 className="!mb-[-0.5rem] pt-2 text-sm font-semibold text-slate-900">By group</h2>
+          <h2 className="pt-2 text-sm font-semibold text-slate-900">By group</h2>
           <DataTable caption="Attention by group" rows={s.by_group} getRowId={(r) => `${r.instance_id ?? ""}-${r.group_external_id}-${r.group_name}`} emptyTitle="No groups."
             columns={[
               { header: "Site", cell: ({ row }) => String(row.original.site || "—") },

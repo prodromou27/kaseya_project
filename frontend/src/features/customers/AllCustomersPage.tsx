@@ -38,6 +38,35 @@ function csv(rows: Row[]) {
   URL.revokeObjectURL(url);
 }
 
+const needsAttention = (r: Row) =>
+  COLUMNS.some((c) => c.attention && typeof r[c.key] === "number" && (r[c.key] as number) > 0) || (r.compliance_pct !== null && r.compliance_pct < 80);
+
+/** Four totals across the listed customers, above the table. */
+function Totals({ rows }: { rows: Row[] }) {
+  const devices = rows.reduce((n, r) => n + r.devices, 0);
+  const attention = rows.filter(needsAttention).length;
+  const stale = rows.filter((r) => r.stale).length;
+  const items: { label: string; value: number; warn?: boolean; sub: string }[] = [
+    { label: "Customers", value: rows.length, sub: "you can access" },
+    { label: "Devices", value: devices, sub: "across these customers" },
+    { label: "Need attention", value: attention, warn: attention > 0, sub: "with at least one amber figure" },
+    { label: "Out-of-date data", value: stale, warn: stale > 0, sub: "never synced, or not recently" },
+  ];
+  return (
+    <dl aria-label="Totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {items.map((i) => (
+        <div key={i.label} className={`rounded-xl border bg-white px-3 py-2.5 shadow-sm ${i.warn ? "border-amber-200" : "border-slate-200"}`}>
+          <dt className="text-xs font-medium text-slate-600">{i.label}</dt>
+          <dd className="flex items-baseline gap-1.5">
+            <span className={`text-2xl font-semibold tabular-nums tracking-tight ${i.warn ? "text-amber-800" : "text-slate-900"}`}>{i.value}</span>
+            <span className="truncate text-xs text-slate-500">{i.sub}</span>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /**
  * Every customer the user can read, side by side, with drill-down into the customer's summary. ``embedded`` (the
  * dashboard with no customer selected): no page header, and a click selects the customer and opens its dashboard.
@@ -59,13 +88,14 @@ export function AllCustomersPage({ embedded = false }: { embedded?: boolean } = 
   return (
     <>
       {embedded
-        ? <h2 className="mb-2 text-base font-semibold text-slate-900">Your customers</h2>
+        ? <h2 className="sr-only">Your customers</h2>
         : <PageHeader title="All customers" subtitle="Key measures for every customer you can access. Select a customer to open its summary." />}
       <QueryBoundary query={query}>
         {(d) => (
           <div className="space-y-3">
+            <Totals rows={d.results} />
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-slate-600">{d.count} customer(s){d.truncated ? " · showing the first 200" : ""}. Amber numbers need attention; “—” means no data.</p>
+              <p className="text-sm text-slate-600">{d.count} customer(s){d.truncated ? " · showing the first 200" : ""}. Amber figures need attention; “—” means no data. {embedded ? "Pick a customer to open its dashboard." : ""}</p>
               <button type="button" className="btn-secondary" disabled={!d.results.length} onClick={() => csv(sorted(d.results))}>Download (CSV)</button>
             </div>
             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -95,8 +125,11 @@ export function AllCustomersPage({ embedded = false }: { embedded?: boolean } = 
                         const v = r[c.key];
                         const warn = c.attention && typeof v === "number" && v > 0;
                         const low = c.key === "compliance_pct" && typeof v === "number" && v < 80;
-                        return <td key={c.key} className={`px-3 py-2 tabular-nums ${warn || low ? "font-semibold text-amber-800" : "text-slate-900"}`}>
-                          {v === null || v === undefined ? "—" : c.key === "compliance_pct" ? `${v}%` : v}
+                        const shown = v === null || v === undefined ? "—" : c.key === "compliance_pct" ? `${v}%` : v;
+                        return <td key={c.key} className="px-3 py-2 tabular-nums">
+                          {warn || low
+                            ? <span className="inline-block min-w-8 rounded bg-amber-50 px-1.5 py-0.5 text-center font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">{shown}</span>
+                            : <span className={`inline-block min-w-8 px-1.5 text-center ${v === null || v === undefined ? "text-slate-400" : "text-slate-900"}`}>{shown}</span>}
                         </td>;
                       })}
                       <td className="px-3 py-2 text-xs">

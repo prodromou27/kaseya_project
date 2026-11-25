@@ -12,7 +12,7 @@ import { SystemStatusBanner } from "../admin/SystemStatusPanel";
 import { Trends } from "./Trends";
 import { DataSources } from "../inventory/DataSources";
 import { AllCustomersPage } from "../customers/AllCustomersPage";
-import { CustomerWorkspace } from "../customers/CustomerWorkspace";
+import { AttentionPanels, RecentReports, ScorecardButton } from "../customers/CustomerWorkspace";
 
 const ROLE_LABEL: Record<string, string> = { admin: "Customer admin", engineer: "Engineer", viewer: "Viewer" };
 
@@ -22,36 +22,33 @@ function roleFor(me: Me, customer: Customer): string {
   return m ? (ROLE_LABEL[m.role] ?? m.role) : "—";
 }
 
-function CustomerCard({ me, customer }: { me: Me; customer: Customer }) {
+/** Who and what you are looking at, in one line under the title. */
+function CustomerLine({ me, customer }: { me: Me; customer: Customer }) {
   return (
-    <section aria-labelledby="sel-heading" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="sel-heading" className="text-sm font-semibold text-slate-900">Customer</h2>
-        <Link to={`/customers/${customer.id}`} className="text-sm font-medium text-sky-800 hover:underline">
-          Open customer
-        </Link>
-      </div>
-      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
-        <dt className="text-slate-500">Code</dt>
-        <dd className="font-medium text-slate-900">{customer.code}</dd>
-        <dt className="text-slate-500">Status</dt>
-        <dd><Badge tone={statusTone[customer.status]}>{customer.status}</Badge></dd>
-        <dt className="text-slate-500">Data region</dt>
-        <dd className="text-slate-800">{customer.data_region || "Not set"}</dd>
-        <dt className="text-slate-500">Your role</dt>
-        <dd className="text-slate-800">{roleFor(me, customer)}</dd>
-      </dl>
-    </section>
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="font-medium text-slate-700">{customer.code} — {customer.name}</span>
+      {customer.status !== "active" ? <Badge tone={statusTone[customer.status]}>{customer.status}</Badge> : null}
+      <span aria-hidden="true">·</span>
+      <span className="sr-only">Your role:</span><span>{roleFor(me, customer)}</span>
+      <span aria-hidden="true">·</span>
+      <Link to={`/customers/${customer.id}`} className="text-sky-800 hover:underline">Customer details</Link>
+    </span>
   );
 }
 
+/**
+ * One customer at a glance (UX-10): data freshness, six key figures, four equal panels, then history and reports.
+ * Each number is shown once and links to the page that explains it.
+ */
 export function DashboardPage() {
   const me = useMe();
   const { customers, selected, isLoading, isError } = useCustomers();
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={selected ? `${selected.code} — ${selected.name}` : "No customer selected"} />
+      <PageHeader title="Dashboard"
+        subtitle={selected ? <CustomerLine me={me} customer={selected} /> : customers.length > 1 ? "All your customers" : "No customer selected"}
+        actions={selected ? <ScorecardButton customer={selected} /> : undefined} />
       {me.is_super_admin ? <><SystemStatusBanner /><SetupChecklist /></> : null}
 
       {isLoading ? <LoadingState /> : null}
@@ -70,19 +67,15 @@ export function DashboardPage() {
       ) : null}
 
       {selected ? (
-        <>
+        <div className="space-y-4">
+          <div className="[&>section]:mb-0"><DataSources key={`sources-${selected.id}`} customer={selected} compact /></div>
           <KpiTiles key={selected.id} customer={selected} />
-          <CustomerWorkspace key={`ws-${selected.id}`} customer={selected} showDeviceHealth={false} />
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <div className="min-w-0 lg:col-span-2">
-              <Trends customer={selected} />
-            </div>
-            <aside className="min-w-0 space-y-4" aria-label="Sources and customer">
-              <div className="[&>section]:mb-0"><DataSources key={`sources-${selected.id}`} customer={selected} /></div>
-              <CustomerCard me={me} customer={selected} />
-            </aside>
+          <AttentionPanels key={`panels-${selected.id}`} customer={selected} />
+          <div className="flex flex-col gap-3 xl:flex-row">
+            <div className="min-w-0 xl:flex-[2]"><Trends customer={selected} /></div>
+            <div className="min-w-0 empty:hidden xl:flex-1"><RecentReports key={`reports-${selected.id}`} customer={selected} /></div>
           </div>
-        </>
+        </div>
       ) : customers.length > 1 ? (
         <AllCustomersPage embedded />
       ) : customers.length > 0 ? (

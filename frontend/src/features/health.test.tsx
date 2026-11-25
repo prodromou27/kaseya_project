@@ -54,7 +54,9 @@ describe("device health", () => {
     const disk = await screen.findByRole("region", { name: "System disk free space" });
     expect(within(disk).getByText("of 5 devices")).toBeInTheDocument();
     expect(within(disk).getByRole("button", { name: "Disk section not collected" })).toBeEnabled();
-    expect(within(disk).getByRole("button", { name: "No disks" })).toBeDisabled();
+    expect(within(disk).queryByRole("button", { name: "No disks" })).not.toBeInTheDocument(); // empty categories fold away
+    await userEvent.click(within(disk).getByRole("button", { name: /empty categor/ }));
+    expect(within(disk).getByRole("button", { name: "No disks" })).toBeDisabled(); // the partition is still complete
     expect(screen.getByText("documented defaults")).toBeInTheDocument();
     expect(screen.getByText(/agent age not evaluated/)).toBeInTheDocument();
     expect(screen.getByText(/not live monitoring telemetry/)).toBeInTheDocument();

@@ -29,11 +29,21 @@ page** at the top of the menu searches every page.
 
 ## 2. Dashboard
 
-With no customer selected, the dashboard lists **Your customers** with their key health measures (offline devices,
-critical disks, antivirus issues, critical updates, outdated software, compliance); click a customer to open its
-dashboard. With a customer selected, the dashboard shows the health tiles and, below them, the whole customer summary
-(compliance, patching, servers, network, details from VSA, recent reports and the monthly scorecard), so there is no
-need to open the customer under Administration.
+With no customer selected, the dashboard shows totals (customers, devices, customers needing attention, customers with
+out-of-date data) and lists **Your customers** with their key measures; amber figures need attention. Click a customer
+to open its dashboard.
+
+With a customer selected, the dashboard reads top to bottom:
+
+1. **Header**: the customer, your role, **Customer details** and **Monthly scorecard (PDF)**.
+2. **Data freshness**: one line when the data is up to date; the full sources panel (with the reason) when a sync
+   failed, paused or the data is out of date. **Sync now** is here.
+3. **Six figures**: devices, offline/stale, disk critical, antivirus issues, critical updates, outdated software. "!"
+   means review, "✓" means fine; the bar shows the share of devices. Click a figure to open the filtered list.
+4. **Patching, Compliance, Servers, Network**: each number links to its list; **Open →** opens the page.
+5. **History** and **Recent reports**. History draws lines from the second day of data.
+
+The customer's **Summary** tab (Administration → Customers) shows the same blocks plus **Details from VSA**.
 
 The dashboard summarizes device inventory, installed software, version-compliance classifications, OS update availability and integration health. Each card links to a filtered list. Every metric must display the **data-as-of** timestamp and warn if the source is stale or incomplete. **Unknown** means no justified classification, not automatically compliant.
 

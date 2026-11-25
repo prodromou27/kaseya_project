@@ -1,5 +1,13 @@
 # Changelog
 
+## UX-10 - 2026-11-25 - dashboard redesign
+
+- Customer dashboard fits one screen: the customer, your role and **Monthly scorecard (PDF)** in the header; a one-line data-freshness bar (the full sources panel appears only when something is wrong); six compact figures (devices, offline/stale, disk critical, antivirus, critical updates, outdated software) each with its share of devices; four equal panels (Patching, Compliance, Servers, Network) with an **Open →** link; history beside recent reports. Every figure appears once (the separate device-health, data-sources and customer cards are gone).
+- History with only one day of data shows the values in one line instead of an empty chart; the table view stays.
+- The customer's **Summary** tab uses the same blocks; long **Details from VSA** lists fold after six sites/groups.
+- No customer selected / **All customers**: totals strip (customers, devices, needing attention, out-of-date data) and highlighted attention figures.
+- **Device health**: each card has a distribution bar and an attention count; categories with no devices fold away (one click shows them); device rows are one line; the *By group* heading is no longer clipped.
+
 ## PERF-03 - 2026-11-25 - faster dashboard and fewer database queries per sync
 
 - All-customers overview (dashboard): each customer's row is cached and reused until that customer's data changes (new sync, software evaluation, compliance baseline, approved thresholds, name/status), at most 10 minutes; the *stale* flag is always computed fresh. Second load: less than half the queries.

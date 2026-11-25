@@ -54,7 +54,7 @@ export function TrendChart({
           {title} <span className="font-normal text-slate-500">({unit})</span>
         </figcaption>
         <div className="flex items-center gap-3 text-xs text-slate-600">
-          <ul className="flex gap-3" aria-label="Legend">
+          <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Legend">
             {series.map((s, i) => (
               <li key={s.key} className="flex items-center gap-1">
                 <span aria-hidden="true" className={`inline-block h-0.5 w-4 legend-swatch-${i}`} />
@@ -87,9 +87,21 @@ export function TrendChart({
             </tbody>
           </table>
         </div>
+      ) : n === 1 ? (
+        <div className="rounded-lg bg-slate-50 px-3 py-3 text-sm ring-1 ring-inset ring-slate-200">
+          <ul className="flex flex-wrap gap-x-6 gap-y-1" aria-label={`Values on ${xLabels[0]}`}>
+            {series.map((s, si) => (
+              <li key={s.key} className="flex items-center gap-1.5 text-slate-700">
+                <span aria-hidden="true" className={`inline-block h-2 w-2 rounded-full legend-dot-${si}`} />
+                {s.label}: <span className="font-semibold tabular-nums text-slate-900">{s.values[0] ?? "n/a"}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-xs text-slate-500">Only {xLabels[0]} so far. The lines appear from the second day of data.</p>
+        </div>
       ) : (
         <div className="relative">
-          <svg viewBox={`0 0 ${W} ${H}`} className="h-auto max-h-72 w-full" role="img" aria-label={`${title}. Use “Show table” for the values.`}>
+          <svg viewBox={`0 0 ${W} ${H}`} className="h-auto max-h-64 w-full" role="img" aria-label={`${title}. Use “Show table” for the values.`}>
             {ticks.map((t) => (
               <g key={t}>
                 <line x1={M.left} x2={W - M.right} y1={y(t)} y2={y(t)} stroke="#e2e8f0" strokeWidth={1} />

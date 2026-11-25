@@ -74,7 +74,7 @@ describe("application shell", () => {
     await waitFor(() => expect(within(select).getAllByRole("option")).toHaveLength(3));
     expect(select).toHaveValue("");
     await userEvent.selectOptions(select, customerA.id);
-    expect(await screen.findByText("ACME — Acme Ltd", { selector: "p" })).toBeInTheDocument();
+    expect(await screen.findByText("ACME — Acme Ltd", { selector: ".page-header span" })).toBeInTheDocument();
     expect(window.sessionStorage.getItem("okp.selectedCustomer")).toBe(customerA.id);
   });
 

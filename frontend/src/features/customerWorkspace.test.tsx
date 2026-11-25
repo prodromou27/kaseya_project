@@ -6,7 +6,7 @@ import { customerA, makeMe, mockFetch, page, renderApp } from "../test/utils";
 const base = `/api/v1/customers/${customerA.id}`;
 
 describe("customer workspace", () => {
-  it("summarises health, compliance, patching and network with links into each investigation", async () => {
+  it("summarises health, compliance, patching and network once each, with links into each investigation", async () => {
     const customer = { ...customerA, my_capabilities: ["customer.read", "customer.export"] };
     mockFetch({
       "GET /api/v1/auth/me/": { body: makeMe() },
@@ -21,8 +21,10 @@ describe("customer workspace", () => {
       [`GET ${base}/reports/`]: { body: page([]) },
     } as never);
     renderApp(`/customers/${customerA.id}`);
-    const health = await screen.findByRole("region", { name: "Device health" });
-    expect(await within(health).findByRole("link", { name: "4" })).toHaveAttribute("href", "/device-health?connectivity=offline,stale,never_seen");
+    const summary = await screen.findByRole("region", { name: "Summary" });
+    const offline = await within(summary).findByRole("link", { name: /Offline \/ stale/ });
+    expect(offline).toHaveAttribute("href", "/device-health?connectivity=offline,stale,never_seen");
+    expect(offline).toHaveTextContent("4");
     const compliance = screen.getByRole("region", { name: "Compliance" });
     expect(await within(compliance).findByRole("link", { name: "Workstation standard" })).toHaveAttribute("href", "/compliance/b1");
     expect(compliance).toHaveTextContent("80%");
@@ -30,5 +32,6 @@ describe("customer workspace", () => {
     expect(await within(patching).findByRole("link", { name: "10" })).toBeInTheDocument(); // 9 no rule + 1 no policy
     expect(await within(screen.getByRole("region", { name: "Network" })).findByRole("link", { name: "3" })).toHaveAttribute("href", "/groups?view=subnets");
     expect(screen.getByRole("button", { name: "Monthly scorecard (PDF)" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Device health" })).not.toBeInTheDocument(); // the figures above cover it
   });
 });

@@ -18,7 +18,7 @@ test("dashboard attention metrics open the exact filtered investigation", async 
   await expect(table).toBeVisible();
   await expect(page.getByText(/Filtered by/)).toContainText("or");
   await page.goto("/");
-  await page.getByRole("region", { name: "Summary" }).getByRole("link", { name: /Missing critical updates/ }).click();
+  await page.getByRole("region", { name: "Summary" }).getByRole("link", { name: /Critical updates/ }).click();
   await expect(page.getByLabel("Severity", { exact: true })).toHaveValue("Critical");
   await expect(page.getByRole("table", { name: "Device updates" })).toBeVisible();
 });

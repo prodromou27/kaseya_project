@@ -61,7 +61,7 @@ describe("dashboard", () => {
     routes({ noUpdateData: true });
     renderApp("/");
     const summary = await screen.findByRole("region", { name: "Summary" });
-    expect(within(summary).getByRole("link", { name: /Missing critical updates/ })).toHaveTextContent("—of 0 devices reporting updates");
+    expect(within(summary).getByRole("link", { name: /Critical updates/ })).toHaveTextContent("—of 0 devices reporting");
   });
   it("shows headline numbers that link to their pages, and the user's role instead of capability codes", async () => {
     routes();
@@ -71,7 +71,7 @@ describe("dashboard", () => {
     expect(offline).toHaveTextContent("5");
     expect(offline).toHaveAttribute("href", "/device-health?connectivity=offline,stale,never_seen");
     // Current customer totals differ from the last single-source historical point (7 and 9).
-    expect(within(summary).getByRole("link", { name: /Missing critical updates/ })).toHaveTextContent("17of 38 devices reporting");
+    expect(within(summary).getByRole("link", { name: /Critical updates/ })).toHaveTextContent("17of 38 devices reporting");
     expect(within(summary).getByRole("link", { name: /Outdated software/ })).toHaveTextContent("19");
     expect(within(summary).getByRole("link", { name: /Outdated software/ })).toHaveAttribute("href", "/software?state=outdated");
     expect(within(summary).getByRole("link", { name: /Antivirus issues/ })).toHaveTextContent("3");

@@ -5,12 +5,13 @@ import { Link } from "react-router";
 import { ErrorState, LoadingState } from "../../components/States";
 import { api } from "../../lib/api";
 import type { Customer, HealthSummary, OsUpdateSummary, SoftwareSummary } from "../../lib/types";
+import { ShareBar } from "./parts";
 
-type Tile = { label: string; value: number | null; sub: string; to: string; icon: ReactNode; check?: boolean };
+type Tile = { label: string; value: number | null; sub: string; to: string; icon: ReactNode; check?: boolean; of?: number | null };
 
-/** Decorative 20px stroke icons (aria-hidden): the label carries the meaning. */
+/** Decorative 16px stroke icons (aria-hidden): the label carries the meaning. */
 const svg = (d: ReactNode) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
     {d}
   </svg>
 );
@@ -23,35 +24,32 @@ const ICONS = {
   software: svg(<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><path d="M17.5 14v7M14 17.5h7" /></>),
 };
 
+/** A shape as well as a colour: "!" needs review, "✓" is fine; the words are for screen readers and the tooltip. */
 function TileStatus({ tile, empty }: { tile: Tile; empty: boolean }) {
-  if (!tile.check) return null;
-  if (tile.value === null || empty) return <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">No data</span>;
-  return tile.value > 0 ? (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
-      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-500" />Review
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
-      <span aria-hidden="true">✓</span>OK
+  if (!tile.check || tile.value === null || empty) return null;
+  const review = tile.value > 0;
+  return (
+    <span title={review ? "Needs review" : "OK"} className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${review ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
+      <span aria-hidden="true">{review ? "!" : "✓"}</span><span className="sr-only">{review ? "Needs review" : "OK"}</span>
     </span>
   );
 }
 
-function TileCard({ tile, primary = false, empty = false }: { tile: Tile; primary?: boolean; empty?: boolean }) {
+/** Compact figure: label and state, the number, what it counts, and its share of the devices. */
+function TileCard({ tile, empty = false }: { tile: Tile; empty?: boolean }) {
   const attention = tile.check && (tile.value ?? 0) > 0;
-  const accent = primary ? "bg-sky-50 text-sky-700" : attention ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-500";
   return (
     <Link
       to={tile.to}
-      className={`group relative flex min-h-32 min-w-0 flex-col rounded-xl border bg-white p-3 sm:min-h-36 sm:p-4 shadow-sm transition-colors duration-150 hover:border-sky-400 hover:shadow focus-visible:ring-2 focus-visible:ring-sky-500 ${attention ? "border-amber-200" : "border-slate-200"}`}
+      className={`flex min-w-0 flex-col gap-0.5 rounded-xl border bg-white px-3 py-2.5 shadow-sm transition-colors duration-150 hover:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 ${attention ? "border-amber-200" : "border-slate-200"}`}
     >
-      <span className="flex items-start justify-between gap-2 text-sm font-medium text-slate-700">
-        {tile.label}
-        <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${accent}`}>{tile.icon}</span>
+      <span className="flex items-start justify-between gap-1.5 text-xs font-medium leading-4 text-slate-700">
+        <span className="flex min-w-0 items-start gap-1.5"><span className={`mt-px ${attention ? "text-amber-700" : "text-slate-400"}`}>{tile.icon}</span><span className="truncate" title={tile.label}>{tile.label}</span></span>
+        <TileStatus tile={tile} empty={empty} />
       </span>
-      <span className="mt-1 min-h-5"><TileStatus tile={tile} empty={empty} /></span>
-      <span className={`mt-auto pt-2 text-2xl font-semibold tabular-nums sm:text-3xl tracking-tight ${attention ? "text-amber-800" : "text-slate-900"}`}>{tile.value ?? "—"}</span>
-      <span className="mt-1 block text-xs leading-snug text-slate-500">{tile.sub}</span>
+      <span className={`text-2xl font-semibold tabular-nums tracking-tight ${attention ? "text-amber-800" : "text-slate-900"}`}>{tile.value ?? "—"}</span>
+      <span className="truncate text-xs text-slate-500" title={tile.sub}>{tile.sub}</span>
+      {tile.of !== undefined ? <span className="mt-1"><ShareBar value={tile.value} of={tile.of} tone={attention ? "warn" : "good"} /></span> : null}
     </Link>
   );
 }
@@ -79,32 +77,31 @@ export function KpiTiles({ customer }: { customer: Customer }) {
   const antivirus = sum(h?.dimensions.antivirus, ["disabled", "enabled_outdated"]);
   const os = patch.data;
   const sw = software.data;
-  const devices: Tile = { label: "Devices", value: h?.devices ?? null, sub: "In the current inventory", to: "/assets", icon: ICONS.devices };
+  const devices: Tile = { label: "Devices", value: h?.devices ?? null, sub: "in the current inventory", to: "/assets", icon: ICONS.devices };
+  const n = h?.devices ?? null;
   const checks: Tile[] = [
-    { label: "Offline / stale", value: offline, sub: "Not seen recently, or never", to: "/device-health?connectivity=offline,stale,never_seen", icon: ICONS.offline, check: true },
-    { label: "Disk critical", value: disk, sub: `${h?.dimensions.disk?.warning ?? "—"} more at warning level`, to: "/device-health?disk=critical", icon: ICONS.disk, check: true },
-    { label: "Antivirus issues", value: antivirus, sub: "Disabled, or enabled but outdated", to: "/device-health?antivirus=disabled,enabled_outdated", icon: ICONS.shield, check: true },
-    { label: "Missing critical updates", value: os && os.devices_reporting_updates > 0 ? os.devices_by_severity.Critical ?? 0 : null,
-      sub: os ? `of ${os.devices_reporting_updates} devices reporting updates` : patch.isPending ? "Loading…" : "Update summary unavailable",
-      to: "/windows-updates?state=available&severity=Critical", icon: ICONS.updates, check: true },
+    { label: "Offline / stale", value: offline, sub: "not seen recently, or never", of: n, to: "/device-health?connectivity=offline,stale,never_seen", icon: ICONS.offline, check: true },
+    { label: "Disk critical", value: disk, sub: `+${h?.dimensions.disk?.warning ?? "—"} at warning level`, of: n, to: "/device-health?disk=critical", icon: ICONS.disk, check: true },
+    { label: "Antivirus issues", value: antivirus, sub: "disabled, or outdated", of: n, to: "/device-health?antivirus=disabled,enabled_outdated", icon: ICONS.shield, check: true },
+    { label: "Critical updates", value: os && os.devices_reporting_updates > 0 ? os.devices_by_severity.Critical ?? 0 : null,
+      sub: os ? `of ${os.devices_reporting_updates} devices reporting` : patch.isPending ? "Loading…" : "Update summary unavailable",
+      of: os?.devices_reporting_updates ?? null, to: "/windows-updates?state=available&severity=Critical", icon: ICONS.updates, check: true },
     { label: "Outdated software", value: sw && sw.eligible_installations > 0 ? sw.unique_assets_with_outdated : null,
-      sub: sw ? `devices · ${sw.totals.outdated} outdated of ${sw.comparable_installations} comparable installs` : software.isPending ? "Loading…" : "Software summary unavailable",
-      to: "/software?state=outdated", icon: ICONS.software, check: true },
+      sub: sw ? `${sw.totals.outdated} of ${sw.comparable_installations} installs` : software.isPending ? "Loading…" : "Software summary unavailable",
+      of: n, to: "/software?state=outdated", icon: ICONS.software, check: true },
   ];
   const needReview = checks.filter((t) => (t.value ?? 0) > 0).length;
   return (
-    <section aria-label="Summary" className="mb-6 space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-slate-900">Overview</h2>
-        <p role="status" className="text-sm text-slate-600">
-          {h?.devices ? (needReview === 0 ? "All checks look good." : `${needReview} of ${checks.length} checks need review.`) : null}
-        </p>
-      </div>
+    <section aria-label="Summary" className="space-y-2">
+      <h2 className="sr-only">Overview</h2>
+      <p role="status" className="sr-only">
+        {h?.devices ? (needReview === 0 ? "All checks look good." : `${needReview} of ${checks.length} checks need review.`) : null}
+      </p>
       {health.isError ? <ErrorState error={health.error} onRetry={() => void health.refetch()} /> : null}
       {software.isError ? <ErrorState error={software.error} onRetry={() => void software.refetch()} /> : null}
       {patch.isError ? <ErrorState error={patch.error} onRetry={() => void patch.refetch()} /> : null}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <TileCard tile={devices} primary />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <TileCard tile={devices} />
         {checks.map((tile) => <TileCard key={tile.label} tile={tile} empty={h?.devices === 0} />)}
       </div>
       {h?.devices === 0 ? <p className="text-sm text-slate-600">No devices yet. They appear after the first successful sync.</p> : null}

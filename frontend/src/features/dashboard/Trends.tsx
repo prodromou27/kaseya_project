@@ -14,8 +14,8 @@ export function Trends({ customer }: { customer: Customer }) {
     queryFn: ({ signal }) => api.get<TrendResponse>(`/customers/${customer.id}/trends/`, { days }, signal),
   });
   return (
-    <section aria-labelledby="trend-h" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <section aria-labelledby="trend-h" className="h-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 id="trend-h" className="text-sm font-semibold text-slate-900">History</h2>
         <label className="flex items-center gap-2 text-xs text-slate-600">
           Range
@@ -27,7 +27,7 @@ export function Trends({ customer }: { customer: Customer }) {
         </label>
       </div>
       <QueryBoundary query={query} isEmpty={(d) => d.points.length === 0}
-        empty={<p className="py-8 text-center text-sm text-slate-500">No history in this range yet. It builds up with each sync.</p>}>
+        empty={<p className="py-4 text-center text-sm text-slate-500">No history in this range yet. It builds up with each sync.</p>}>
         {(d) => (
           <>
             <TrendChart

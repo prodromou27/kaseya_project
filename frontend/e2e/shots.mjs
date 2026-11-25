@@ -4,7 +4,7 @@ import { chromium } from "@playwright/test";
 
 const [outDir, email] = process.argv.slice(2);
 const PASSWORD = process.env.DEMO_USER_PASSWORD ?? "";
-const BASE = "http://localhost:5173";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:5173";
 const pages = [
   "/", "/customers", "/assets", "/software", "/windows-updates", "/patch-policies", "/device-health", "/changes",
   "/notifications", "/groups", "/onboarding", "/reports", "/admin", "/admin?tab=integrations",
