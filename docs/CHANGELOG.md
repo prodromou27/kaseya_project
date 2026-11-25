@@ -1,5 +1,10 @@
 # Changelog
 
+## PERF-03 - 2026-11-25 - faster dashboard and fewer database queries per sync
+
+- All-customers overview (dashboard): each customer's row is cached and reused until that customer's data changes (new sync, software evaluation, compliance baseline, approved thresholds, name/status), at most 10 minutes; the *stale* flag is always computed fresh. Second load: less than half the queries.
+- Sync: Windows updates are resolved once per device in bulk (was one lookup per update), and installed updates and patch policies of skipped devices are carried forward in bulk. Measured on a synthetic 1,000-device customer: first sync 40,368 → 20,261 queries, a sync with nothing due 18,150 → 11,166.
+
 ## UX-09 - 2026-11-24 - one authorization everywhere for administrators
 
 - Product owner: no multiple authorizations. With `REQUIRE_SECOND_APPROVER` off (the default), what an administrator saves takes effect at once and both steps are audited (proposed + approved, `self_approved`): expected subnets, health thresholds (previous ones superseded), patch policy expectations, approved custom field names, software lifecycle entries, catalog imports and aliases, and source mappings added by a super admin (a customer admin's mapping still waits for a super admin). Buttons say **Add / Save** instead of **Propose**; `/auth/me` returns `one_step_approval`. With `REQUIRE_SECOND_APPROVER=true` everything waits for a different administrator as before.

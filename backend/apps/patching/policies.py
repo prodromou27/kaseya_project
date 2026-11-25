@@ -119,42 +119,54 @@ def record_failure(po: AppliedPolicyObservation) -> None:
 
 
 def carry_forward(generation: Any) -> int:
-    """Devices not fetched this run keep their last successful response (its timestamp is preserved)."""
-    carried = 0
-    for po in AppliedPolicyObservation.objects.filter(generation=generation, status=UpdateStatus.NOT_REQUESTED):
-        prev = (
-            AppliedPolicyObservation.objects.filter(asset_id=po.asset_id, status=UpdateStatus.COLLECTED)
-            .exclude(generation_id=generation.id)
-            .order_by("-collected_at")
-            .first()
+    """Devices not fetched this run keep their last successful response (its timestamp is preserved).
+
+    PERF-03: done in bulk (a handful of queries per sync instead of several per device)."""
+    waiting = {
+        po.asset_id: po
+        for po in AppliedPolicyObservation.objects.filter(generation=generation, status=UpdateStatus.NOT_REQUESTED)
+    }
+    if not waiting:
+        return 0
+    previous = {
+        p.asset_id: p
+        for p in AppliedPolicyObservation.objects.filter(asset_id__in=list(waiting), status=UpdateStatus.COLLECTED)
+        .exclude(generation_id=generation.id)
+        .order_by("asset_id", "-collected_at", "-pk")
+        .distinct("asset_id")
+    }
+    if not previous:
+        return 0
+    target = {p.pk: waiting[a] for a, p in previous.items()}
+    rows = [
+        AppliedPolicy(
+            policy_observation=target[r.policy_observation_id],
+            customer_id=target[r.policy_observation_id].customer_id,
+            asset_id=target[r.policy_observation_id].asset_id,
+            generation_id=generation.pk,
+            policy_type=r.policy_type,
+            policy_id=r.policy_id,
+            policy_name=r.policy_name,
+            profiles=r.profiles,
         )
-        if prev is None:
-            continue
-        with transaction.atomic():
-            AppliedPolicy.objects.bulk_create(
-                [
-                    AppliedPolicy(
-                        policy_observation=po,
-                        customer_id=po.customer_id,
-                        asset_id=po.asset_id,
-                        generation_id=po.generation_id,
-                        policy_type=r.policy_type,
-                        policy_id=r.policy_id,
-                        policy_name=r.policy_name,
-                        profiles=r.profiles,
-                    )
-                    for r in prev.policies.all()
-                ]
-            )
+        for r in AppliedPolicy.objects.filter(policy_observation_id__in=list(target)).iterator(chunk_size=5000)
+    ]
+    with transaction.atomic():
+        AppliedPolicy.objects.bulk_create(rows, batch_size=2000)
+        changed = []
+        for asset_id, prev in previous.items():
+            po = waiting[asset_id]
             po.status, po.collected_at = UpdateStatus.CARRIED_FORWARD, prev.collected_at
             po.patch_state, po.patch_policy_id, po.patch_policy_name = (
                 prev.patch_state,
                 prev.patch_policy_id,
                 prev.patch_policy_name,
             )
-            po.save(update_fields=["status", "collected_at", "patch_state", "patch_policy_id", "patch_policy_name"])
-        carried += 1
-    return carried
+            changed.append(po)
+        AppliedPolicyObservation.objects.bulk_update(
+            changed, ["status", "collected_at", "patch_state", "patch_policy_id", "patch_policy_name"], batch_size=1000
+        )
+    return len(changed)
 
 
 def referenced_policy_ids(generation: Any) -> list[str]:

@@ -27,28 +27,55 @@ def _list_status(section_present: bool, device_type: str) -> str:
     return UpdateStatus.NOT_COLLECTED if _is_windows(device_type) else UpdateStatus.NOT_SUPPORTED
 
 
-def _os_update(item: OsUpdateItem) -> OsUpdate:
-    obj, created = OsUpdate.objects.get_or_create(
-        update_id=item.update_id,
-        revision_number=item.revision_number,
-        defaults={
-            "kb_article": item.kb_article,
-            "title": item.title,
-            "severity": item.severity,
-            "category": item.category,
-            "release_date": item.release_date,
-        },
-    )
-    if not created and item.kb_article and not obj.kb_article:  # fill gaps, never overwrite with blanks
-        obj.kb_article = item.kb_article
-        obj.save(update_fields=["kb_article"])
-    return obj
+def _os_updates(items: list[OsUpdateItem]) -> dict[tuple[str, Any], OsUpdate]:
+    """PERF-03: resolve every update of one device in two or three queries (was one get_or_create per update).
+
+    Creates the missing ones; fills a missing KB number, never overwrites with a blank."""
+    wanted: dict[tuple[str, Any], OsUpdateItem] = {}
+    for item in items:
+        wanted.setdefault((item.update_id, item.revision_number), item)
+    if not wanted:
+        return {}
+
+    def lookup() -> dict[tuple[str, Any], OsUpdate]:
+        cond = Q()
+        for uid, rev in wanted:
+            cond |= Q(update_id=uid, revision_number=rev)
+        return {(o.update_id, o.revision_number): o for o in OsUpdate.objects.filter(cond)}
+
+    found = lookup()
+    missing = [k for k in wanted if k not in found]
+    if missing:
+        OsUpdate.objects.bulk_create(
+            [
+                OsUpdate(
+                    update_id=uid,
+                    revision_number=rev,
+                    kb_article=wanted[(uid, rev)].kb_article,
+                    title=wanted[(uid, rev)].title,
+                    severity=wanted[(uid, rev)].severity,
+                    category=wanted[(uid, rev)].category,
+                    release_date=wanted[(uid, rev)].release_date,
+                )
+                for uid, rev in missing
+            ],
+            ignore_conflicts=True,  # another sync may create the same update concurrently
+        )
+        found = lookup()
+    gaps = [o for k, o in found.items() if not o.kb_article and wanted[k].kb_article]
+    for o in gaps:
+        o.kb_article = wanted[(o.update_id, o.revision_number)].kb_article
+    if gaps:
+        OsUpdate.objects.bulk_update(gaps, ["kb_article"])
+    return found
 
 
 def _write_rows(po: PatchObservation, items: Iterable[OsUpdateItem], state: str) -> int:
+    items = list(items)
+    updates = _os_updates(items)
     rows, seen = [], set()
     for item in items:
-        upd = _os_update(item)
+        upd = updates[(item.update_id, item.revision_number)]
         if upd.id in seen:
             continue
         seen.add(upd.id)
@@ -133,39 +160,58 @@ def record_installed_failure(po: PatchObservation) -> None:
 
 
 def carry_forward(generation: Any) -> int:
-    """For devices not fetched this run, copy installed updates from their latest successful collection."""
-    carried = 0
-    for po in PatchObservation.objects.filter(generation=generation, installed_status=UpdateStatus.NOT_REQUESTED):
-        previous = (
-            PatchObservation.objects.filter(asset_id=po.asset_id, installed_status=UpdateStatus.COLLECTED)
-            .exclude(generation_id=generation.id)
-            .order_by("-installed_collected_at")
-            .first()
+    """For devices not fetched this run, copy installed updates from their latest successful collection.
+
+    PERF-03: done in bulk (a handful of queries per sync instead of about four per device)."""
+    waiting = {
+        po.asset_id: po
+        for po in PatchObservation.objects.filter(generation=generation, installed_status=UpdateStatus.NOT_REQUESTED)
+    }
+    if not waiting:
+        return 0
+    previous = {
+        p.asset_id: p
+        for p in PatchObservation.objects.filter(asset_id__in=list(waiting), installed_status=UpdateStatus.COLLECTED)
+        .exclude(generation_id=generation.id)
+        .order_by("asset_id", "-installed_collected_at", "-pk")
+        .distinct("asset_id")
+    }
+    if not previous:
+        return 0
+    target = {p.pk: waiting[a] for a, p in previous.items()}
+    counts: dict[Any, int] = {}
+    rows = []
+    for r in DeviceOsUpdate.objects.filter(
+        patch_observation_id__in=list(target), state=DeviceOsUpdate.State.INSTALLED
+    ).iterator(chunk_size=5000):
+        po = target[r.patch_observation_id]
+        counts[po.pk] = counts.get(po.pk, 0) + 1
+        rows.append(
+            DeviceOsUpdate(
+                customer_id=po.customer_id,
+                asset_id=po.asset_id,
+                patch_observation=po,
+                generation_id=po.generation_id,
+                os_update_id=r.os_update_id,
+                state=r.state,
+                severity=r.severity,
+                category=r.category,
+                cvss_score=r.cvss_score,
+                cve_codes=r.cve_codes,
+                installed_at_raw=r.installed_at_raw,
+                installed_by_agent=r.installed_by_agent,
+            )
         )
-        if previous is None:
-            continue
-        with transaction.atomic():
-            rows = [
-                DeviceOsUpdate(
-                    customer_id=po.customer_id,
-                    asset_id=po.asset_id,
-                    patch_observation=po,
-                    generation_id=po.generation_id,
-                    os_update_id=r.os_update_id,
-                    state=r.state,
-                    severity=r.severity,
-                    category=r.category,
-                    cvss_score=r.cvss_score,
-                    cve_codes=r.cve_codes,
-                    installed_at_raw=r.installed_at_raw,
-                    installed_by_agent=r.installed_by_agent,
-                )
-                for r in previous.updates.filter(state=DeviceOsUpdate.State.INSTALLED)
-            ]
-            DeviceOsUpdate.objects.bulk_create(rows, ignore_conflicts=True)
+    with transaction.atomic():
+        DeviceOsUpdate.objects.bulk_create(rows, ignore_conflicts=True, batch_size=2000)
+        changed = []
+        for asset_id, prev in previous.items():
+            po = waiting[asset_id]
             po.installed_status = UpdateStatus.CARRIED_FORWARD
-            po.installed_count = len(rows)
-            po.installed_collected_at = previous.installed_collected_at
-            po.save(update_fields=["installed_status", "installed_count", "installed_collected_at"])
-        carried += 1
-    return carried
+            po.installed_count = counts.get(po.pk, 0)
+            po.installed_collected_at = prev.installed_collected_at
+            changed.append(po)
+        PatchObservation.objects.bulk_update(
+            changed, ["installed_status", "installed_count", "installed_collected_at"], batch_size=1000
+        )
+    return len(changed)

@@ -48,5 +48,54 @@ def row(customer: Any) -> dict[str, Any]:
     }
 
 
+# PERF-03: each customer's row is cached under a key that changes whenever its inputs change (published
+# generations, software evaluations, compliance baselines, approved thresholds, name/status), so a new sync or setting
+# shows at once. The TTL only bounds time-relative figures (e.g. a device crossing the offline threshold).
+CACHE_SECONDS = 600
+
+
+def _version(customer: Any) -> str:
+    import hashlib
+
+    from django.db.models import Count, Max
+
+    from apps.compliance.models import ComplianceBaseline
+    from apps.inventory.models import HealthThresholds
+    from apps.inventory.queries import current_generations
+    from apps.software.queries import current_evaluations
+
+    parts = (
+        sorted((str(g), str(p)) for g, p in current_generations(customer.id).values_list("id", "published_at")),
+        sorted(str(e) for e in current_evaluations(customer.id).values_list("id", flat=True)),
+        ComplianceBaseline.objects.filter(customer=customer).aggregate(
+            changed=Max("updated_at"), baselines=Count("id", distinct=True), rules=Count("rules")
+        ),
+        str(
+            HealthThresholds.objects.filter(customer_id=customer.id, state=HealthThresholds.State.APPROVED)
+            .values_list("id", flat=True)
+            .first()
+        ),
+        customer.code,
+        customer.name,
+        customer.status,
+    )
+    return hashlib.sha256(repr(parts).encode()).hexdigest()[:32]
+
+
+def cached_row(customer: Any) -> dict[str, Any]:
+    from django.core.cache import cache
+    from django.utils.dateparse import parse_datetime
+
+    from apps.inventory.queries import stale_cutoff
+
+    key = f"okp:overview:v1:{customer.id}:{_version(customer)}"
+    data = cache.get(key)
+    if data is None:
+        data = row(customer)
+        cache.set(key, data, CACHE_SECONDS)
+    as_of = parse_datetime(data["as_of"]) if data["as_of"] else None
+    return {**data, "stale": as_of is None or as_of < stale_cutoff()}  # never cached: depends on the time now
+
+
 def overview(customers: list[Any]) -> list[dict[str, Any]]:
-    return [row(c) for c in customers[:MAX_CUSTOMERS]]
+    return [cached_row(c) for c in customers[:MAX_CUSTOMERS]]
