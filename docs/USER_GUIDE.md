@@ -371,6 +371,10 @@ final values are known:
    has a value; left unchanged* and is not touched. Servers are never changed.
 3. Apply it as usual. A value someone sets in VSA X after the preview is also left alone (the device is re-read just
    before each write).
+   If **Apply changes** stays grey with *Nothing to apply*, every device already shows a value; the list says why.
+   *Has a value from the organisation, site or group* means VSA X sets the field above device level (or for the whole
+   field), so those devices are left alone. To put the placeholder on them anyway, use *Device assignments* (it sets a
+   device value; the inherited value stays in place).
 
 **Find devices by a custom field.** On **Devices → More filters**, and above the device list in *Device assignments*,
 **Filter by custom field** with a condition: *is empty*, *is empty or…*, *is…* (for example *TBD*), *has a value other

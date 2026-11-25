@@ -219,6 +219,20 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
                 </div>
                 <Items customer={customer} job={j} phase="preview" />
                 {!j.writes.available ? <Notice tone="warn">Cannot apply yet: {j.writes.reason}</Notice> : null}
+                {!c.to_change ? (
+                  <div role="status" className="rounded px-3 py-2 text-sm ring-1 ring-inset bg-amber-50 text-amber-900 ring-amber-200">
+                    <p><strong>Nothing to apply:</strong> no device needs this value{j.only_if_empty ? " (only devices without any value are changed)" : ""}.</p>
+                    {Object.keys(c.not_changed ?? {}).length ? (
+                      <ul aria-label="Why devices are not changed" className="mt-1 list-disc pl-5">
+                        {Object.entries(c.not_changed ?? {}).sort((x, y) => y[1] - x[1]).map(([why, n]) => <li key={why}>{n} device{n === 1 ? "" : "s"}: {why}</li>)}
+                      </ul>
+                    ) : null}
+                    {c.not_changed?.["Has a value from the organisation, site or group; left unchanged"] ? (
+                      <p className="mt-1">These devices already show a value that VSA X sets on their organisation, site or group (or for the whole field). To put the placeholder on them anyway, use <em>Device assignments</em>, which sets a device value and leaves the inherited one in place.</p>
+                    ) : null}
+                    {c.action?.review ? <p className="mt-1">Devices under <em>Requires review</em> could not be read from VSA X; try <em>Preview again</em>.</p> : null}
+                  </div>
+                ) : null}
                 {!canApply ? (
                   <Notice tone="info" title="Ready for an administrator">
                     Nothing else to do here. The job now appears at the top of the Custom fields page for administrators
@@ -239,6 +253,7 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
                     <button type="button" className="btn-primary" disabled={!sure || !c.to_change || !j.writes.available || act.isPending}
                             onClick={() => act.mutate({ path: "confirm", body: { confirm: true, acknowledge_overwrite: Boolean(c.updates) && sure } })}>Apply changes</button>
                   ) : null}
+                  {canApply && c.to_change && j.writes.available && !sure ? <span className="self-center text-xs text-slate-600">Tick the confirmation above to apply.</span> : null}
                   <button type="button" className="btn-secondary" disabled={act.isPending} onClick={() => act.mutate({ path: "preview" })}>Preview again</button>
                   <button type="button" className="btn-secondary" disabled={act.isPending} onClick={() => act.mutate({ path: "cancel" })}>Discard</button>
                 </div>

@@ -190,7 +190,7 @@ export type CfJob = {
   state: CfJobState; state_label: string; created_by: string; created_at: string; previewed_at: string | null;
   preview_expires_at: string | null; self_approval_allowed?: boolean; confirmed_by: string | null; confirmed_at: string | null; approval_required: boolean; approved_by: string | null;
   approved_at: string | null; cancel_requested: boolean; started_at: string | null; finished_at: string | null; error_code: string;
-  counts: { items?: number; match?: Record<string, number>; action?: Record<string, number>; result?: Record<string, number>; to_change?: number; updates?: number };
+  counts: { items?: number; match?: Record<string, number>; action?: Record<string, number>; result?: Record<string, number>; to_change?: number; updates?: number; not_changed?: Record<string, number> };
   writes: { available: boolean; reason: string };
 };
 export type CfCandidate = { asset_id: string; device_id: string; hostname: string; site: string; group: string };

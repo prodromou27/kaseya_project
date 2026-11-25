@@ -134,6 +134,14 @@ def _count(job: Job) -> None:
         "to_change": items.filter(included=True, action__in=(Item.Action.ASSIGN, Item.Action.UPDATE)).count(),
         # An overwrite replaces a non-empty value; filling an empty device-level value is not one.
         "updates": items.filter(included=True, action=Item.Action.UPDATE).exclude(current_value="").count(),
+        # Why devices are left out (shown when nothing is left to change).
+        "not_changed": dict(
+            Counter(
+                items.filter(included=True, action__in=(Item.Action.SKIP, Item.Action.REVIEW, Item.Action.BLOCKED))
+                .exclude(action_note="")
+                .values_list("action_note", flat=True)
+            )
+        ),
     }
     job.save(update_fields=["counts"])
 

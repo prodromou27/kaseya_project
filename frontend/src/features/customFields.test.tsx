@@ -161,6 +161,25 @@ describe("Custom fields", () => {
     expect(JSON.parse(String(created?.init?.body)).filters).toEqual({ custom_field: "PatchRing", custom_field_state: "equals", custom_field_value: "TBD" });
   });
 
+  it("says why Apply changes is unavailable when every device already has a value", async () => {
+    const previewed = job({ state: "previewed", value: "TBD", only_if_empty: true, previewed_at: "2026-11-25T09:00:00Z",
+      counts: { items: 3, match: { matched: 3 }, action: { skip: 3 }, to_change: 0, updates: 0,
+        not_changed: { "Has a value from the organisation, site or group; left unchanged": 2, "Already has a value; left unchanged": 1 } } });
+    routes({
+      [`GET ${base}/custom-field-jobs/`]: { body: page([previewed]) },
+      [`GET ${base}/custom-field-jobs/j1/`]: { body: previewed },
+      [`GET ${base}/custom-field-jobs/j1/items/`]: { body: page([]) },
+    });
+    renderApp("/custom-fields");
+    await userEvent.click(await screen.findByRole("tab", { name: "Assignment history" }));
+    await userEvent.click(await screen.findByRole("button", { name: /PatchRing = TBD/ }));
+    expect(await screen.findByText(/Nothing to apply:/)).toBeInTheDocument();
+    const reasons = screen.getByRole("list", { name: "Why devices are not changed" });
+    expect(reasons).toHaveTextContent("2 devices: Has a value from the organisation, site or group; left unchanged");
+    expect(reasons).toHaveTextContent("1 device: Already has a value; left unchanged");
+    expect(screen.getByRole("button", { name: "Apply changes" })).toBeDisabled();
+  });
+
   it("explains why the change cannot be applied while writes are off", async () => {
     routes({
       [`GET ${base}/custom-field-jobs/`]: { body: page([job({ state: "previewed", state_label: "Preview ready", counts: { to_change: 1, action: { assign: 1 } }, writes: { available: false, reason: "Writing custom fields to VSA X is switched off on this server." } })]) },

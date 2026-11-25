@@ -170,6 +170,9 @@ def test_placeholder_for_all_devices_end_to_end(world, ready, django_capture_on_
     # Every other device shows the organisation's "Ring 2" (or its own "Ring 1"): left unchanged.
     others = [r for d, r in rows.items() if d not in (empty, final)]
     assert others and all(r["action"] == "skip" for r in others)
+    reasons = body["counts"]["not_changed"]  # shown when nothing is left to apply
+    assert reasons["Has a value from the organisation, site or group; left unchanged"] > 0
+    assert reasons["Already has a value; left unchanged"] >= 1
     # The next sync re-reads the written device only (so filters show "TBD" without waiting a week).
     from apps.inventory.models import Asset
 

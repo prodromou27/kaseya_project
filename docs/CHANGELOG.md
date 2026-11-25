@@ -6,6 +6,7 @@
 - Filling an empty device-level value no longer asks to confirm an overwrite.
 - **Filter by custom field** (Devices → More filters, Device assignments, inventory export, saved views): *is empty*, *is empty or…*, *is…*, *has a value other than…*, *has any value*, *was not read*. Uses values collected by the latest sync for approved names; devices not read are never reported as empty. API: `custom_field`, `custom_field_state`, `custom_field_value` on `/customers/{id}/assets/`.
 - Devices a custom field job wrote to are re-read on the next sync.
+- When **Apply changes** is unavailable the job says why: nothing to change (with the reasons devices are left unchanged, e.g. a value inherited from the organisation, site or group), writes off, or the confirmation not ticked. API: `counts.not_changed`.
 - Fixture-tested only; live VSA X custom field writes are still unvalidated on the tenant.
 
 ## UX-10 - 2026-11-25 - dashboard redesign
