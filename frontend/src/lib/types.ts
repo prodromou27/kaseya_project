@@ -186,7 +186,7 @@ export type CustomFieldDef = {
 export type CfJobState = "draft" | "previewing" | "previewed" | "awaiting_approval" | "queued" | "running" | "completed" | "cancelled" | "failed" | "rejected";
 export type CfJob = {
   id: string; field: string; field_name: string; field_type: string; field_external_id: string; integration: string;
-  value: string; per_device_values: boolean; source: string; source_label: string; source_filename: string; retry_of: string | null;
+  value: string; per_device_values: boolean; only_if_empty?: boolean; source: string; source_label: string; source_filename: string; retry_of: string | null;
   state: CfJobState; state_label: string; created_by: string; created_at: string; previewed_at: string | null;
   preview_expires_at: string | null; self_approval_allowed?: boolean; confirmed_by: string | null; confirmed_at: string | null; approval_required: boolean; approved_by: string | null;
   approved_at: string | null; cancel_requested: boolean; started_at: string | null; finished_at: string | null; error_code: string;

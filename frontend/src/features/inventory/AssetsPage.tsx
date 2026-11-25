@@ -15,6 +15,7 @@ import { ExportButton } from "../reports/ExportButton";
 import { DataSources } from "./DataSources";
 import { SavedViews } from "./SavedViews";
 import { SelectCustomer } from "../../components/SelectCustomer";
+import { conditionParams, CustomFieldCondition } from "../customfields/CustomFieldCondition";
 
 function DeviceLink({ asset }: { asset: AssetRow }) {
   const { search } = useLocation();
@@ -35,6 +36,7 @@ const DEFAULT_COLUMNS = ["hostname", "site_name", "group_name", "os", "last_seen
 const DEFAULT_FILTERS = {
   search: "", group: "", os: "", offline: "", ordering: "hostname", group_id: "",
   site: "", device_type: "", organization: "", instance: "", software_status: "", offline_days: "7",
+  custom_field: "", custom_field_state: "", custom_field_value: "",
   page_size: "50", view: "", columns: DEFAULT_COLUMNS.join(","), density: "compact",
 };
 type Filters = typeof DEFAULT_FILTERS;
@@ -52,7 +54,11 @@ function AssetTable({ customer }: { customer: Customer }) {
   const layout: ListLayout = { columns: validColumns.length ? Array.from(new Set(validColumns)) : DEFAULT_COLUMNS, density: density === "comfortable" ? "comfortable" : "compact" };
   const search = useDebouncedValue(filters.search);
   const facets = useQuery({ queryKey: ["assets", customer.id, "facets"], queryFn: ({ signal }) => api.get<Facets>(`/customers/${customer.id}/assets/facets/`, undefined, signal) });
-  const requestFilters = { ...reportFilters, search };
+  const cfValue = useDebouncedValue(filters.custom_field_value);
+  const plainFilters = Object.fromEntries(Object.entries(reportFilters).filter(([key]) => !key.startsWith("custom_field")));
+  const condition = conditionParams({ custom_field: filters.custom_field, custom_field_state: filters.custom_field_state, custom_field_value: cfValue });
+  const requestFilters = { ...plainFilters, ...condition, search };
+  const exportFilters = { ...plainFilters, ...condition };
   const query = useQuery({
     queryKey: ["assets", customer.id, requestFilters, page, pageSize],
     queryFn: ({ signal }) => api.get<Paginated<AssetRow>>(`/customers/${customer.id}/assets/`, { ...requestFilters, page, page_size: pageSize }, signal),
@@ -75,7 +81,7 @@ function AssetTable({ customer }: { customer: Customer }) {
           const [instance, site] = event.target.value.split(":"); update({ site: site ?? "", instance: instance ?? "", group: "", group_id: "", view: "" });
         }}><option value="">All sites</option>{(facets.data?.sites ?? facets.data?.site?.map((id) => ({ site_external_id: id, site_name: id, generation__integration_instance_id: "", generation__integration_instance__name: "" })) ?? []).map((row) => <option key={`${row.generation__integration_instance_id}:${row.site_external_id}`} value={`${row.generation__integration_instance_id}:${row.site_external_id}`}>{row.site_name || row.site_external_id}{row.generation__integration_instance__name ? ` / ${row.generation__integration_instance__name}` : ""}</option>)}</select></label>
         <label className="list-label">Online state<select className="input" value={filters.offline} onChange={(event) => set("offline", event.target.value)}><option value="">Any last seen</option><option value="false">Seen within {filters.offline_days} days</option><option value="true">Offline &gt; {filters.offline_days} days / never</option></select></label>
-        {customer.my_capabilities.includes("customer.export") ? <ExportButton customer={customer} reportType="asset_inventory" label="Export inventory" filters={reportFilters} /> : null}
+        {customer.my_capabilities.includes("customer.export") ? <ExportButton customer={customer} reportType="asset_inventory" label="Export inventory" filters={exportFilters} /> : null}
       </div>
       <div className="mt-3 flex flex-wrap gap-2" aria-label="Device quick filters">
         <button type="button" className="list-preset" aria-pressed={active.length === 0} onClick={clear}>All devices</button>
@@ -91,9 +97,14 @@ function AssetTable({ customer }: { customer: Customer }) {
         }}><option value="">All groups</option>{facets.data?.groups ? facets.data.groups.map((row) => <option key={`${row.generation__integration_instance_id}:${row.group_external_id}`} value={`${row.generation__integration_instance_id}:${row.group_external_id}`}>{row.group_name || row.group_external_id} ? {row.site_name}</option>) : facets.data?.group?.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
         <label className="list-label">OS<select className="input" value={filters.os} onChange={(event) => set("os", event.target.value)}><option value="">All operating systems</option>{facets.data?.os?.map((os) => <option key={os} value={os}>{os}</option>)}</select></label>
         <label className="list-label">Device type<select className="input" value={filters.device_type} onChange={(event) => set("device_type", event.target.value)}><option value="">All types</option>{facets.data?.device_type?.map((type) => <option key={type} value={type}>{type}</option>)}</select></label>
+        <div className="sm:col-span-2 lg:col-span-4">
+          <CustomFieldCondition customer={customer}
+            value={{ custom_field: filters.custom_field, custom_field_state: filters.custom_field_state, custom_field_value: filters.custom_field_value }}
+            onChange={(c) => update({ ...c, view: "" })} />
+        </div>
         <label className="list-label">Last-seen window (days)<select className="input" value={filters.offline_days} onChange={(event) => set("offline_days", event.target.value)}>{Array.from(new Set([1, 7, 14, 30, 90, Number(filters.offline_days)])).filter((day) => Number.isInteger(day) && day >= 1 && day <= 365).sort((a, b) => a - b).map((day) => <option key={day} value={day}>{day} days</option>)}</select></label>
       </div></details>
-      <SavedViews customer={customer} viewType="assets" current={reportFilters} layout={{ ...layout, page_size: pageSize }} selectedId={view} onLoad={(f, savedLayout, id) => {
+      <SavedViews customer={customer} viewType="assets" current={exportFilters} layout={{ ...layout, page_size: pageSize }} selectedId={view} onLoad={(f, savedLayout, id) => {
         update({ ...DEFAULT_FILTERS, ...f, page_size: String(savedLayout.page_size ?? pageSize), view: id,
           columns: (savedLayout.columns ?? DEFAULT_COLUMNS).join(","), density: savedLayout.density ?? "compact" });
       }} />
@@ -107,7 +118,7 @@ function AssetTable({ customer }: { customer: Customer }) {
       density={layout.density} onDensityChange={(density) => update({ density, view: "" }, false, false)}
       sorting={filters.ordering} sortableColumns={{ hostname: "hostname", group_name: "group_name", os: "os_name", last_seen: "last_seen_online" }} onSort={(field) => set("ordering", filters.ordering === field ? `-${field}` : field)}
       loading={busy} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => update({ page_size: String(size), view: "" })} getRowId={(row) => row.id}
-      selectionActions={customer.my_capabilities.includes("customer.export") ? (rows) => <ExportButton customer={customer} reportType="asset_inventory" label="Export selected devices" filters={{ ...reportFilters, asset_ids: rows.map((row) => row.id).join(",") }} /> : undefined}
+      selectionActions={customer.my_capabilities.includes("customer.export") ? (rows) => <ExportButton customer={customer} reportType="asset_inventory" label="Export selected devices" filters={{ ...exportFilters, asset_ids: rows.map((row) => row.id).join(",") }} /> : undefined}
       emptyTitle="No devices match your filters." emptyHint={<button type="button" className="text-sky-800 underline" onClick={clear}>Clear filters and show all devices</button>} />}</QueryBoundary>
   </section>;
 }

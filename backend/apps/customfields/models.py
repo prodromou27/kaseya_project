@@ -79,6 +79,8 @@ class AssignmentJob(models.Model):
     field = models.ForeignKey(CustomFieldDefinition, on_delete=models.PROTECT, related_name="jobs")
     value = models.CharField(max_length=255, blank=True, help_text="Requested value (unless set per device).")
     per_device_values = models.BooleanField(default=False)
+    # CFA-10: placeholder mode - only devices with no value get the value; any existing value is left unchanged.
+    only_if_empty = models.BooleanField(default=False)
     source = models.CharField(max_length=12, choices=Source.choices)
     source_filename = models.CharField(max_length=255, blank=True)
     retry_of = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="+")

@@ -146,6 +146,7 @@ class JobSerializer(serializers.ModelSerializer):
             "integration",
             "value",
             "per_device_values",
+            "only_if_empty",
             "source",
             "source_label",
             "source_filename",
@@ -326,7 +327,10 @@ class JobViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveMode
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses={201: JobSerializer})
     def create(self, request: Request, customer_pk: str | None = None) -> Response:
-        """JSON ``{field, value, source, assets?, text?}`` or multipart ``file`` + ``mapping``."""
+        """JSON ``{field, value, source, assets?, filters?, text?, only_if_empty?}`` or multipart ``file``/``mapping``.
+
+        ``only_if_empty`` (CFA-10): devices that already have a value are skipped and left unchanged.
+        """
         customer = self.get_customer()
         data = request.data
         field = self._field(data.get("field"))
@@ -355,6 +359,7 @@ class JobViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveMode
             source=source,
             items=items,
             filename=filename,
+            only_if_empty=str(data.get("only_if_empty", "")).lower() in ("true", "1"),
             request=request,
         )
         return Response(JobSerializer(job).data, status=201)
@@ -527,6 +532,7 @@ def _filtered_assets(customer: Any, instance: Any, raw: dict[str, Any]) -> list[
 
     filters = AssetFilters(data={k: v for k, v in raw.items() if v not in ("", None)})
     filters.is_valid(raise_exception=True)
+    filters.validate_for_customer(customer, filters.validated_data)
     qs = filter_inventory(current_observations(customer.id), filters.validated_data).filter(
         asset__integration_instance=instance
     )

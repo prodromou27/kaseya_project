@@ -39,6 +39,23 @@ Undocumented and therefore not assumed: maximum value length (the portal caps at
 5. **Execute** (Celery, one device at a time, rate-limited) — per device: re-check customer/workstation/field; re-read the assignment (concurrent change → skipped for review); commit *sending*; one POST or PUT, never repeated; read back with bounded retries. Results: *Verified*, *Already correct*, *Failed*, *Verification failed*, *Verification pending*, *Unknown outcome*, *Skipped*, *Cancelled*.
 6. **History and report** — every job with per-device results; CSV, or XLSX with Summary / Successful / Skipped / Failed / Not found / Ambiguous sheets; failed devices can seed a new job (full preview again).
 
+### 3a. Placeholder mode (CFA-10, 2026-11-25)
+
+A job created with `only_if_empty: true` (one value for all devices, for example `TBD`) changes only devices without a value:
+
+| Device-level assignment | Effective value | Action |
+|---|---|---|
+| none | none | Assign |
+| none | inherited, empty | Assign |
+| none | inherited, non-empty | Skip — has a value from the organisation, site or group |
+| empty | — | Update (fills the empty value; no overwrite acknowledgement) |
+| non-empty (≠ requested) | — | Skip — already has a value |
+| = requested | — | Skip — already set |
+
+Before each write the device-level assignment is read again; a value that appeared after the preview ends as *Skipped* (`has_value_now` or `changed_since_preview`). Devices with a write attempt get `Asset.details_refresh_requested_at`, so the next sync re-reads their details.
+
+The inventory filter `custom_field` / `custom_field_state` (`missing`, `set`, `equals`, `not_equals`, `missing_or_equals`, `not_read`) / `custom_field_value` works on the values stored by the latest sync (`DeviceCustomField`, approved names only, case-insensitive). *Missing* requires the device's custom fields to have been read (fetch `collected` or `carried_forward`).
+
 ## 4. Matching precedence
 
 1. VSA device ID (exact, current snapshot of the selected customer).

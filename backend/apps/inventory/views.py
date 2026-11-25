@@ -90,6 +90,7 @@ class CustomerAssetViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewsets.
         customer = self.get_customer()
         filters = AssetFilters(data={k: v for k, v in self.request.query_params.items() if v != ""})
         filters.is_valid(raise_exception=True)
+        filters.validate_for_customer(customer, filters.validated_data)
         return filter_inventory(current_observations(customer.id), filters.validated_data)
 
     def _offline_days(self) -> int:

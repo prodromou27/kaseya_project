@@ -1773,8 +1773,10 @@ paths:
           description: ''
     post:
       operationId: customers_custom_field_jobs_create
-      description: JSON ``{field, value, source, assets?, text?}`` or multipart ``file``
-        + ``mapping``.
+      description: |-
+        JSON ``{field, value, source, assets?, filters?, text?, only_if_empty?}`` or multipart ``file``/``mapping``.
+
+        ``only_if_empty`` (CFA-10): devices that already have a value are skipped and left unchanged.
       parameters:
       - in: path
         name: customer_pk
@@ -8094,6 +8096,8 @@ components:
           description: Requested value (unless set per device).
           maxLength: 255
         per_device_values:
+          type: boolean
+        only_if_empty:
           type: boolean
         source:
           $ref: '#/components/schemas/SourceEnum'

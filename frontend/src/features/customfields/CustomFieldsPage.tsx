@@ -10,6 +10,7 @@ import { useMe } from "../../lib/auth";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import { CAP, type AssetRow, type CfJob, type Customer, type CustomFieldDef, type Paginated } from "../../lib/types";
+import { conditionParams, CustomFieldCondition, NO_CONDITION, type CfCondition } from "./CustomFieldCondition";
 import { JobPanel } from "./JobPanel";
 
 const PAGE = 50;
@@ -77,9 +78,10 @@ function SelectDevices({ customer, onJob }: { customer: Customer; onJob: (id: st
   const [allMatching, setAllMatching] = useState(false);
   const [fieldId, setFieldId] = useState("");
   const [value, setValue] = useState("");
-  const filters = { search, site, group, os, device_type: "" };
+  const [condition, setCondition] = useState<CfCondition>(NO_CONDITION);
+  const filters = { search, site, group, os, device_type: "", ...conditionParams(condition) };
   const assets = useQuery({
-    queryKey: ["cf-assets", customer.id, search, site, group, os, page],
+    queryKey: ["cf-assets", customer.id, search, site, group, os, conditionParams(condition), page],
     queryFn: ({ signal }) => api.get<Paginated<AssetRow>>(`/customers/${customer.id}/assets/`, { ...filters, page, page_size: PAGE, ordering: "hostname" }, signal),
   });
   const create = useMutation({
@@ -100,6 +102,7 @@ function SelectDevices({ customer, onJob }: { customer: Customer; onJob: (id: st
         <label className="list-label">Site<input className="input w-40" value={site} onChange={(e) => { setSite(e.target.value); setPage(1); setAllMatching(false); }} /></label>
         <label className="list-label">Group<input className="input w-40" value={group} onChange={(e) => { setGroup(e.target.value); setPage(1); setAllMatching(false); }} /></label>
         <label className="list-label">Operating system<input className="input w-40" value={os} onChange={(e) => { setOs(e.target.value); setPage(1); setAllMatching(false); }} /></label>
+        <CustomFieldCondition customer={customer} value={condition} onChange={(c) => { setCondition(c); setPage(1); setAllMatching(false); }} />
       </div>
       <QueryBoundary query={assets}>
         {(data) => (
@@ -137,6 +140,78 @@ function SelectDevices({ customer, onJob }: { customer: Customer; onJob: (id: st
           <div className="space-y-2">
             <FieldValue fields={list} fieldId={fieldId} value={value} onField={setFieldId} onValue={setValue} />
             <button type="button" className="btn-primary" disabled={!fieldId || !value || !count || create.isPending} onClick={() => create.mutate()}>Review devices</button>
+            {create.isError ? <p role="alert" className="text-sm text-red-700">{describeError(create.error)}</p> : null}
+          </div>
+        ) : <NoFields customer={customer} />}
+      </QueryBoundary>
+    </div>
+  );
+}
+
+/**
+ * CFA-10: put a placeholder (default "TBD") on every workstation that has no value yet, so the field exists on all
+ * devices before the final values are known. Devices that already show any value, set on the device or inherited, are
+ * left unchanged. The usual preview and confirmation apply.
+ */
+function FillEmpty({ customer, onJob }: { customer: Customer; onJob: (id: string) => void }) {
+  const fields = useEditableFields(customer);
+  const [fieldId, setFieldId] = useState("");
+  const [value, setValue] = useState("TBD");
+  const [site, setSite] = useState("");
+  const [group, setGroup] = useState("");
+  const facets = useQuery({
+    queryKey: ["assets", customer.id, "facets"],
+    queryFn: ({ signal }) => api.get<{ sites?: { site_external_id: string; site_name: string }[]; groups?: { group_external_id: string; group_name: string; site_name: string }[] }>(`/customers/${customer.id}/assets/facets/`, undefined, signal),
+  });
+  const scope = Object.fromEntries(Object.entries({ site, group_id: group }).filter(([, v]) => v));
+  const devices = useQuery({
+    queryKey: ["cf-assets", customer.id, "fill-empty", scope],
+    queryFn: ({ signal }) => api.get<Paginated<AssetRow>>(`/customers/${customer.id}/assets/`, { ...scope, page: 1, page_size: 1 }, signal),
+  });
+  const create = useMutation({
+    mutationFn: () => api.post<CfJob>(`/customers/${customer.id}/custom-field-jobs/`, { field: fieldId, value, source: "selection", filters: scope, only_if_empty: true }),
+    onSuccess: (job) => onJob(job.id),
+  });
+  return (
+    <div className="space-y-3">
+      <Notice tone="info" title="How the placeholder works">
+        Every workstation of {customer.code} (or of the site or group you choose) without a value for the field gets the
+        placeholder. A device that already has any value, on the device or from its organisation, site or group, is
+        left unchanged, and so is a device whose value is set by someone else before the change is applied. Servers are
+        never changed. You see the full preview before anything is written. Later, filter the devices whose field is
+        still the placeholder (Device assignments, or Devices → More filters) and set the final values.
+      </Notice>
+      <QueryBoundary query={fields}>
+        {(list) => list.some((f) => f.editable && f.type === "Text") ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="list-label">Field
+                <select className="input w-64" value={fieldId} onChange={(e) => setFieldId(e.target.value)}>
+                  <option value="">Choose a text field…</option>
+                  {list.filter((f) => f.editable && f.type === "Text").map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </label>
+              <label className="list-label">Placeholder value<input className="input w-40" maxLength={255} value={value} onChange={(e) => setValue(e.target.value)} /></label>
+              <label className="list-label">Site
+                <select className="input max-w-56" value={site} onChange={(e) => { setSite(e.target.value); setGroup(""); }}>
+                  <option value="">All sites</option>
+                  {(facets.data?.sites ?? []).map((x) => <option key={x.site_external_id} value={x.site_external_id}>{x.site_name || x.site_external_id}</option>)}
+                </select>
+              </label>
+              <label className="list-label">Group
+                <select className="input max-w-64" value={group} onChange={(e) => setGroup(e.target.value)}>
+                  <option value="">All groups</option>
+                  {(facets.data?.groups ?? []).filter((x) => !site || (facets.data?.sites ?? []).some((y) => y.site_external_id === site && y.site_name === x.site_name))
+                    .map((x) => <option key={x.group_external_id} value={x.group_external_id}>{x.group_name || x.group_external_id} · {x.site_name}</option>)}
+                </select>
+              </label>
+            </div>
+            <p role="status" className="text-sm">
+              {devices.data ? <><strong>{devices.data.count}</strong> device{devices.data.count === 1 ? "" : "s"} will be checked; only those without a value are changed.</> : "Counting devices…"}
+            </p>
+            <button type="button" className="btn-primary" disabled={!fieldId || !value.trim() || !devices.data?.count || create.isPending} onClick={() => create.mutate()}>
+              {create.isPending ? "Preparing…" : "Review devices"}
+            </button>
             {create.isError ? <p role="alert" className="text-sm text-red-700">{describeError(create.error)}</p> : null}
           </div>
         ) : <NoFields customer={customer} />}
@@ -354,6 +429,7 @@ function Workspace({ customer }: { customer: Customer }) {
   const tabs = [
     ...(canAssign ? [
       { id: "devices", label: "Device assignments", content: <SelectDevices customer={customer} onJob={open} /> },
+      { id: "placeholder", label: "Placeholder for all devices", content: <FillEmpty customer={customer} onJob={open} /> },
       { id: "import", label: "Import list", content: <ImportList customer={customer} onJob={open} /> },
     ] : []),
     { id: "history", label: "Assignment history", content: <History customer={customer} onOpen={open} /> },

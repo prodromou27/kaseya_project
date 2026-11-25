@@ -361,6 +361,27 @@ date).
    answer clearly; the change is never sent twice. Download the results (Excel with Summary, Successful, Skipped, Failed,
    Not found and Ambiguous sheets, or CSV), and *Prepare a new job for the failed devices* if needed.
 
+**Placeholder for all devices (for example "TBD").** Use this to put a custom field on every workstation before the
+final values are known:
+
+1. Open the **Placeholder for all devices** tab, choose a text field, keep the value *TBD* (or type another), and
+   optionally limit it to one site or group. The page says how many devices will be checked.
+2. **Review devices** prepares the usual preview. Only devices with **no value** get the placeholder. A device that
+   already has any value, set on the device or inherited from its organisation, site or group, is shown as *Already
+   has a value; left unchanged* and is not touched. Servers are never changed.
+3. Apply it as usual. A value someone sets in VSA X after the preview is also left alone (the device is re-read just
+   before each write).
+
+**Find devices by a custom field.** On **Devices → More filters**, and above the device list in *Device assignments*,
+**Filter by custom field** with a condition: *is empty*, *is empty or…*, *is…* (for example *TBD*), *has a value other
+than…*, *has any value*, or *was not read in the last sync*. To set the final values, filter the field *is… TBD*, tick
+*Use all devices matching these filters*, enter the final value and review. The filter uses the values collected by the
+latest sync, so it lists only field names a customer administrator approved under **Customer → Custom fields** (only
+those values are collected). Devices whose values were not read are never counted as empty. After a job, the devices it
+changed are re-read on the next sync.
+
+A job holds at most 5,000 devices (`CUSTOM_FIELD_MAX_JOB_ITEMS`); for a larger customer, run the placeholder per site.
+
 The device page has a **Custom fields** tab with the editable fields' current values and the same reviewed change for that
 one device. **Assignment history** lists every job. The portal never removes a custom field or changes organisation,
 site or group values.

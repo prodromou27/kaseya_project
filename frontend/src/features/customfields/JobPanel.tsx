@@ -180,7 +180,7 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
           <section aria-label="Custom field job" className="space-y-3 rounded border border-slate-200 bg-white p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="font-semibold">
-                Set <span className="font-mono">{j.field_name}</span> = <span className="font-mono">{j.per_device_values ? "(per device)" : j.value}</span>
+                Set <span className="font-mono">{j.field_name}</span> = <span className="font-mono">{j.per_device_values ? "(per device)" : j.value}</span>{j.only_if_empty ? <> <Badge tone="info">only devices without a value</Badge></> : null}
                 <span className="ml-2"><Badge tone={j.state === "completed" ? "good" : j.state === "failed" || j.state === "rejected" ? "bad" : "info"}>{j.state_label}</Badge></span>
               </h3>
               <span className="text-xs text-slate-500">{j.source_label}{j.source_filename ? ` (${j.source_filename})` : ""} · {j.created_by} · {formatUtc(j.created_at)}{onClose ? <> · <button type="button" className="text-sky-800 underline" onClick={onClose}>Close</button></> : null}</span>

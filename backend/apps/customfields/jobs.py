@@ -62,6 +62,7 @@ def create(
     items: list[dict[str, Any]],
     filename: str = "",
     retry_of: Job | None = None,
+    only_if_empty: bool = False,
     request: Any = None,
 ) -> Job:
     ok, reason = definitions.eligibility(field)
@@ -72,6 +73,8 @@ def create(
         value = _normalise_or_400(field, value)
     elif not per_device:
         raise serializers.ValidationError({"value": "Enter a value."})
+    if only_if_empty and per_device:
+        raise serializers.ValidationError({"only_if_empty": "Filling empty values needs one value for every device."})
     with transaction.atomic():
         job = Job.objects.create(
             customer=customer,
@@ -79,6 +82,7 @@ def create(
             field=field,
             value=value,
             per_device_values=per_device,
+            only_if_empty=only_if_empty,
             source=source,
             source_filename=filename[:255],
             retry_of=retry_of,
@@ -109,7 +113,7 @@ def create(
             batch_size=1000,
         )
         _count(job)
-    _audit(job, "job_created", user, request, source=source, items=len(items), value=value)
+    _audit(job, "job_created", user, request, source=source, items=len(items), value=value, only_if_empty=only_if_empty)
     return job
 
 
@@ -128,7 +132,8 @@ def _count(job: Job) -> None:
         "action": dict(Counter(items.filter(included=True).exclude(action="").values_list("action", flat=True))),
         "result": dict(Counter(items.values_list("result", flat=True))),
         "to_change": items.filter(included=True, action__in=(Item.Action.ASSIGN, Item.Action.UPDATE)).count(),
-        "updates": items.filter(included=True, action=Item.Action.UPDATE).count(),
+        # An overwrite replaces a non-empty value; filling an empty device-level value is not one.
+        "updates": items.filter(included=True, action=Item.Action.UPDATE).exclude(current_value="").count(),
     }
     job.save(update_fields=["counts"])
 
@@ -258,11 +263,22 @@ def _preview_item(
             requested = None
         if requested is not None:
             item.requested_value = requested
-            _classify(item, adapter, field, requested, usage)
+            _classify(item, adapter, field, requested, usage, only_if_empty=job.only_if_empty)
     item.save()
 
 
-def _classify(item: Item, adapter: Any, field: CustomFieldDefinition, requested: str, usage: dict | None) -> None:
+def _empty(value: str | None) -> bool:
+    return value is None or not str(value).strip()
+
+
+def _classify(
+    item: Item, adapter: Any, field: CustomFieldDefinition, requested: str, usage: dict | None, *, only_if_empty: bool
+) -> None:
+    """Assign / update / skip from the device-level assignment, then the effective (possibly inherited) value.
+
+    ``only_if_empty`` (CFA-10, placeholder such as "TBD"): a device that already shows any value, set on the device or
+    inherited from its organisation, site or group, is skipped and left unchanged.
+    """
     device = item.device_external_id
     try:
         if usage is not None:
@@ -278,6 +294,10 @@ def _classify(item: Item, adapter: Any, field: CustomFieldDefinition, requested:
         item.current_value, item.current_source = current, "device"
         if definitions.same(field.type, current, requested):
             item.action, item.action_note = Item.Action.SKIP, "Already set on this device"
+        elif only_if_empty and not _empty(current):
+            item.action, item.action_note = Item.Action.SKIP, "Already has a value; left unchanged"
+        elif _empty(current):
+            item.action, item.action_note = Item.Action.UPDATE, "Fills the empty value on this device"
         else:
             item.action, item.action_note = Item.Action.UPDATE, "Overwrites the value set on this device"
         return
@@ -295,6 +315,9 @@ def _classify(item: Item, adapter: Any, field: CustomFieldDefinition, requested:
         item.current_source = "inherited"
         if definitions.same(field.type, item.current_value, requested):
             item.action, item.action_note = Item.Action.SKIP, "Already inherited from the organisation, site or group"
+        elif only_if_empty and not _empty(item.current_value):
+            item.action = Item.Action.SKIP
+            item.action_note = "Has a value from the organisation, site or group; left unchanged"
         else:
             item.action, item.action_note = Item.Action.ASSIGN, "Sets a device value; inherited values are unchanged"
 
@@ -443,6 +466,7 @@ def retry_failed(job: Job, user: Any, request: Any = None) -> Job:
         source=Job.Source.RETRY,
         items=items,
         retry_of=job,
+        only_if_empty=job.only_if_empty,
         request=request,
     )
 
@@ -511,6 +535,8 @@ def _execute_item(
         return _record(job, item, Item.Result.SKIPPED, "read_failed_before_write")
     if assigned and definitions.same(field.type, current, requested):
         return _record(job, item, Item.Result.ALREADY_CORRECT, "", final_value=current)
+    if job.only_if_empty and assigned and not _empty(current):
+        return _record(job, item, Item.Result.SKIPPED, "has_value_now", final_value=current)
     if assigned != bool(item.device_assigned) or (assigned and current != item.current_value):
         return _record(job, item, Item.Result.SKIPPED, "changed_since_preview", final_value=current)
     item.result, item.started_at = Item.Result.SENDING, timezone.now()
@@ -588,6 +614,12 @@ def _record(job: Job, item: Item, result: str, code: str, note: str = "", **fiel
 def _finish(job: Job, state: str, code: str, note: str = "") -> Job:
     job.state, job.error_code, job.finished_at = state, code, timezone.now()
     job.save(update_fields=["state", "error_code", "finished_at"])
+    # CFA-10: the next sync re-reads the details of every device a write was sent to, so device lists and filters show
+    # the new value without waiting for the weekly custom field refresh.
+    from apps.inventory.models import Asset
+
+    sent = job.items.exclude(started_at=None).exclude(asset=None).values("asset_id")
+    Asset.objects.filter(pk__in=sent).update(details_refresh_requested_at=job.finished_at)
     _count(job)
     _audit(
         job,

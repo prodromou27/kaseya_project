@@ -1,5 +1,13 @@
 # Changelog
 
+## CFA-10 - 2026-11-25 - placeholder custom field values and custom field filter
+
+- **Custom fields → Placeholder for all devices**: put a value such as *TBD* on every workstation that has no value for a text field (optionally one site or group). Devices that already have a value (on the device or inherited) are skipped and never changed; a value set after the preview is detected just before the write and left alone. Same preview, confirmation, read-back and audit as other jobs (`only_if_empty` on the job and in the `custom_field.job_created` audit event).
+- Filling an empty device-level value no longer asks to confirm an overwrite.
+- **Filter by custom field** (Devices → More filters, Device assignments, inventory export, saved views): *is empty*, *is empty or…*, *is…*, *has a value other than…*, *has any value*, *was not read*. Uses values collected by the latest sync for approved names; devices not read are never reported as empty. API: `custom_field`, `custom_field_state`, `custom_field_value` on `/customers/{id}/assets/`.
+- Devices a custom field job wrote to are re-read on the next sync.
+- Fixture-tested only; live VSA X custom field writes are still unvalidated on the tenant.
+
 ## UX-10 - 2026-11-25 - dashboard redesign
 
 - Customer dashboard fits one screen: the customer, your role and **Monthly scorecard (PDF)** in the header; a one-line data-freshness bar (the full sources panel appears only when something is wrong); six compact figures (devices, offline/stale, disk critical, antivirus, critical updates, outdated software) each with its share of devices; four equal panels (Patching, Compliance, Servers, Network) with an **Open →** link; history beside recent reports. Every figure appears once (the separate device-health, data-sources and customer cards are gone).

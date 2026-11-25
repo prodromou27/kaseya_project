@@ -37,6 +37,7 @@ function routes(extra: Record<string, unknown> = {}, caps: string[] = adminCaps)
     [`GET ${base}/custom-fields/`]: { body: [field(), field({ id: "f2", name: "Cost Center", type: "Number" })] },
     [`GET ${base}/custom-field-jobs/`]: { body: page([]) },
     [`GET ${base}/assets/`]: { body: page([]) },
+    [`GET ${base}/custom-field-allowlist/`]: { body: [{ id: "w1", name: "PatchRing", state: "approved" }] },
     ...extra,
   } as never);
 }
@@ -111,6 +112,53 @@ describe("Custom fields", () => {
     await userEvent.click(screen.getByRole("button", { name: "Review devices" }));
     const created = calls.find((c) => c.method === "POST" && c.url === `${base}/custom-field-jobs/`);
     expect(JSON.parse(String(created?.init?.body))).toEqual({ field: "f2", value: "42", source: "selection", assets: ["a1", "a3"] });
+  });
+
+  it("puts a placeholder on every device without a value and leaves the others unchanged", async () => {
+    const { calls } = routes({
+      [`GET ${base}/assets/`]: { body: { count: 130, next: null, previous: null, results: [] } },
+      [`GET ${base}/assets/facets/`]: { body: { sites: [{ site_external_id: "11", site_name: "HQ" }], groups: [] } },
+      [`POST ${base}/custom-field-jobs/`]: { status: 201, body: job({ source: "selection", value: "TBD", only_if_empty: true }) },
+      [`GET ${base}/custom-field-jobs/j1/`]: { body: job({ value: "TBD", only_if_empty: true }) },
+      [`POST ${base}/custom-field-jobs/j1/preview/`]: { body: job({ state: "previewing", only_if_empty: true }) },
+      [`GET ${base}/custom-field-jobs/j1/items/`]: { body: page([]) },
+    });
+    renderApp("/custom-fields");
+    await userEvent.click(await screen.findByRole("tab", { name: "Placeholder for all devices" }));
+    const fieldSelect = await screen.findByLabelText("Field");
+    expect(within(fieldSelect).queryByRole("option", { name: "Cost Center" })).not.toBeInTheDocument(); // text fields only
+    await userEvent.selectOptions(fieldSelect, "f1");
+    expect(screen.getByLabelText("Placeholder value")).toHaveValue("TBD");
+    expect(await screen.findByText(/will be checked; only those without a value are changed/)).toHaveTextContent("130 devices");
+    await userEvent.click(screen.getByRole("button", { name: "Review devices" }));
+    const created = calls.find((c) => c.method === "POST" && c.url === `${base}/custom-field-jobs/`);
+    expect(JSON.parse(String(created?.init?.body))).toEqual({ field: "f1", value: "TBD", source: "selection", filters: {}, only_if_empty: true });
+    expect(await screen.findByText("only devices without a value")).toBeInTheDocument();
+  });
+
+  it("selects every device whose field is still the placeholder, to set the final value", async () => {
+    const { calls } = routes({
+      [`GET ${base}/assets/`]: { body: { count: 2, next: null, previous: null, results: [] } },
+      [`POST ${base}/custom-field-jobs/`]: { status: 201, body: job({ source: "selection" }) },
+      [`GET ${base}/custom-field-jobs/j1/`]: { body: job() },
+      [`POST ${base}/custom-field-jobs/j1/preview/`]: { body: job({ state: "previewing" }) },
+      [`GET ${base}/custom-field-jobs/j1/items/`]: { body: page([]) },
+    });
+    renderApp("/custom-fields");
+    const by = await screen.findByLabelText("Filter by custom field");
+    await within(by).findByRole("option", { name: "PatchRing" }); // approved names load first
+    await userEvent.selectOptions(by, "PatchRing");
+    await userEvent.selectOptions(screen.getByLabelText("Condition"), "equals");
+    await userEvent.type(screen.getByLabelText("Compare with"), "TBD");
+    await userEvent.click(await screen.findByLabelText(/Use all 2 devices matching/));
+    await userEvent.selectOptions(screen.getByLabelText("Custom field"), "f1");
+    await userEvent.type(screen.getByLabelText("Value"), "Ring 0");
+    await userEvent.click(screen.getByRole("button", { name: "Review devices" }));
+    const list = calls.filter((c) => c.url.startsWith(`${base}/assets/?`)).at(-1);
+    expect(list?.url).toContain("custom_field=PatchRing");
+    expect(list?.url).toContain("custom_field_state=equals");
+    const created = calls.find((c) => c.method === "POST" && c.url === `${base}/custom-field-jobs/`);
+    expect(JSON.parse(String(created?.init?.body)).filters).toEqual({ custom_field: "PatchRing", custom_field_state: "equals", custom_field_value: "TBD" });
   });
 
   it("explains why the change cannot be applied while writes are off", async () => {
