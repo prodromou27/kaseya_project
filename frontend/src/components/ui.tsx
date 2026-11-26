@@ -1,4 +1,7 @@
 import { useId, type ReactNode } from "react";
+import { useInRouterContext, useLocation } from "react-router";
+
+import { sectionFor } from "../app/nav";
 
 const BADGE_TONES = {
   neutral: "bg-slate-100 text-slate-700 ring-slate-200",
@@ -18,14 +21,23 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
   );
 }
 
+/** The navigation section above the title ("Patching & software"); none outside a router (unit tests). */
+function Section() {
+  const { pathname } = useLocation();
+  const section = sectionFor(pathname);
+  return section ? <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-700">{section}</p> : null;
+}
+
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+  const routed = useInRouterContext();
   return (
-    <div className="page-header mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="page-header mb-4 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="break-words text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+        {routed ? <Section /> : null}
+        <h1 className="break-words text-[22px] font-semibold leading-tight tracking-tight text-slate-900">{title}</h1>
         {subtitle ? <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="flex gap-2">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
   );
 }

@@ -27,6 +27,11 @@ move approvals) are always shown. *Patching & software*, *Inventory & network* a
 group to open it (the portal remembers your choice), the group of the page you are on opens by itself, and **Find a
 page** at the top of the menu searches every page.
 
+**The top bar** holds the customer selector, *Find a device* (any of your customers), alerts, your name and the
+sign-out button (the arrow icon). Each page title shows its menu section above it. The data-source line under the
+title is one row while nothing needs action (an amber dot and *stale* when the data is past its freshness threshold);
+when a sync failed, paused, quarantined records or seems stuck, it opens into the full card with the reason.
+
 ## 2. Dashboard
 
 With no customer selected, the dashboard shows totals (customers, devices, customers needing attention, customers with

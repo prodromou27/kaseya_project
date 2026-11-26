@@ -8,6 +8,7 @@ const BASE = process.env.E2E_BASE_URL ?? "http://localhost:5173";
 const pages = [
   "/", "/customers", "/assets", "/software", "/windows-updates", "/patch-policies", "/device-health", "/changes",
   "/notifications", "/groups", "/onboarding", "/reports", "/admin", "/admin?tab=integrations",
+  "/servers", "/lifecycle", "/compliance", "/cleanup", "/custom-fields", "/group-moves", "/automation", "/all-customers", "/alerts",
 ];
 
 const browser = await chromium.launch();

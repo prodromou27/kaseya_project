@@ -1,5 +1,13 @@
 # Changelog
 
+## UX-11 - 2026-11-26 - app frame redesign
+
+- One-row top bar: customer selector, *Find a device*, alerts, initials and role, sign-out icon button (accessible name "Sign out"). The breadcrumb / scope strip is gone; every page title shows its menu section above it (from the same navigation definition, `src/app/nav.tsx`).
+- Sidebar: icons for every page, quieter group headings, accent bar on the current page.
+- Data sources: a single line on every page (green up to date, amber *stale*, sync in progress, fixture marker) unless a sync failed or paused, quarantined records, a stuck queue or a missing dataset; then the full card with the reason, as before.
+- Device detail: health dimensions as coloured states (good / warning / bad; unknown and not collected stay neutral).
+- Content width capped at 1600 px on very wide screens.
+
 ## FLT-01 - 2026-11-26 - more device filters
 
 - **Devices → More filters** and **Custom fields → Device assignments → More filters**: role (workstations / servers, SRV-01 rule with manual marking), manufacturer, model contains, OS version, agent version, domain, VSA tag; program name contains + installed / not installed; outdated software; missing OS updates (Critical, Important, any, none); patch policy (name, none / not reported, not collected); up to three custom field rules, all of which must match.

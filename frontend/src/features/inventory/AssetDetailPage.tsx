@@ -6,7 +6,7 @@ import { Link, useParams } from "react-router";
 import { DataTable } from "../../components/DataTable";
 import { QueryBoundary } from "../../components/States";
 import { Tabs } from "../../components/Tabs";
-import { Badge, Notice, PageHeader, statusTone } from "../../components/ui";
+import { Badge, Notice, PageHeader, statusTone, type Tone } from "../../components/ui";
 import { ThirdPartyPatchNotice } from "../../components/ThirdPartyPatchNotice";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { useCustomers } from "../../lib/customerContext";
@@ -78,23 +78,40 @@ function Overview({ detail }: { detail: AssetDetail }) {
         <section aria-label="Device health" className="investigation-card text-sm">
           <h3 className="mb-1 font-semibold">Health (snapshot {formatUtc(h.snapshot_at)}, {h.thresholds.source} thresholds)</h3>
           <p className="mb-2 text-xs text-slate-500">Derived from the inventory snapshot, not live monitoring. Unknown states are not healthy or unhealthy.</p>
+          <ul className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {([
+              ["Connectivity", h.connectivity, h.days_since_seen !== null ? `${h.days_since_seen} days since seen` : ""],
+              ["Agent version", h.agent_version, h.thresholds.minimum_agent_version ? `minimum ${h.thresholds.minimum_agent_version}` : ""],
+              ["System disk", h.disk, h.worst_disk_free_pct !== null ? `${h.worst_disk_free_pct}% free` : ""],
+              ["Antivirus", h.antivirus, ""],
+              ["Firewall", h.firewall, ""],
+            ] as [string, string, string][]).map(([k, state, note]) => (
+              <li key={k} className="rounded-md border border-slate-200 px-3 py-2">
+                <span className="block text-xs text-slate-500">{k}</span>
+                <span className="mt-1 flex flex-wrap items-center gap-1.5"><Badge tone={healthTone(state)}>{state.replace(/_/g, " ")}</Badge>{note ? <span className="text-xs text-slate-600">{note}</span> : null}</span>
+              </li>
+            ))}
+          </ul>
           <dl className="grid grid-cols-[12rem_1fr] gap-y-1">
             {([
-              ["Connectivity", h.connectivity + (h.days_since_seen !== null ? ` (${h.days_since_seen} days since seen)` : "")],
-              ["Agent version", `${h.agent_version}${h.thresholds.minimum_agent_version ? ` (minimum ${h.thresholds.minimum_agent_version})` : ""}`],
-              ["System disk", h.disk + (h.worst_disk_free_pct !== null ? ` (${h.worst_disk_free_pct}% free)` : "")],
-              ["Antivirus", h.antivirus],
-              ["Firewall", h.firewall],
               ["CPU", [h.hardware.cpu, h.hardware.cores && `${h.hardware.cores} cores`, h.hardware.logical_processors && `${h.hardware.logical_processors} logical`].filter(Boolean).join(" · ") || "not reported"],
               ["Memory (raw, units undocumented)", h.hardware.memory_total_raw ? memoryHint(String(h.hardware.memory_total_raw)) : "not reported"],
             ] as [string, string][]).map(([k, v]) => (
-              <div key={k} className="contents"><dt className="text-slate-500">{k}</dt><dd>{v.replace(/_/g, " ")}</dd></div>
+              <div key={k} className="contents"><dt className="text-slate-500">{k}</dt><dd>{v}</dd></div>
             ))}
           </dl>
         </section>
       ) : null}
     </div>
   );
+}
+
+/** Health states (backend ``health.DIMENSIONS``) as a tone; unknown / not collected stay neutral, never "healthy". */
+const HEALTH_GOOD = new Set(["seen_recently", "installed", "current", "ok", "enabled_up_to_date", "enabled"]);
+const HEALTH_WARN = new Set(["offline", "old", "warning", "enabled_outdated", "enabled_update_unknown"]);
+const HEALTH_BAD = new Set(["stale", "never_seen", "not_installed", "critical", "disabled"]);
+function healthTone(state: string): Tone {
+  return HEALTH_GOOD.has(state) ? "good" : HEALTH_WARN.has(state) ? "warn" : HEALTH_BAD.has(state) ? "bad" : "neutral";
 }
 
 function Network({ detail }: { detail: AssetDetail }) {

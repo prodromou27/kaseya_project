@@ -1,49 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
 import { LoadingState } from "../components/States";
 import { api, describeError } from "../lib/api";
 import { useMe } from "../lib/auth";
 import { useCustomers } from "../lib/customerContext";
 import { AlertBell } from "../features/alerts/AlertsPage";
+import { isHere, NAV_GROUPS, type NavItem } from "./nav";
 
-type NavItem = { to: string; label: string; adminOnly?: boolean };
-/**
- * Daily work first and always visible; everything else in folded groups (the group with the current page opens by
- * itself, and "Find a page" searches all of them). Every page keeps its URL.
- */
-export const NAV_GROUPS: { label: string; items: NavItem[]; folded?: boolean }[] = [
-  { label: "Daily work", items: [
-    { to: "/", label: "Dashboard" }, { to: "/assets", label: "Devices" }, { to: "/device-health", label: "Device health" },
-    { to: "/reports", label: "Reports" },
-  ] },
-  { label: "Changes in VSA X", items: [
-    { to: "/custom-fields", label: "Custom fields" }, { to: "/group-moves", label: "Group moves" },
-  ] },
-  { label: "Patching & software", folded: true, items: [
-    { to: "/windows-updates", label: "Windows updates" }, { to: "/software", label: "Software" },
-    { to: "/patch-policies", label: "Patch policies" }, { to: "/servers", label: "Servers & owners" },
-    { to: "/lifecycle", label: "Lifecycle" }, { to: "/compliance", label: "Compliance" },
-  ] },
-  { label: "Inventory & network", folded: true, items: [
-    { to: "/groups", label: "Groups & network" }, { to: "/changes", label: "Inventory changes" },
-    { to: "/notifications", label: "Notifications" }, { to: "/cleanup", label: "Cleanup" },
-    { to: "/onboarding", label: "Onboarding check" }, { to: "/automation", label: "Automation" },
-  ] },
-  { label: "Administration", folded: true, items: [
-    { to: "/all-customers", label: "All customers" }, { to: "/customers", label: "Customers" },
-    { to: "/admin", label: "Settings", adminOnly: true },
-  ] },
-];
-export const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
+export { NAV_GROUPS, NAV_ITEMS } from "./nav";
 
 function CustomerSelector() {
   const { customers, selected, select, isLoading, isError } = useCustomers();
   return (
-    <div className="flex min-w-0 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-      <label htmlFor="customer-selector">Customer</label>
-      <select id="customer-selector" className="input max-w-full font-medium normal-case tracking-normal text-slate-900 sm:w-72"
+    <div className="flex min-w-0 items-center gap-2">
+      <label htmlFor="customer-selector" className="hidden text-xs font-medium text-slate-500 sm:block">Customer</label>
+      <select id="customer-selector" className="input max-w-full bg-slate-50 font-medium text-slate-900 sm:w-72"
         value={selected?.id ?? ""} onChange={(e) => select(e.target.value || null)}
         disabled={isLoading || isError || customers.length === 0}>
         <option value="">{isLoading ? "Loading…" : customers.length === 0 ? "No assigned customers" : "Select a customer…"}</option>
@@ -51,6 +24,11 @@ function CustomerSelector() {
       </select>
     </div>
   );
+}
+
+function initials(name: string) {
+  const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
 function AccountStatus() {
@@ -65,13 +43,18 @@ function AccountStatus() {
     },
   });
   return (
-    <div className="flex min-w-0 items-center gap-3 text-sm">
-      <span className="hidden text-right leading-tight lg:block">
-        <span className="block font-medium text-slate-800">{me.display_name || me.email}</span>
-        <span className="text-xs text-slate-500">{me.is_super_admin ? "Super admin" : "Engineer portal"} · {me.auth_source === "oidc" ? "SSO" : "Local account"}</span>
-      </span>
+    <div className="flex min-w-0 items-center gap-2 text-sm">
       <AlertBell />
-      <button type="button" className="btn-secondary whitespace-nowrap" disabled={logout.isPending} onClick={() => logout.mutate()}>Sign out</button>
+      <span className="ml-1 hidden items-center gap-2 border-l border-slate-200 pl-3 lg:flex">
+        <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-800">{initials(me.display_name || me.email)}</span>
+        <span className="leading-tight">
+          <span className="block max-w-40 truncate text-[13px] font-medium text-slate-800">{me.display_name || me.email}</span>
+          <span className="text-[11px] text-slate-500">{me.is_super_admin ? "Super admin" : "Engineer"} · {me.auth_source === "oidc" ? "SSO" : "Local account"}</span>
+        </span>
+      </span>
+      <button type="button" aria-label="Sign out" title="Sign out" className="btn-secondary h-9 w-9 px-0" disabled={logout.isPending} onClick={() => logout.mutate()}>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+      </button>
       {logout.isError ? <span role="alert" className="max-w-52 text-xs text-red-700">Sign out failed. {describeError(logout.error)}</span> : null}
     </div>
   );
@@ -98,26 +81,29 @@ function MainNav({ onNavigate }: { onNavigate: () => void }) {
     try { window.localStorage.setItem(FOLD_KEY, JSON.stringify(next)); } catch { /* per-browser convenience only */ }
     return next;
   });
-  const here = (item: NavItem) => item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
+  const here = (item: NavItem) => isHere(item, pathname);
   const visible = NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) =>
     (!item.adminOnly || me.is_super_admin) && `${group.label} ${item.label}`.toLowerCase().includes(search.trim().toLowerCase()),
   ) })).filter((group) => group.items.length);
   return (
-    <nav aria-label="Main" className="flex h-full flex-col gap-4 px-3 py-5">
-      <div className="px-2">
-        <span className="text-lg font-semibold tracking-tight text-white">ODYSSEY<span className="ml-1 text-sky-400">/</span></span>
-        <p className="mt-0.5 text-[11px] text-slate-400">Operations & analytics</p>
+    <nav aria-label="Main" className="flex h-full flex-col gap-4 px-3 py-4">
+      <div className="flex items-center gap-2.5 px-2">
+        <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500 text-sm font-bold text-white">O</span>
+        <span className="leading-tight">
+          <span className="block text-[15px] font-semibold tracking-tight text-white">Odyssey</span>
+          <span className="block text-[11px] text-slate-400">Kaseya analytics</span>
+        </span>
       </div>
       <label className="sr-only" htmlFor="nav-search">Find a page</label>
-      <input id="nav-search" type="search" placeholder="Find a page…" maxLength={80} className="mx-1 min-w-0 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-2 text-xs text-white placeholder:text-slate-400" value={search} onChange={(e) => setSearch(e.target.value)} />
-      <div className="space-y-4">
+      <input id="nav-search" type="search" placeholder="Find a page…" maxLength={80} className="mx-1 min-w-0 rounded-md border border-slate-700/80 bg-slate-800/70 px-2.5 py-1.5 text-xs text-white placeholder:text-slate-400" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="space-y-3">
         {visible.map((group) => {
           const links = (
             <ul className="space-y-0.5">
               {group.items.map((item) => <li key={item.to}>
                 <NavLink to={item.to} end={item.to === "/"} onClick={onNavigate} className={({ isActive }) =>
-                  `nav-item flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] ${isActive ? "bg-sky-400/15 font-semibold text-sky-200 ring-1 ring-inset ring-sky-400/20" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}>
-                  <span aria-hidden="true" className="h-1 w-1 rounded-full bg-current opacity-60" />{item.label}
+                  `nav-item relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] ${isActive ? "bg-white/10 font-medium text-white before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-sky-400" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
+                  <span className={here(item) ? "text-sky-300" : "text-slate-400"}>{item.icon}</span>{item.label}
                 </NavLink>
               </li>)}
             </ul>
@@ -125,7 +111,7 @@ function MainNav({ onNavigate }: { onNavigate: () => void }) {
           if (!group.folded) {
             return (
               <section key={group.label} aria-label={group.label}>
-                <h2 className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">{group.label}</h2>
+                <h2 className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">{group.label}</h2>
                 {links}
               </section>
             );
@@ -134,7 +120,7 @@ function MainNav({ onNavigate }: { onNavigate: () => void }) {
           return (
             <details key={group.label} aria-label={group.label} open={open} className="group/fold"
               onToggle={(e) => { const now = (e.currentTarget as HTMLDetailsElement).open; if (now !== open) toggle(group.label, now); }}>
-              <summary className="mb-1 flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
+              <summary className="mb-1 flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
                 {group.label}<span aria-hidden="true" className="transition-transform group-open/fold:rotate-90">›</span>
               </summary>
               {links}
@@ -220,11 +206,6 @@ function DeviceSearch() {
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const { selected } = useCustomers();
-  const { pathname } = useLocation();
-  const matches = (item: NavItem) => item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
-  const current = NAV_GROUPS.find((group) => group.items.some(matches));
-  const destination = current?.items.find(matches);
   useEffect(() => {
     if (!menuOpen) return;
     const close = (event: KeyboardEvent) => {
@@ -234,27 +215,20 @@ export function AppShell() {
     return () => document.removeEventListener("keydown", close);
   }, [menuOpen]);
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-canvas text-slate-800">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:bg-white focus:p-2">Skip to content</a>
       <aside id="main-nav" className={`${menuOpen ? "block" : "hidden"} fixed inset-y-0 left-0 z-30 w-60 overflow-y-auto bg-slate-900 shadow-xl md:block md:shadow-none`}>
         <MainNav onNavigate={() => setMenuOpen(false)} />
       </aside>
       <div className="min-w-0 md:ml-60">
-        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:px-6">
+        <header className="sticky top-0 z-20 flex min-h-14 flex-wrap items-center gap-3 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur lg:px-6">
           <button ref={menuButton} type="button" className="btn-secondary z-40 md:hidden" aria-expanded={menuOpen} aria-controls="main-nav" onClick={() => setMenuOpen((open) => !open)}>{menuOpen ? "Close menu" : "Menu"}</button>
           <CustomerSelector />
           <DeviceSearch />
           <AccountStatus />
         </header>
         {menuOpen ? <button type="button" aria-label="Close navigation" className="fixed inset-0 z-20 bg-slate-900/40 md:hidden" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} /> : null}
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-200 bg-white/70 px-4 py-2 text-[11px] text-slate-500 lg:px-6">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2">
-            <Link to="/" className="hover:text-sky-700">Portal</Link><span aria-hidden="true">/</span><span>{current?.label ?? "Workspace"}</span>
-            {destination ? <><span aria-hidden="true">/</span><span className="font-medium text-slate-700">{destination.label}</span></> : null}
-          </nav>
-          <span aria-label="Active scope">{selected ? `Scope: ${selected.code} · ${selected.name}` : "Select an authorized customer to begin"}</span>
-        </div>
-        <main id="main" tabIndex={-1} className="min-w-0 p-4 lg:p-6"><Suspense fallback={<LoadingState label="Loading workspace..." />}><Outlet /></Suspense></main>
+        <main id="main" tabIndex={-1} className="mx-auto min-w-0 max-w-[1600px] p-4 lg:px-6 lg:py-5"><Suspense fallback={<LoadingState label="Loading workspace..." />}><Outlet /></Suspense></main>
       </div>
     </div>
   );

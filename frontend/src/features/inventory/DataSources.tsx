@@ -64,17 +64,28 @@ export function DataSources({ customer, compact = false }: { customer: Customer;
       </Notice>
     );
   }
-  if (compact && !syncNow.isError && !syncNow.isSuccess && datasets.data.every((d) => d.status === "fresh" && d.last_run?.state === "completed" && !d.last_run.quarantined)) {
+  const stuck = datasets.data.some((d) => d.last_run?.state === "queued" && Date.now() - Date.parse(d.last_run.created_at) > STUCK_AFTER_MS);
+  const needsDetail = syncNow.isError || syncNow.isSuccess || stuck || datasets.data.some((d) =>
+    !d.as_of || Boolean(d.last_run?.error_code) || Boolean(d.last_run?.quarantined) || ["failed", "partial"].includes(d.last_run?.state ?? ""));
+  if (compact && !needsDetail) {
+    // UX-11: one quiet line while nothing needs action; stale data stays visible as an amber "stale" marker.
     const fixture = datasets.data.some((d) => d.data_basis === "fixture");
-    return <section aria-label="Data sources" className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600">
-      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">{datasets.data.map((d) => <span key={d.mapping_id} className="inline-flex flex-wrap items-center gap-1.5">
-        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-emerald-500" />
-        <span className="font-medium text-slate-800">{d.integration.name}</span>
-        <span>up to date · {d.row_count} devices · as of {formatUtc(d.as_of)}</span>
-        {d.data_basis === "fixture" ? <Badge tone={statusTone.fixture}>fixture</Badge> : null}
-      </span>)}</div>
-      {canSync ? <button type="button" className="btn-secondary" disabled={syncNow.isPending} onClick={() => syncNow.mutate()}>{syncNow.isPending ? "Requesting..." : "Sync now (read-only)"}</button> : null}
-      {fixture ? <p className="basis-full text-sky-800">Fixture data: synthetic demo records, not a live VSA X tenant.</p> : null}
+    return <section aria-label="Data sources" className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">{datasets.data.map((d) => {
+        const fresh = d.status === "fresh";
+        const running = d.last_run && ["queued", "running"].includes(d.last_run.state) ? d.last_run.state : "";
+        return <span key={d.mapping_id} className="inline-flex flex-wrap items-center gap-1.5">
+          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${fresh ? "bg-emerald-500" : "bg-amber-500"}`} />
+          <span className="font-medium text-slate-800">{d.integration.name}</span>
+          <span className={fresh ? "" : "font-medium text-amber-800"}>{fresh ? "up to date" : d.status.replace("_", " ")}</span>
+          <span>· {d.row_count} devices · as of {formatUtc(d.as_of)}</span>
+          {running ? <Badge tone={statusTone[running]}>sync {running}</Badge> : null}
+          {d.data_basis === "fixture" ? <Badge tone={statusTone.fixture}>fixture</Badge> : null}
+        </span>;
+      })}
+      {fixture ? <span className="text-sky-800" title="Synthetic demo records from an offline fixture source">Demo data, not a live VSA X tenant</span> : null}
+      </div>
+      {canSync ? <button type="button" className="btn-secondary min-h-7 py-1" disabled={syncNow.isPending} onClick={() => syncNow.mutate()}>{syncNow.isPending ? "Requesting..." : "Sync now (read-only)"}</button> : null}
     </section>;
   }
   return (
@@ -90,7 +101,7 @@ export function DataSources({ customer, compact = false }: { customer: Customer;
         ) : null}
       </div>
       {syncNow.isSuccess ? <p role="status" className="mb-2 text-sm text-slate-600">Sync requested. Status updates below.</p> : null}
-      {datasets.data.some((d) => d.last_run?.state === "queued" && Date.now() - Date.parse(d.last_run.created_at) > STUCK_AFTER_MS) ? (
+      {stuck ? (
         <p role="alert" className="mb-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
           A sync has been waiting for more than two minutes, so the background worker is probably not running. An
           administrator can check it on the server with <code>python manage.py sync_status</code>.
