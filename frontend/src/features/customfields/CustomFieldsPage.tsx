@@ -10,7 +10,7 @@ import { useMe } from "../../lib/auth";
 import { useCustomers } from "../../lib/customerContext";
 import { formatUtc } from "../../lib/format";
 import { CAP, type AssetRow, type CfJob, type Customer, type CustomFieldDef, type Paginated } from "../../lib/types";
-import { conditionParams, CustomFieldCondition, NO_CONDITION, type CfCondition } from "./CustomFieldCondition";
+import { advancedParams, DeviceFilters, EMPTY_ADVANCED } from "../inventory/DeviceFilters";
 import { JobPanel } from "./JobPanel";
 
 const PAGE = 50;
@@ -78,10 +78,11 @@ function SelectDevices({ customer, onJob }: { customer: Customer; onJob: (id: st
   const [allMatching, setAllMatching] = useState(false);
   const [fieldId, setFieldId] = useState("");
   const [value, setValue] = useState("");
-  const [condition, setCondition] = useState<CfCondition>(NO_CONDITION);
-  const filters = { search, site, group, os, device_type: "", ...conditionParams(condition) };
+  const [advanced, setAdvanced] = useState<Record<string, string>>(EMPTY_ADVANCED);
+  const extra = advancedParams(advanced);
+  const filters = { search, site, group, os, device_type: "", ...extra };
   const assets = useQuery({
-    queryKey: ["cf-assets", customer.id, search, site, group, os, conditionParams(condition), page],
+    queryKey: ["cf-assets", customer.id, search, site, group, os, extra, page],
     queryFn: ({ signal }) => api.get<Paginated<AssetRow>>(`/customers/${customer.id}/assets/`, { ...filters, page, page_size: PAGE, ordering: "hostname" }, signal),
   });
   const create = useMutation({
@@ -102,8 +103,13 @@ function SelectDevices({ customer, onJob }: { customer: Customer; onJob: (id: st
         <label className="list-label">Site<input className="input w-40" value={site} onChange={(e) => { setSite(e.target.value); setPage(1); setAllMatching(false); }} /></label>
         <label className="list-label">Group<input className="input w-40" value={group} onChange={(e) => { setGroup(e.target.value); setPage(1); setAllMatching(false); }} /></label>
         <label className="list-label">Operating system<input className="input w-40" value={os} onChange={(e) => { setOs(e.target.value); setPage(1); setAllMatching(false); }} /></label>
-        <CustomFieldCondition customer={customer} value={condition} onChange={(c) => { setCondition(c); setPage(1); setAllMatching(false); }} />
       </div>
+      <details className="list-disclosure" open={Object.keys(extra).length > 0 || undefined}>
+        <summary>More filters{Object.keys(extra).length ? " (active)" : ""}</summary>
+        <div className="mt-3">
+          <DeviceFilters customer={customer} values={advanced} onChange={(next) => { setAdvanced((cur) => ({ ...cur, ...next })); setPage(1); setAllMatching(false); }} />
+        </div>
+      </details>
       <QueryBoundary query={assets}>
         {(data) => (
           <div className="overflow-x-auto">

@@ -78,6 +78,21 @@ class AssetRowSerializer(serializers.ModelSerializer):
         return obj.last_seen_online < timezone.now() - timedelta(days=days)
 
 
+def _tags(qs: QuerySet) -> list[str]:
+    tags = {t for row in qs.order_by().values_list("tags", flat=True) for t in (row or []) if isinstance(t, str) and t}
+    return sorted(tags)[:500]
+
+
+def _patch_policies(qs: QuerySet) -> list[str]:
+    names = (
+        qs.order_by()
+        .filter(policy_observation__patch_state="assigned")
+        .values_list("policy_observation__patch_policy_name", flat=True)
+        .distinct()
+    )
+    return sorted(n for n in names if n)[:500]
+
+
 class CustomerAssetViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """Current published inventory (RPT-01 basis). Server-side search, filters, ordering and pagination."""
 
@@ -115,6 +130,13 @@ class CustomerAssetViewSet(CustomerScopedMixin, mixins.ListModelMixin, viewsets.
                 "group": distinct("group_name"),
                 "os": distinct("os_name"),
                 "device_type": distinct("device_type"),
+                "manufacturer": distinct("manufacturer"),
+                "model": distinct("model"),
+                "os_version": distinct("os_version"),
+                "agent_version": distinct("client_version"),
+                "domain": distinct("domain"),
+                "tag": _tags(qs),
+                "patch_policy": _patch_policies(qs),
                 "site": distinct("site_external_id"),
                 "sites": list(
                     qs.order_by("site_name", "site_external_id")

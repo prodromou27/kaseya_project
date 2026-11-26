@@ -45,6 +45,18 @@ CUSTOM_FIELD_STATES = {
     "not_read": "was not read in the latest sync",
 }
 NEEDS_VALUE = {"equals", "not_equals", "missing_or_equals"}
+# FLT-01: up to three custom field rules, all of which must match: custom_field, custom_field_2, custom_field_3.
+CF_SUFFIXES = ("", "_2", "_3")
+# FLT-01: hardware and identity, matched case-insensitively (model: part of the name).
+TEXT_FIELDS = {
+    "manufacturer": "manufacturer__iexact",
+    "model": "model__icontains",
+    "os_version": "os_version",
+    "agent_version": "client_version",
+    "domain": "domain__iexact",
+}
+MISSING_UPDATES = ("critical", "important", "any", "none")
+NO_POLICY, UNKNOWN_POLICY = "__none__", "__unknown__"
 
 
 class AssetFilters(serializers.Serializer):
@@ -63,6 +75,28 @@ class AssetFilters(serializers.Serializer):
     custom_field = serializers.CharField(required=False, max_length=120, help_text="Approved device custom field name.")
     custom_field_state = serializers.ChoiceField(choices=list(CUSTOM_FIELD_STATES), required=False)
     custom_field_value = serializers.CharField(required=False, max_length=255)
+    custom_field_2 = serializers.CharField(required=False, max_length=120)
+    custom_field_state_2 = serializers.ChoiceField(choices=list(CUSTOM_FIELD_STATES), required=False)
+    custom_field_value_2 = serializers.CharField(required=False, max_length=255)
+    custom_field_3 = serializers.CharField(required=False, max_length=120)
+    custom_field_state_3 = serializers.ChoiceField(choices=list(CUSTOM_FIELD_STATES), required=False)
+    custom_field_value_3 = serializers.CharField(required=False, max_length=255)
+    manufacturer = serializers.CharField(required=False, max_length=255)
+    model = serializers.CharField(required=False, max_length=255)
+    os_version = serializers.CharField(required=False, max_length=64)
+    agent_version = serializers.CharField(required=False, max_length=64)
+    domain = serializers.CharField(required=False, max_length=255)
+    tag = serializers.CharField(required=False, max_length=255)
+    role = serializers.ChoiceField(choices=["server", "workstation"], required=False)
+    software = serializers.CharField(required=False, max_length=255, help_text="Part of an installed program name.")
+    software_presence = serializers.ChoiceField(choices=["installed", "not_installed"], required=False)
+    software_outdated = serializers.BooleanField(required=False)
+    missing_updates = serializers.ChoiceField(choices=list(MISSING_UPDATES), required=False)
+    patch_policy = serializers.CharField(
+        required=False,
+        max_length=255,
+        help_text=f"Policy name, {NO_POLICY} (none or not reported) or {UNKNOWN_POLICY}.",
+    )
     asset_ids = serializers.CharField(
         required=False, max_length=19000, help_text="Comma-separated device UUIDs, at most 500."
     )
@@ -75,25 +109,32 @@ class AssetFilters(serializers.Serializer):
         return ",".join(dict.fromkeys(str(field.run_validation(part.strip())) for part in parts))
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        if attrs.get("custom_field_state") and not attrs.get("custom_field"):
-            raise serializers.ValidationError({"custom_field": "Choose the custom field."})
-        if attrs.get("custom_field"):
-            attrs.setdefault("custom_field_state", "missing")
-            if attrs["custom_field_state"] in NEEDS_VALUE and not attrs.get("custom_field_value", "").strip():
-                raise serializers.ValidationError({"custom_field_value": "Enter the value to compare with."})
+        for sfx in CF_SUFFIXES:
+            name, state, value = f"custom_field{sfx}", f"custom_field_state{sfx}", f"custom_field_value{sfx}"
+            if attrs.get(state) and not attrs.get(name):
+                raise serializers.ValidationError({name: "Choose the custom field."})
+            if attrs.get(name):
+                attrs.setdefault(state, "missing")
+                if attrs[state] in NEEDS_VALUE and not attrs.get(value, "").strip():
+                    raise serializers.ValidationError({value: "Enter the value to compare with."})
+        if attrs.get("software_presence") and not attrs.get("software", "").strip():
+            raise serializers.ValidationError({"software": "Enter part of the program name."})
+        if attrs.get("software", "").strip():
+            attrs.setdefault("software_presence", "installed")
         return attrs
 
     def validate_for_customer(self, customer: Any, data: dict[str, Any]) -> None:
         from .models import Asset, CustomFieldAllowlist
 
-        if name := data.get("custom_field"):
-            approved = CustomFieldAllowlist.objects.filter(
-                customer=customer, name_key=name.strip().casefold(), state=CustomFieldAllowlist.State.APPROVED
-            ).exists()
-            if not approved:
-                raise serializers.ValidationError(
-                    {"custom_field": "Values of this field are not collected for this customer. Approve it first."}
-                )
+        for sfx in CF_SUFFIXES:
+            if name := data.get(f"custom_field{sfx}"):
+                approved = CustomFieldAllowlist.objects.filter(
+                    customer=customer, name_key=name.strip().casefold(), state=CustomFieldAllowlist.State.APPROVED
+                ).exists()
+                if not approved:
+                    raise serializers.ValidationError(
+                        {f"custom_field{sfx}": "Values of this field are not collected for this customer. Approve it."}
+                    )
 
         if selected := data.get("asset_ids"):
             ids = selected.split(",")
@@ -116,8 +157,17 @@ def filter_inventory(qs: QuerySet, filters: dict[str, Any], *, as_of: datetime |
     for param, field in EXACT_FIELDS.items():
         if value := filters.get(param):
             qs = qs.filter(**{field: value})
-    if filters.get("custom_field"):
-        qs = _custom_field_condition(qs, filters)
+    for sfx in CF_SUFFIXES:
+        if filters.get(f"custom_field{sfx}"):
+            qs = _custom_field_condition(qs, filters, sfx)
+    for param, lookup in TEXT_FIELDS.items():
+        if value := filters.get(param, "").strip():
+            qs = qs.filter(**{lookup: value})
+    if tag := filters.get("tag", "").strip():
+        qs = qs.filter(tags__contains=[tag])
+    if role := filters.get("role"):
+        qs = qs.filter(_server_q()) if role == "server" else qs.exclude(_server_q())
+    qs = _software_and_patching(qs, filters)
     if "offline" in filters:
         cutoff = (as_of or timezone.now()) - timedelta(days=filters.get("offline_days", 7))
         cond = Q(last_seen_online__lt=cutoff) | Q(last_seen_online__isnull=True)
@@ -125,7 +175,60 @@ def filter_inventory(qs: QuerySet, filters: dict[str, Any], *, as_of: datetime |
     return qs.order_by(filters.get("ordering", "hostname"), "asset_id")
 
 
-def _custom_field_condition(qs: QuerySet, filters: dict[str, Any]) -> QuerySet:
+def _server_q() -> Q:
+    """SRV-01 rule: marked a server, or "server" in the OS name unless marked "not a server"."""
+    marked = Q(asset__server_designation__is_server=True)
+    detected = Q(os_name__icontains="server") & ~Q(asset__server_designation__is_server=False)
+    return marked | detected
+
+
+def _software_and_patching(qs: QuerySet, filters: dict[str, Any]) -> QuerySet:
+    """FLT-01. Each condition only answers for devices whose data was collected: a device whose software or OS
+    updates were not collected never counts as "not installed", "nothing outdated" or "no updates missing"."""
+    from apps.patching.models import AppliedPolicyObservation, DeviceOsUpdate, PatchObservation, UpdateStatus
+    from apps.software.models import ComplianceResult, SoftwareInstallation
+
+    if name := filters.get("software", "").strip():
+        present = Exists(SoftwareInstallation.objects.filter(observation=OuterRef("pk"), raw_name__icontains=name))
+        if filters.get("software_presence", "installed") == "installed":
+            qs = qs.filter(present)
+        else:
+            qs = qs.filter(~present, software_status="collected")
+    if "software_outdated" in filters:
+        outdated = Exists(
+            ComplianceResult.objects.filter(
+                installation__observation=OuterRef("pk"),
+                evaluation__is_current=True,
+                state=ComplianceResult.State.OUTDATED,
+            )
+        )
+        qs = qs.filter(outdated) if filters["software_outdated"] else qs.filter(~outdated, software_status="collected")
+    if wanted := filters.get("missing_updates"):
+        available = DeviceOsUpdate.objects.filter(
+            patch_observation__observation=OuterRef("pk"), state=DeviceOsUpdate.State.AVAILABLE
+        )
+        if wanted in ("critical", "important"):
+            qs = qs.filter(Exists(available.filter(severity__iexact=wanted)))
+        elif wanted == "any":
+            qs = qs.filter(Exists(available))
+        else:
+            read = PatchObservation.objects.filter(
+                observation=OuterRef("pk"),
+                available_status__in=(UpdateStatus.COLLECTED, UpdateStatus.CARRIED_FORWARD),
+            )
+            qs = qs.filter(Exists(read), ~Exists(available))
+    if policy := filters.get("patch_policy", "").strip():
+        states = AppliedPolicyObservation.objects.filter(observation=OuterRef("pk"))
+        if policy == NO_POLICY:
+            qs = qs.filter(Exists(states.filter(patch_state__in=("explicit_none", "not_reported"))))
+        elif policy == UNKNOWN_POLICY:
+            qs = qs.filter(~Exists(states.exclude(patch_state="unknown")))
+        else:
+            qs = qs.filter(Exists(states.filter(patch_state="assigned", patch_policy_name__iexact=policy)))
+    return qs
+
+
+def _custom_field_condition(qs: QuerySet, filters: dict[str, Any], sfx: str = "") -> QuerySet:
     """Devices by one custom field, using the values the latest sync stored for each observation.
 
     "Empty" only counts devices whose custom fields were actually read (collected or carried forward); devices that were
@@ -133,7 +236,7 @@ def _custom_field_condition(qs: QuerySet, filters: dict[str, Any]) -> QuerySet:
     """
     from .models import DeviceCustomField, DeviceDetailFetch
 
-    name = filters["custom_field"].strip()
+    name = filters[f"custom_field{sfx}"].strip()
     rows = DeviceCustomField.objects.filter(fetch__observation=OuterRef("pk"), name__iexact=name)
     filled = Exists(rows.exclude(value__regex=r"^\s*$"))
     read = Exists(
@@ -143,9 +246,9 @@ def _custom_field_condition(qs: QuerySet, filters: dict[str, Any]) -> QuerySet:
             status__in=(DeviceDetailFetch.Status.COLLECTED, DeviceDetailFetch.Status.CARRIED_FORWARD),
         )
     )
-    value = filters.get("custom_field_value", "").strip()
+    value = filters.get(f"custom_field_value{sfx}", "").strip()
     equal = Exists(rows.filter(value__iexact=value))
-    state = filters.get("custom_field_state", "missing")
+    state = filters.get(f"custom_field_state{sfx}", "missing")
     condition = {
         "missing": read & ~filled,
         "set": filled,

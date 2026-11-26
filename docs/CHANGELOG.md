@@ -1,5 +1,11 @@
 # Changelog
 
+## FLT-01 - 2026-11-26 - more device filters
+
+- **Devices → More filters** and **Custom fields → Device assignments → More filters**: role (workstations / servers, SRV-01 rule with manual marking), manufacturer, model contains, OS version, agent version, domain, VSA tag; program name contains + installed / not installed; outdated software; missing OS updates (Critical, Important, any, none); patch policy (name, none / not reported, not collected); up to three custom field rules, all of which must match.
+- Every filter works for the list, *Use all devices matching these filters*, **Export inventory** and saved views. Devices whose software or updates were not collected are never counted as "not installed", "nothing outdated" or "none missing".
+- API: new `/customers/{id}/assets/` parameters `role`, `manufacturer`, `model`, `os_version`, `agent_version`, `domain`, `tag`, `software`, `software_presence`, `software_outdated`, `missing_updates`, `patch_policy`, `custom_field_2`/`_3` (+ state/value); `assets/facets/` lists manufacturer, model, OS and agent versions, domains, tags and patch policies.
+
 ## CFA-10 - 2026-11-25 - placeholder custom field values and custom field filter
 
 - **Custom fields → Placeholder for all devices**: put a value such as *TBD* on every workstation that has no value for a text field (optionally one site or group). Devices that already have a value (on the device or inherited) are skipped and never changed; a value set after the preview is detected just before the write and left alone. Same preview, confirmation, read-back and audit as other jobs (`only_if_empty` on the job and in the `custom_field.job_created` audit event).

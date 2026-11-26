@@ -61,6 +61,19 @@ To browse or filter instead:
 4. Use tabs: Overview, Hardware, Installed Software, Windows Updates, Documentation (if linked), Tickets (if linked), History.
 5. Use `Open in VSA` when supported to investigate directly in the system of record.
 
+**More filters** (Devices, and the device list in Custom fields → Device assignments) adds:
+
+| Group | Filters |
+|---|---|
+| Hardware & identity | Role (workstations or servers, same rule as *Servers & owners*, including manual marking), manufacturer, model contains, OS version, agent version, domain, VSA tag |
+| Software & patching | Program name contains + *installed* / *not installed*, outdated software (has / none), missing OS updates (Critical, Important, any, none missing), patch policy (a policy, *No policy / not reported*, *Not collected*) |
+| Custom fields | Up to three rules that must all match, e.g. *Department is TBD* and *Owner is empty* (*Add another custom field rule*) |
+
+All filters combine (every one must match), show as removable chips, and apply to **Export inventory**, saved views and
+*Use all devices matching these filters* in Custom fields. A device whose software or OS updates were not collected is
+never counted as *not installed*, *nothing outdated* or *none missing*, so these lists never claim more than the data
+shows.
+
 **Fresh details for one device:** updates, policies, notifications and custom fields are fetched once a day (updates,
 notifications) or once a week (policies, custom fields), and only for devices that were online. If you need them now,
 for example after patching, open the device and press **Refresh details now** (needs sync permission). The sync starts

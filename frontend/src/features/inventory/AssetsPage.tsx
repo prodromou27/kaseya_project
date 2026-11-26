@@ -15,7 +15,8 @@ import { ExportButton } from "../reports/ExportButton";
 import { DataSources } from "./DataSources";
 import { SavedViews } from "./SavedViews";
 import { SelectCustomer } from "../../components/SelectCustomer";
-import { conditionParams, CustomFieldCondition } from "../customfields/CustomFieldCondition";
+import { CONDITIONS } from "../customfields/CustomFieldCondition";
+import { advancedParams, ADVANCED_KEYS, CF_KEYS, describeFilter, DeviceFilters, EMPTY_ADVANCED, FILTER_LABELS } from "./DeviceFilters";
 
 function DeviceLink({ asset }: { asset: AssetRow }) {
   const { search } = useLocation();
@@ -36,7 +37,7 @@ const DEFAULT_COLUMNS = ["hostname", "site_name", "group_name", "os", "last_seen
 const DEFAULT_FILTERS = {
   search: "", group: "", os: "", offline: "", ordering: "hostname", group_id: "",
   site: "", device_type: "", organization: "", instance: "", software_status: "", offline_days: "7",
-  custom_field: "", custom_field_state: "", custom_field_value: "",
+  ...EMPTY_ADVANCED,
   page_size: "50", view: "", columns: DEFAULT_COLUMNS.join(","), density: "compact",
 };
 type Filters = typeof DEFAULT_FILTERS;
@@ -54,9 +55,11 @@ function AssetTable({ customer }: { customer: Customer }) {
   const layout: ListLayout = { columns: validColumns.length ? Array.from(new Set(validColumns)) : DEFAULT_COLUMNS, density: density === "comfortable" ? "comfortable" : "compact" };
   const search = useDebouncedValue(filters.search);
   const facets = useQuery({ queryKey: ["assets", customer.id, "facets"], queryFn: ({ signal }) => api.get<Facets>(`/customers/${customer.id}/assets/facets/`, undefined, signal) });
-  const cfValue = useDebouncedValue(filters.custom_field_value);
-  const plainFilters = Object.fromEntries(Object.entries(reportFilters).filter(([key]) => !key.startsWith("custom_field")));
-  const condition = conditionParams({ custom_field: filters.custom_field, custom_field_state: filters.custom_field_state, custom_field_value: cfValue });
+  // FLT-01: the extra filters are sent only when complete (a custom field rule needs its value, a program its name).
+  const extra = new Set<string>([...ADVANCED_KEYS, ...CF_KEYS]);
+  const plainFilters = Object.fromEntries(Object.entries(reportFilters).filter(([key]) => !extra.has(key)));
+  const cfValues = useDebouncedValue(CF_KEYS.map((k) => filters[k as keyof Filters]).join("\u0000"));
+  const condition = advancedParams({ ...reportFilters, ...Object.fromEntries(CF_KEYS.map((k, i) => [k, cfValues.split("\u0000")[i] ?? ""])) });
   const requestFilters = { ...plainFilters, ...condition, search };
   const exportFilters = { ...plainFilters, ...condition };
   const query = useQuery({
@@ -67,12 +70,32 @@ function AssetTable({ customer }: { customer: Customer }) {
   const busy = query.isFetching || search !== filters.search;
   const set = (key: keyof Filters, value: string) => update({ [key]: value, view: "" }, key === "search");
   const clear = () => update({ ...DEFAULT_FILTERS, page_size: String(pageSize), columns: selectedColumns, density });
-  const active = Object.entries(reportFilters).filter(([key, value]) => value && !["ordering", "offline_days"].includes(key));
+  const hidden = ["ordering", "offline_days", "software_presence", ...CF_KEYS.filter((k) => !/^custom_field(_\d)?$/.test(k))];
+  const active = Object.entries(reportFilters).filter(([key, value]) => value && !hidden.includes(key));
   const group = facets.data?.groups?.find((g) => g.group_external_id === filters.group_id && (!filters.instance || g.generation__integration_instance_id === filters.instance));
   const site = facets.data?.sites?.find((s) => s.site_external_id === filters.site && (!filters.instance || s.generation__integration_instance_id === filters.instance));
   const source = [...(facets.data?.sites ?? []), ...(facets.data?.groups ?? [])].find((row) => row.generation__integration_instance_id === filters.instance);
-  const labels: Record<string, string> = { search: "Search", group: "Group", os: "OS", offline: "Last seen", site: "Site", device_type: "Type", group_id: "Group", instance: "Source", organization: "Organization", software_status: "Software" };
-  const describe = (key: string, value: string) => key === "group_id" ? group?.group_name || value : key === "site" ? site?.site_name || value : key === "instance" ? source?.generation__integration_instance__name || value : key === "offline" ? value === "true" ? `Over ${filters.offline_days} days / never` : `Within ${filters.offline_days} days` : value.replace(/_/g, " ");
+  const labels: Record<string, string> = { ...FILTER_LABELS, search: "Search", group: "Group", os: "OS", offline: "Last seen", site: "Site", device_type: "Type", group_id: "Group", instance: "Source", organization: "Organization", software_status: "Software" };
+  const describeBase = (key: string, value: string) => key === "group_id" ? group?.group_name || value : key === "site" ? site?.site_name || value : key === "instance" ? source?.generation__integration_instance__name || value : key === "offline" ? value === "true" ? `Over ${filters.offline_days} days / never` : `Within ${filters.offline_days} days` : describeFilter(key, value);
+  const describe = (key: string, value: string) => {
+    const sfx = key.match(/^custom_field(_\d)?$/)?.[1];
+    if (sfx !== undefined || key === "custom_field") {
+      const s2 = sfx ?? "";
+      const state = filters[`custom_field_state${s2}` as keyof Filters] || "missing";
+      const label = CONDITIONS.find((c) => c.id === state)?.label.replace("…", "") ?? state;
+      const cmp = filters[`custom_field_value${s2}` as keyof Filters];
+      return `${value} ${label}${cmp ? ` ${cmp}` : ""}`.trim();
+    }
+    if (key === "software") return `${value} ${(filters as Record<string, string>).software_presence === "not_installed" ? "not installed" : "installed"}`;
+    return describeBase(key, value);
+  };
+  const remove = (key: string) => {
+    if (key === "instance") return update({ instance: "", site: "", group_id: "", view: "" });
+    const sfx = key.match(/^custom_field(_\d)?$/);
+    if (sfx) { const s2 = sfx[1] ?? ""; return update({ [`custom_field${s2}`]: "", [`custom_field_state${s2}`]: "", [`custom_field_value${s2}`]: "", view: "" }); }
+    if (key === "software") return update({ software: "", software_presence: "", view: "" } as Partial<Filters>);
+    return set(key as keyof Filters, "");
+  };
   return <section className="space-y-3" aria-label="Device inventory">
     <div className="list-workspace">
       <div className="flex flex-wrap items-end gap-3">
@@ -97,10 +120,8 @@ function AssetTable({ customer }: { customer: Customer }) {
         }}><option value="">All groups</option>{facets.data?.groups ? facets.data.groups.map((row) => <option key={`${row.generation__integration_instance_id}:${row.group_external_id}`} value={`${row.generation__integration_instance_id}:${row.group_external_id}`}>{row.group_name || row.group_external_id} ? {row.site_name}</option>) : facets.data?.group?.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
         <label className="list-label">OS<select className="input" value={filters.os} onChange={(event) => set("os", event.target.value)}><option value="">All operating systems</option>{facets.data?.os?.map((os) => <option key={os} value={os}>{os}</option>)}</select></label>
         <label className="list-label">Device type<select className="input" value={filters.device_type} onChange={(event) => set("device_type", event.target.value)}><option value="">All types</option>{facets.data?.device_type?.map((type) => <option key={type} value={type}>{type}</option>)}</select></label>
-        <div className="sm:col-span-2 lg:col-span-4">
-          <CustomFieldCondition customer={customer}
-            value={{ custom_field: filters.custom_field, custom_field_state: filters.custom_field_state, custom_field_value: filters.custom_field_value }}
-            onChange={(c) => update({ ...c, view: "" })} />
+        <div className="border-t border-slate-100 pt-3 sm:col-span-2 lg:col-span-4">
+          <DeviceFilters customer={customer} values={filters} onChange={(next) => update({ ...next, view: "" })} />
         </div>
         <label className="list-label">Last-seen window (days)<select className="input" value={filters.offline_days} onChange={(event) => set("offline_days", event.target.value)}>{Array.from(new Set([1, 7, 14, 30, 90, Number(filters.offline_days)])).filter((day) => Number.isInteger(day) && day >= 1 && day <= 365).sort((a, b) => a - b).map((day) => <option key={day} value={day}>{day} days</option>)}</select></label>
       </div></details>
@@ -111,7 +132,7 @@ function AssetTable({ customer }: { customer: Customer }) {
       </div>
       {facets.isError ? <p role="alert" className="mt-2 text-xs text-red-700">Filter options could not load. <button type="button" className="underline" onClick={() => void facets.refetch()}>Retry filters</button></p> : null}
     </div>
-    {active.length ? <div className="flex flex-wrap items-center gap-2" aria-label="Active device filters">{active.map(([key, value]) => <button key={key} type="button" className="filter-chip" aria-label={`Remove ${labels[key] ?? key} filter`} onClick={() => key === "instance" ? update({ instance: "", site: "", group_id: "", view: "" }) : set(key as keyof Filters, "")}><span className="text-slate-500">{labels[key] ?? key}:</span> {describe(key, value)} <span aria-hidden="true">&times;</span></button>)}</div> : null}
+    {active.length ? <div className="flex flex-wrap items-center gap-2" aria-label="Active device filters">{active.map(([key, value]) => <button key={key} type="button" className="filter-chip" aria-label={`Remove ${labels[key] ?? key} filter`} onClick={() => remove(key)}><span className="text-slate-500">{labels[key] ?? key}:</span> {describe(key, value)} <span aria-hidden="true">&times;</span></button>)}</div> : null}
     {query.isError && page > 1 ? <button type="button" className="btn-secondary" onClick={() => setPage(1)}>Return to first page</button> : null}
     <QueryBoundary query={query}>{(data) => <DataTable key={`${page}:${JSON.stringify(requestFilters)}:${pageSize}`} columnChooser selectable caption={`${customer.code} assets`} columns={columns} rows={data.results} total={data.count}
       visibleColumns={layout.columns ?? DEFAULT_COLUMNS} onVisibleColumnsChange={(columns) => update({ columns: columns.join(","), view: "" }, false, false)}
