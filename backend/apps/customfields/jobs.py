@@ -30,6 +30,8 @@ logger = logging.getLogger("portal.customfields")
 Item, Job = AssignmentItem, AssignmentJob
 BULK_USAGE_THRESHOLD = 25
 READ_BACK_DELAYS = (0, 2, 5)  # seconds before each read-back attempt (eventual consistency, bounded)
+# One more look when VSA X's own answer says the new value was stored but reading back still disagrees (slow update).
+LATE_READ_BACK_DELAY = 15
 RATE_LIMIT_DELAYS = (5, 15, 30)
 STALE_RUN = timedelta(minutes=10)
 ACTIVE = (Job.State.QUEUED, Job.State.RUNNING, Job.State.AWAITING_APPROVAL)
@@ -553,7 +555,7 @@ def _execute_item(
         if delay:
             sleep(delay)
         try:
-            writer.write(field.external_id, device, requested, update=assigned)
+            answer = writer.write(field.external_id, device, requested, update=assigned)
             break
         except WriteRejected as exc:
             if exc.status == 429 and attempt < len(RATE_LIMIT_DELAYS):
@@ -562,7 +564,7 @@ def _execute_item(
         except WriteOutcomeUnknown as exc:
             item.http_status = exc.status
             return _settle_uncertain(job, item, adapter, exc.code)
-    _verify(job, item, adapter)
+    _verify(job, item, adapter, answer)
 
 
 def _read_back(job: Job, item: Item, adapter: Any) -> tuple[str, str | None]:
@@ -583,12 +585,40 @@ def _read_back(job: Job, item: Item, adapter: Any) -> tuple[str, str | None]:
     return status, observed
 
 
-def _verify(job: Job, item: Item, adapter: Any) -> None:
+def _verify(job: Job, item: Item, adapter: Any, answer: dict[str, Any] | None = None) -> None:
     status, observed = _read_back(job, item, adapter)
+    answered = (answer or {}).get("value", "")
+    claims_applied = bool(answered) and definitions.same(job.field.type, answered, item.requested_value)
+    if status == "different" and claims_applied:
+        sleep(LATE_READ_BACK_DELAY)
+        try:
+            assigned, late = _device_level(adapter, job.field.external_id, item.device_external_id)
+            if assigned and definitions.same(job.field.type, late, item.requested_value):
+                status, observed = "equal", late
+        except Exception:  # noqa: S110 - the earlier read-back result stands
+            pass
     if status == "equal":
         return _record(job, item, Item.Result.VERIFIED, "", final_value=observed)
     if status == "different":
-        return _record(job, item, Item.Result.VERIFICATION_FAILED, "value_not_confirmed", final_value=observed)
+        # 2026-11-27 live tenant: replacing "TBD" answered OK but the device still showed "TBD". Say so precisely,
+        # with what VSA X's own answer claimed (never more than the value it echoed back).
+        unchanged = item.device_assigned and observed == item.current_value
+        code = "update_not_applied" if unchanged else "value_not_confirmed"
+        note = (
+            f"VSA X answered OK{' and echoed the new value' if claims_applied else ''}"
+            f"{' without the documented answer' if answer is not None and not answered else ''}; "
+            f"reading the device back shows {observed!r}."
+        )
+        logger.warning(
+            "custom_field_write_not_confirmed",
+            extra={
+                "operation": "update" if item.device_assigned else "assign",
+                "route": job.integration_instance.custom_field_write_route,
+                "answer_echoed_value": claims_applied,
+                "still_previous_value": bool(unchanged),
+            },
+        )
+        return _record(job, item, Item.Result.VERIFICATION_FAILED, code, note=note, final_value=observed)
     return _record(job, item, Item.Result.VERIFICATION_PENDING, "read_back_failed")
 
 

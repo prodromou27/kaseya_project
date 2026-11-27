@@ -17,6 +17,26 @@ export const RESULT_TONE: Record<string, Tone> = {
   verified: "good", already_correct: "good", failed: "bad", unknown: "bad", verification_failed: "bad",
   verification_pending: "warn", skipped: "neutral", cancelled: "neutral", not_run: "neutral", pending: "neutral", sending: "info",
 };
+/** Plain-language result codes (backend ``jobs._execute_item`` / ``_verify``); unknown codes are shown as they are. */
+const RESULT_REASON: Record<string, string> = {
+  update_not_applied: "VSA X answered OK but the device still has its previous value, so the change was not applied. Check the value in VSA X; use Retry failed once the cause is fixed (the device is read first, nothing is sent twice if it already has the value).",
+  value_not_confirmed: "VSA X answered OK but reading the device back shows a different value.",
+  read_back_failed: "Sent, but the value could not be read back yet; Retry failed reads it again first.",
+  changed_since_preview: "The value changed in VSA X after the preview; nothing was sent.",
+  has_value_now: "The device got a value after the preview; left unchanged.",
+  device_no_longer_eligible: "No longer a workstation in the current inventory; nothing was sent.",
+  field_not_editable: "The field can no longer be edited from the portal; nothing was sent.",
+  read_failed_before_write: "The current value could not be read just before sending; nothing was sent.",
+  timeout_or_connection: "VSA X did not answer in time and reading back did not show the new value.",
+};
+export function resultReason(code: string): string {
+  if (!code) return "";
+  if (RESULT_REASON[code]) return RESULT_REASON[code];
+  if (code.startsWith("confirmed_after_")) return "VSA X's answer was lost, but reading back confirmed the new value.";
+  const rejected = /^vsa_rejected_(\d+)$/.exec(code);
+  return rejected ? `VSA X refused the change (HTTP ${rejected[1]}).` : code.replace(/_/g, " ");
+}
+
 const MATCH_TONE: Record<string, Tone> = { matched: "good", multiple: "warn", not_found: "bad", invalid: "bad", duplicate: "neutral", other_customer: "bad", unsupported: "neutral" };
 
 function base(customer: Customer, jobId: string) {
@@ -115,7 +135,7 @@ function Items({ customer, job, phase }: { customer: Customer; job: CfJob; phase
                       <><td className="pr-3"><Badge tone={RESULT_TONE[i.result] ?? "neutral"}>{i.result_label}</Badge></td>
                         <td className="pr-3">{i.final_value ?? "—"}</td></>
                     ) : null}
-                    <td className="text-xs text-slate-600">{[i.match_note, i.action_note, i.error_code].filter(Boolean).join("; ")}</td>
+                    <td className="text-xs text-slate-600">{[i.match_note, i.action_note, resultReason(i.error_code)].filter(Boolean).join("; ")}</td>
                   </tr>
                 ))}
               </tbody>

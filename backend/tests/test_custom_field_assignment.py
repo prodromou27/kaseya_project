@@ -633,3 +633,60 @@ def test_administrator_applies_above_the_threshold_in_one_step(
     assert len(fixtures.FIXTURE_CUSTOM_FIELDS) == 2
     confirmed = AuditEvent.objects.filter(target_id=job["id"], action__endswith="confirmed").get()
     assert confirmed.metadata["self_approved"] is True and confirmed.metadata["approval_required"] is True
+
+
+def _update_tbd_job(world, ready, capture):
+    """A device holding the placeholder "TBD" is updated to "Ring 1" (live report 2026-11-27)."""
+    ws = workstations(world, 1)[0]
+    fixtures.FIXTURE_CUSTOM_FIELDS[(str(ready.id), "901", str(ws.asset.external_id))] = "TBD"
+    eng = world.client(world.engineer_a)
+    job = eng.post(
+        f"{base(world)}/custom-field-jobs/",
+        {"field": str(ring(world).id), "value": "Ring 1", "assets": [str(ws.asset_id)]},
+        format="json",
+    ).json()
+    with capture(execute=True):
+        eng.post(f"{base(world)}/custom-field-jobs/{job['id']}/preview/")
+    jobs.confirm(AssignmentJob.objects.get(pk=job["id"]), world.engineer_a, acknowledge_overwrite=True)
+    return job, ws, eng
+
+
+class _AnswersOkWithoutApplying:
+    """HTTP 200 echoing the new value, but VSA X keeps the old one."""
+
+    def __init__(self):
+        self.calls = []
+
+    def send(self, method, url, **kw):
+        self.calls.append((method, url))
+        body = kw["json"]
+        return fixtures.FakeResponse(200, {"Data": {"ContextItemId": body["ContextItemId"], "Value": body["Value"]}})
+
+
+def test_update_answered_ok_but_not_applied_is_reported_precisely(world, ready, django_capture_on_commit_callbacks):
+    job, _ws, eng = _update_tbd_job(world, ready, django_capture_on_commit_callbacks)
+    transport = _AnswersOkWithoutApplying()
+    jobs.execute(job["id"], writer=VsaCustomFieldWriter(ready, transport=transport))
+    assert [m for m, _ in transport.calls] == ["PUT"] and transport.calls[0][1].endswith("/updateAssigned")
+    row = items(world, eng, job["id"])[0]
+    assert (row["result"], row["error_code"], row["final_value"]) == (
+        "verification_failed",
+        "update_not_applied",
+        "TBD",
+    )
+    event = AuditEvent.objects.filter(target_id=job["id"], action="custom_field.assignment").latest("created_at")
+    assert event.metadata["note"] == "VSA X answered OK and echoed the new value; reading the device back shows 'TBD'."
+
+
+def test_update_that_shows_up_late_is_verified(world, ready, django_capture_on_commit_callbacks, monkeypatch):
+    job, ws, eng = _update_tbd_job(world, ready, django_capture_on_commit_callbacks)
+    key = (str(ready.id), "901", str(ws.asset.external_id))
+
+    def slow_vsa(seconds):
+        if seconds == jobs.LATE_READ_BACK_DELAY:
+            fixtures.FIXTURE_CUSTOM_FIELDS[key] = "Ring 1"  # VSA X applies it only after the first read-backs
+
+    monkeypatch.setattr(jobs, "sleep", slow_vsa)
+    jobs.execute(job["id"], writer=VsaCustomFieldWriter(ready, transport=_AnswersOkWithoutApplying()))
+    row = items(world, eng, job["id"])[0]
+    assert (row["result"], row["final_value"]) == ("verified", "Ring 1")
