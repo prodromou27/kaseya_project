@@ -216,8 +216,10 @@ def candidate(c: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def match(customer: Any, user: Any, instance: Any, records: list[InputRecord]) -> list[dict[str, Any]]:
-    """One item dict per input record (see ``AssignmentItem`` fields)."""
+def match(
+    customer: Any, user: Any, instance: Any, records: list[InputRecord], *, workstations_only: bool = True
+) -> list[dict[str, Any]]:
+    """One item dict per input record (see ``AssignmentItem`` fields). Group moves pass ``workstations_only=False``."""
     rows = _rows(customer.id, instance.id)
     index: dict[str, dict[str, list[dict[str, Any]]]] = {k: {} for k in ("device_id", "serial", "fqdn", "hostname")}
     for r in rows:
@@ -303,11 +305,11 @@ def match(customer: Any, user: Any, instance: Any, records: list[InputRecord]) -
                 candidates=[candidate(c) for c in narrowed],
             )
             continue
-        _set_device(item, narrowed[0], seen_assets)
+        _set_device(item, narrowed[0], seen_assets, workstations_only)
     return out
 
 
-def _set_device(item: dict[str, Any], c: dict[str, Any], seen_assets: set[str]) -> None:
+def _set_device(item: dict[str, Any], c: dict[str, Any], seen_assets: set[str], workstations_only: bool = True) -> None:
     item.update(
         asset_id=c["asset_id"],
         device_external_id=c["asset__external_id"],
@@ -317,7 +319,7 @@ def _set_device(item: dict[str, Any], c: dict[str, Any], seen_assets: set[str]) 
     )
     if str(c["asset_id"]) in seen_assets:
         item.update(match_status=AssignmentItem.Match.DUPLICATE, match_note="Same device as an earlier line")
-    elif not c["workstation"]:
+    elif workstations_only and not c["workstation"]:
         item.update(match_status=AssignmentItem.Match.UNSUPPORTED, match_note=f"{c['why_not']}: workstations only")
     else:
         item["match_status"] = AssignmentItem.Match.MATCHED

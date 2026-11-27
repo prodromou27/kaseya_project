@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -94,7 +94,7 @@ describe("groups & network", () => {
     const { calls } = routes();
     renderApp("/assets?group_id=20011");
     expect(await screen.findByRole("button", { name: "Remove Group filter" })).toBeInTheDocument();
-    expect(calls.some((c) => c.url.startsWith(`${base}/assets/?`) && c.url.includes("group_id=20011"))).toBe(true);
+    await waitFor(() => expect(calls.some((c) => c.url.startsWith(`${base}/assets/?`) && c.url.includes("group_id=20011"))).toBe(true));
     await userEvent.click(screen.getByRole("button", { name: "Remove Group filter" }));
     expect(screen.queryByRole("button", { name: "Remove Group filter" })).not.toBeInTheDocument();
   });

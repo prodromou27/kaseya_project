@@ -325,6 +325,16 @@ your server is set to require a second approver, the screens say **Propose** and
 - **Onboarding:** on an onboarding group's *Destinations* view, each destination lists its devices with tick boxes:
   tick **Move N devices to <group> in VSA X now** and press **Move N devices now**. Progress and the result per device are
   shown; if VSA X answers OK but does not apply moves, it stops after the first device.
+- **A list of devices:** **Group moves → Move a list**. Paste device names, serial numbers or VSA device IDs (one per
+  line) or upload a TXT, CSV or Excel file (a column named Hostname, Serial, FQDN or Device ID is used, otherwise the
+  first column), choose **Move to group** and press **Check list**. Each line shows what happens: *move*, or *skipped*
+  with the reason - **not in VSA X (not onboarded)**, already in the group, in another VSA organisation, several devices
+  match (use the device ID or serial), listed twice, or the inventory is out of date (press **Sync now** first). Nothing
+  is recorded or sent by the check. Administrators then tick **Move N devices to <group> in VSA X now** and press
+  **Move N devices**: each device is moved with the same one-device step (recorded, audited, read back), progress and the
+  result per device are shown, **Stop after the current device** is available, and the list stops at the first *answered
+  OK but did not apply* result. Engineers (or when moving is switched off) record the moves as suggestions with a reason
+  instead.
 - **Engineers** cannot move devices; they press **Suggest move** (with a reason). Suggestions wait under **Group moves**,
   where an administrator selects them (header box selects all) and presses **Move in VSA X (N)** or **Reject (N)**, or
   opens one and presses **Move in VSA X…**. A note is optional.

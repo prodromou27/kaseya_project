@@ -10,18 +10,44 @@ from drf_spectacular.utils import extend_schema, extend_schema_field
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.accounts import scope
 from apps.accounts.roles import Cap
 from apps.customers.views import CustomerScopedMixin
 
-from . import move_execution, moves
+from . import move_execution, move_lists, moves
 from .models import GroupMoveExecution, GroupMoveRequest
 
 
 class ExecutionSerializer(serializers.ModelSerializer):
     executed_by = serializers.SlugRelatedField(slug_field="email", read_only=True)
+    answer = serializers.SerializerMethodField()
+
+    def get_answer(self, obj: GroupMoveExecution) -> dict[str, Any] | None:
+        """For "answered OK but not applied": the shape of VSA X's answer (content type, size, documented or not) from
+        the audit event, so an administrator can tell an API answer from a proxy page without server logs. Never the
+        body itself."""
+        if obj.error_code != move_execution.NOT_APPLIED_ERROR:
+            return None
+        from apps.audit.models import AuditEvent
+
+        event = (
+            AuditEvent.objects.filter(
+                customer_id=obj.customer_id,
+                target_type="group_move_request",
+                target_id=str(obj.proposal_id),
+                action__startswith="group_move.execute_",
+            )
+            .exclude(action="group_move.execute_started")
+            .order_by("-created_at")
+            .first()
+        )
+        answer = (event.metadata or {}).get("answer") if event else None
+        if not isinstance(answer, dict):
+            return None
+        return {k: answer[k] for k in ("documented_answer", "content_type", "content_length") if k in answer}
 
     class Meta:
         model = GroupMoveExecution
@@ -34,6 +60,7 @@ class ExecutionSerializer(serializers.ModelSerializer):
             "error_code",
             "observed_group_id",
             "verified_at",
+            "answer",
         ]
         read_only_fields = fields
 
@@ -132,6 +159,7 @@ REVIEW_DEFAULT = {"approved": "Approved by an administrator.", "rejected": "Reje
 
 class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = MoveSerializer
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get_customer(self) -> Any:
         self.customer_capability = {
@@ -140,6 +168,7 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
             "execute": Cap.CUSTOMER_APPROVE_MOVE,
             "verify": Cap.CUSTOMER_APPROVE_MOVE,
             "move_now": Cap.CUSTOMER_APPROVE_MOVE,
+            "check_list": Cap.CUSTOMER_PROPOSE_MOVE,
         }.get(self.action, Cap.CUSTOMER_READ)
         return super().get_customer()
 
@@ -224,6 +253,25 @@ class GroupMoveViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.Retrie
         original = self.get_object()
         move_execution.verify(customer, request.user, original.id, request)
         return Response(MoveSerializer(self.get_queryset().get(pk=original.pk)).data)
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"])
+    def destinations(self, request: Any, **kwargs: Any) -> Response:
+        """MOV-02: active groups of the current inventory (the "Move to" choices for a device list)."""
+        return Response({"groups": move_lists.destinations(self.get_customer().id)})
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"], url_path="check-list")
+    def check_list(self, request: Any, **kwargs: Any) -> Response:
+        """MOV-02: JSON ``{text, target_group}`` or multipart ``file`` + ``target_group``. Matches every line and says
+        whether it would be moved or why it is skipped (not in VSA X, already there, ...). Records and sends nothing."""
+        customer = self.get_customer()
+        try:
+            target = serializers.UUIDField().run_validation(request.data.get("target_group"))
+        except serializers.ValidationError as exc:
+            raise ValidationError({"target_group": "Choose the group to move the devices to."}) from exc
+        records = move_lists.records_from(request.data, request.FILES)
+        return Response(move_lists.check(customer, request.user, target, records))
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"])

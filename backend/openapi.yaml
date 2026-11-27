@@ -2633,6 +2633,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ProposalInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProposalInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProposalInput'
         required: true
       security:
       - sessionAuth: []
@@ -2730,6 +2736,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ReviewInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
         required: true
       security:
       - sessionAuth: []
@@ -2769,6 +2781,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/Move'
           description: ''
+  /api/v1/customers/{customer_pk}/group-moves/check-list/:
+    post:
+      operationId: customers_group_moves_check_list_create
+      description: |-
+        MOV-02: JSON ``{text, target_group}`` or multipart ``file`` + ``target_group``. Matches every line and says
+        whether it would be moved or why it is skipped (not in VSA X, already there, ...). Records and sends nothing.
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/customers/{customer_pk}/group-moves/destinations/:
+    get:
+      operationId: customers_group_moves_destinations_retrieve
+      description: 'MOV-02: active groups of the current inventory (the "Move to"
+        choices for a device list).'
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/customers/{customer_pk}/group-moves/move-now/:
     post:
       operationId: customers_group_moves_move_now_create
@@ -2785,6 +2858,12 @@ paths:
       requestBody:
         content:
           application/json:
+            schema:
+              $ref: '#/components/schemas/MoveNowInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MoveNowInput'
+          application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/MoveNowInput'
         required: true
@@ -7450,7 +7529,17 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        answer:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: |-
+            For "answered OK but not applied": the shape of VSA X's answer (content type, size, documented or not) from
+            the audit event, so an administrator can tell an API answer from a proxy page without server logs. Never the
+            body itself.
+          readOnly: true
       required:
+      - answer
       - error_code
       - executed_by
       - finished_at

@@ -1,5 +1,13 @@
 # Changelog
 
+## MOV-02 - 2026-11-27 - move a list of devices to a group
+
+- **Group moves → Move a list**: paste device names, serials or VSA device IDs, or upload TXT/CSV/XLSX; choose the destination group; **Check list** shows per line *move* or *skipped* (not in VSA X / not onboarded, already in the group, another organisation, several matches, listed twice, invalid, inventory out of date). Servers may be moved too.
+- Administrators move the listed devices one by one with the existing one-step move (same checks, audit events and read-back; stops at the first *accepted, not applied*; can be stopped). Engineers, or when moving is off, record suggestions with a reason.
+- API: `GET /customers/{id}/group-moves/destinations/`, `POST /customers/{id}/group-moves/check-list/` (JSON `text` + `target_group`, or multipart `file` + `target_group`; propose permission; records and sends nothing).
+- Device matching shared with custom field lists (`customfields.matching.match(..., workstations_only=False)`).
+- A move that VSA X answered OK but did not apply now shows the shape of VSA X's answer (HTTP status, content type, size, documented API answer or not; never the body), from the audit event, so a proxy or login page can be told apart from the API without server logs (`execution.answer`).
+
 ## UX-11 - 2026-11-26 - app frame redesign
 
 - One-row top bar: customer selector, *Find a device*, alerts, initials and role, sign-out icon button (accessible name "Sign out"). The breadcrumb / scope strip is gone; every page title shows its menu section above it (from the same navigation definition, `src/app/nav.tsx`).

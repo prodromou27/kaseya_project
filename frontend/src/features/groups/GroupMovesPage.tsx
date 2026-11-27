@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { DataTable } from "../../components/DataTable";
+import { Tabs } from "../../components/Tabs";
 import { QueryBoundary } from "../../components/States";
 import { Badge, Field, Notice, PageHeader } from "../../components/ui";
 import { api, describeError } from "../../lib/api";
@@ -13,6 +14,7 @@ import type { Customer, Paginated } from "../../lib/types";
 import { useUrlFilters } from "../../lib/useUrlFilters";
 import { SelectCustomer } from "../../components/SelectCustomer";
 import { SuggestionEvidence, type GroupSuggestion } from "./GroupSuggestions";
+import { MoveList } from "./MoveList";
 
 export type Proposal = {
   id: string; asset: string; device_name: string; source_group_name: string;
@@ -25,6 +27,8 @@ type ExecutionState = "sending" | "succeeded" | "unverified" | "unknown" | "fail
 type Execution = {
   state: ExecutionState; executed_by: string; started_at: string; finished_at: string | null;
   http_status: number | null; error_code: string; observed_group_id: string; verified_at: string | null;
+  /** Only for "answered OK but not applied": the shape of VSA X's answer (never its body). */
+  answer?: { documented_answer?: boolean; content_type?: string; content_length?: number } | null;
 };
 
 export const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "warn" | "bad" | "neutral"; help: string }> = {
@@ -57,6 +61,11 @@ export function moveOutcome(after: Proposal): { ok: boolean; text: string; stop:
 
 export function executionReason(ex: Execution): string {
   const known = EXECUTION_REASON[ex.error_code];
+  if (known && ex.error_code === "accepted_not_applied" && ex.answer) {
+    const a = ex.answer;
+    const shape = [ex.http_status ? `HTTP ${ex.http_status}` : "", a.content_type || "no content type", `${a.content_length ?? 0} bytes`].filter(Boolean).join(", ");
+    return `${known} VSA X's answer: ${shape}${a.documented_answer === false ? " - not the documented API answer" : ""}${/html/i.test(a.content_type ?? "") ? " (an HTML page usually means a proxy, firewall or login page answered)" : ""}.`;
+  }
   if (known) return known;
   if (/^http_\d+$/.test(ex.error_code)) return `VSA X answered with HTTP ${ex.error_code.slice(5)}.`;
   if (/^rejected_http_\d+$/.test(ex.error_code)) return `VSA X refused the move (HTTP ${ex.error_code.slice(14)}).`;
@@ -357,10 +366,20 @@ function Requests({ customer }: { customer: Customer }) {
   </div>;
 }
 
+function Workspace({ customer }: { customer: Customer }) {
+  const { filters, update } = useUrlFilters({ tab: "results" });
+  const canList = customer.my_capabilities.includes("customer.group_move.propose");
+  const tabs = [
+    { id: "results", label: "Suggestions & results", content: <Requests customer={customer} /> },
+    ...(canList ? [{ id: "list", label: "Move a list", content: <MoveList customer={customer} /> }] : []),
+  ];
+  return <Tabs label="Group moves" tabs={tabs} active={tabs.some((t) => t.id === filters.tab) ? filters.tab : "results"} onChange={(id) => update({ tab: id }, true)} />;
+}
+
 export function GroupMovesPage() {
   const { selected } = useCustomers();
   return <>
-    <PageHeader title="Group moves" subtitle="Suggestions from engineers and the result of every move. Administrators move devices directly from the device page or the onboarding plan." />
-    {!selected ? <SelectCustomer /> : <Requests key={selected.id} customer={selected} />}
+    <PageHeader title="Group moves" subtitle="Move a list of devices to a group, review suggestions from engineers and see the result of every move." />
+    {!selected ? <SelectCustomer /> : <Workspace key={selected.id} customer={selected} />}
   </>;
 }

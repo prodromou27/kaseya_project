@@ -308,6 +308,8 @@ def test_200_without_documented_answer_and_device_not_moved_is_not_applied(world
     assert world.client(world.admin_a).get(base(world), {"view": "to_verify"}).json()["results"] == []
     waiting = world.client(world.admin_a).get(base(world), {"view": "to_move"}).json()
     assert [p["id"] for p in waiting["results"]] == [proposal["id"]]
+    shown = waiting["results"][0]["execution"]["answer"]
+    assert shown["documented_answer"] is False and "content_type" in shown and "content_length" in shown
     # Once the cause is fixed the same move can be sent again.
     body = world.client(world.admin_a).post(f"{base(world)}{proposal['id']}/execute/").json()
     assert body["execution"]["state"] == "succeeded"
