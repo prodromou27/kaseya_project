@@ -441,3 +441,20 @@ in words; tick **Needs attention only** to see just those.
 
 Markings and owners exist only in this portal; nothing is changed in VSA X.
 
+## Applying custom fields from an allowlisted workstation (CFA-12)
+
+If a custom field job finishes with devices that VSA X answered OK for but did not change - usually a proxy or web
+application firewall in front of the VSA X API answering instead of the API - the job shows **Download apply script
+(Python)** (administrators only). Run that script from a workstation that is allowed through the firewall:
+
+1. Install Python 3 and `requests` (`pip install requests`).
+2. Run it: `python3 apply-custom-field-*.py`. The script asks you for the VSA X API token id and secret on your own
+   workstation (the secret is hidden as you type). The token is never written into the file and never fetched from the
+   portal or any server. (For an unattended run you may instead set `VSA_TOKEN_ID` and `VSA_TOKEN_SECRET` in the
+   environment first; the script uses those when present.)
+
+The script uses the documented VSA X API, reads each device's current value first (so it is safe to re-run and skips
+devices already correct), writes the new value and reads it back to confirm. It never disables TLS and never tries to
+evade the firewall - it simply runs the authorized call from a host the firewall permits. If it still reports "answered
+OK but the value is still ...", ask your security team to allowlist the portal's write calls (see the administrator
+guide).

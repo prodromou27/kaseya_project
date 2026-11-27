@@ -604,10 +604,21 @@ def _verify(job: Job, item: Item, adapter: Any, answer: dict[str, Any] | None = 
         # with what VSA X's own answer claimed (never more than the value it echoed back).
         unchanged = item.device_assigned and observed == item.current_value
         code = "update_not_applied" if unchanged else "value_not_confirmed"
+        shape = ""
+        if answer and answer.get("http_status"):
+            shape = (
+                f" (HTTP {answer['http_status']}, {answer.get('content_type') or 'no content type'}, "
+                f"{answer.get('content_length', 0)} bytes"
+                f"{', not the documented API answer' if not answer.get('documented_answer') else ''})"
+            )
+        from apps.integrations.vsa.answer import describe
+
+        who = describe((answer or {}).get("fingerprint"))
+        answered_by = f" Answered by: {who}." if who else ""
         note = (
-            f"VSA X answered OK{' and echoed the new value' if claims_applied else ''}"
-            f"{' without the documented answer' if answer is not None and not answered else ''}; "
-            f"reading the device back shows {observed!r}."
+            f"VSA X answered OK{shape}{' and echoed the new value' if claims_applied else ''}"
+            f"{' without the documented answer' if answer is not None and not answered and not shape else ''}; "
+            f"reading the device back shows {observed!r}.{answered_by}"
         )
         logger.warning(
             "custom_field_write_not_confirmed",
@@ -616,9 +627,15 @@ def _verify(job: Job, item: Item, adapter: Any, answer: dict[str, Any] | None = 
                 "route": job.integration_instance.custom_field_write_route,
                 "answer_echoed_value": claims_applied,
                 "still_previous_value": bool(unchanged),
+                **{
+                    k: (answer or {}).get(k)
+                    for k in ("http_status", "documented_answer", "content_type", "content_length")
+                },
             },
         )
-        return _record(job, item, Item.Result.VERIFICATION_FAILED, code, note=note, final_value=observed)
+        return _record(
+            job, item, Item.Result.VERIFICATION_FAILED, code, note=note, final_value=observed, action_note=note[:255]
+        )
     return _record(job, item, Item.Result.VERIFICATION_PENDING, "read_back_failed")
 
 

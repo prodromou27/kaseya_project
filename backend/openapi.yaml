@@ -2182,6 +2182,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/Job'
           description: ''
+  /api/v1/customers/{customer_pk}/custom-field-jobs/{id}/script/:
+    get:
+      operationId: customers_custom_field_jobs_script_retrieve
+      description: |-
+        CFA-12: a stand-alone Python script that applies this job's remaining writes to the VSA X API, to run from
+        a workstation the proxy/WAF allows. The API token is never written into the file (read from the environment).
+      parameters:
+      - in: path
+        name: customer_pk
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this assignment job.
+        required: true
+      tags:
+      - customers
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/customers/{customer_pk}/custom-field-jobs/inspect-file/:
     post:
       operationId: customers_custom_field_jobs_inspect_file_create

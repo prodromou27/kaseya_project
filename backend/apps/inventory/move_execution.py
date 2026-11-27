@@ -212,7 +212,11 @@ def execute_move(
         http_status=execution.http_status,
         error_code=execution.error_code,
         target_group_id=target,
-        answer={k: answer[k] for k in ("documented_answer", "content_type", "content_length") if k in answer},
+        answer={
+            k: answer[k]
+            for k in ("documented_answer", "content_type", "content_length", "fingerprint")
+            if k in answer and answer[k] is not None
+        },
     )
     return execution
 

@@ -164,11 +164,28 @@ class VsaCustomFieldWriter:
             raise WriteOutcomeUnknown("timeout_or_connection") from exc
         status = int(resp.status_code)
         if 200 <= status < 300:
+            # The shape of the answer (never its body) is kept: live tenant 2026-11-27 answered OK to updateAssigned
+            # without applying it, like group moves (also PUT), while assign (POST) works.
             try:
-                data = (resp.json() or {}).get("Data") or {}
+                body = resp.json()
             except ValueError:
-                data = {}
-            return {"value": str(data.get("Value") or "")[:MAX_VALUE], "device": str(data.get("ContextItemId") or "")}
+                body = None
+            data = body.get("Data") if isinstance(body, dict) else None
+            documented = isinstance(data, dict) and "ContextItemId" in data
+            data = data if isinstance(data, dict) else {}
+            result = {
+                "value": str(data.get("Value") or "")[:MAX_VALUE],
+                "device": str(data.get("ContextItemId") or ""),
+                "http_status": status,
+                "documented_answer": documented,
+                "content_type": str(resp.headers.get("Content-Type", ""))[:100],
+                "content_length": len(getattr(resp, "content", b"") or b""),
+            }
+            if not documented:  # who answered - WAF/proxy fingerprint, never the body itself
+                from .answer import fingerprint
+
+                result["fingerprint"] = fingerprint(resp)
+            return result
         if 300 <= status < 400 or status >= 500:
             raise WriteOutcomeUnknown(f"http_{status}", status)
         raise WriteRejected(status)  # 429 included: not applied, the engine backs off before trying again

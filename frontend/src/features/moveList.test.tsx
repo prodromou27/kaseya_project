@@ -21,7 +21,7 @@ const moved = (errorCode = "") => ({
   created_at: "2026-11-27T08:00:00Z", expires_at: "2026-11-28T08:00:00Z", expired: false, execution_enabled: false, execution_available: true, execution_blocked_reason: "",
   execution: { state: errorCode ? "failed" : "succeeded", executed_by: "admin@example.test", started_at: "2026-11-27T09:00:00Z", finished_at: "2026-11-27T09:00:01Z",
     http_status: 200, error_code: errorCode, observed_group_id: errorCode ? "51" : "52", verified_at: "2026-11-27T09:00:01Z",
-    answer: errorCode ? { documented_answer: false, content_type: "text/html; charset=utf-8", content_length: 5120 } : null },
+    answer: errorCode ? { documented_answer: false, content_type: "text/html; charset=utf-8", content_length: 5120, answered_by: 'page title "Request Rejected"; Server: BigIP' } : null },
 });
 
 function routes(moveNowAllowed: boolean, errorCode = "") {
@@ -70,9 +70,11 @@ describe("move a list of devices (MOV-02)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Move 2 devices" }));
     expect(await screen.findByText(/the remaining 1 device\(s\) were not sent/)).toBeInTheDocument();
     expect(calls.filter((c) => c.url.endsWith("/move-now/"))).toHaveLength(1);
-    expect(screen.getByRole("list", { name: "Move results" })).toHaveTextContent(
+    const results = screen.getByRole("list", { name: "Move results" });
+    expect(results).toHaveTextContent(
       "VSA X's answer: HTTP 200, text/html; charset=utf-8, 5120 bytes - not the documented API answer (an HTML page usually means a proxy",
     );
+    expect(results).toHaveTextContent('Answered by: page title "Request Rejected"; Server: BigIP.');
   });
 
   it("records suggestions with a reason when moving directly is not available", async () => {

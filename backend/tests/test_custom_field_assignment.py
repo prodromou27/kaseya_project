@@ -675,7 +675,32 @@ def test_update_answered_ok_but_not_applied_is_reported_precisely(world, ready, 
         "TBD",
     )
     event = AuditEvent.objects.filter(target_id=job["id"], action="custom_field.assignment").latest("created_at")
-    assert event.metadata["note"] == "VSA X answered OK and echoed the new value; reading the device back shows 'TBD'."
+    expected = (
+        "VSA X answered OK (HTTP 200, no content type, 0 bytes) and echoed the new value; "
+        "reading the device back shows 'TBD'."
+    )
+    assert event.metadata["note"] == expected and row["action_note"] == expected
+
+
+def test_update_answered_by_a_proxy_page_shows_the_answer_shape(world, ready, django_capture_on_commit_callbacks):
+    job, _ws, eng = _update_tbd_job(world, ready, django_capture_on_commit_callbacks)
+
+    class ProxyPage:
+        def send(self, method, url, **kw):
+            response = fixtures.FakeResponse(
+                200, ValueError("not json"), {"Content-Type": "text/html", "Server": "BigIP"}
+            )
+            response.content = (
+                b"<html><head><title>Request Rejected</title></head><body>" + b"x" * 940 + b"</body></html>"
+            )
+            return response
+
+    jobs.execute(job["id"], writer=VsaCustomFieldWriter(ready, transport=ProxyPage()))
+    row = items(world, eng, job["id"])[0]
+    assert row["error_code"] == "update_not_applied"
+    assert "VSA X answered OK (HTTP 200, text/html," in row["action_note"]
+    assert "not the documented API answer); reading the device back shows 'TBD'." in row["action_note"]
+    assert 'Answered by: page title "Request Rejected"; Server: BigIP.' in row["action_note"]
 
 
 def test_update_that_shows_up_late_is_verified(world, ready, django_capture_on_commit_callbacks, monkeypatch):
@@ -690,3 +715,40 @@ def test_update_that_shows_up_late_is_verified(world, ready, django_capture_on_c
     jobs.execute(job["id"], writer=VsaCustomFieldWriter(ready, transport=_AnswersOkWithoutApplying()))
     row = items(world, eng, job["id"])[0]
     assert (row["result"], row["final_value"]) == ("verified", "Ring 1")
+
+
+def test_export_apply_script_has_no_token_keeps_tls_and_lists_unapplied_devices(
+    world, ready, django_capture_on_commit_callbacks
+):
+    """CFA-12: an administrator exports a Python script to run from an allowlisted workstation (WAF case)."""
+    job, ws, _eng = _update_tbd_job(world, ready, django_capture_on_commit_callbacks)
+    jobs.execute(job["id"], writer=VsaCustomFieldWriter(ready, transport=_AnswersOkWithoutApplying()))
+    resp = world.client(world.admin_a).get(f"{base(world)}/custom-field-jobs/{job['id']}/script/")
+    assert resp.status_code == 200
+    assert resp["Content-Type"] == "text/x-python; charset=utf-8"
+    assert "attachment" in resp["Content-Disposition"] and resp["Content-Disposition"].endswith('.py"')
+    body = resp.content.decode()
+    # The unapplied device and its target value are in the script; the token never is.
+    assert str(ws.asset.external_id) in body and '"value": "Ring 1"' in body
+    # It asks for the token on the workstation (secret hidden), and still honours env vars; never from a server.
+    assert "getpass.getpass(" in body and "input(" in body
+    assert "VSA_TOKEN_ID" in body and "VSA_TOKEN_SECRET" in body
+    assert "verify=True" in body and "verify=False" not in body
+    # No hardcoded auth header or stored credential reference: the token comes only from the prompt / environment.
+    assert "Authorization" not in body
+    assert 'os.environ.get("VSA_TOKEN_SECRET"' in body
+    assert (ready.credential_ref == "") or (ready.credential_ref not in body)
+    # Audit recorded with a device count, no values.
+    event = AuditEvent.objects.filter(target_id=job["id"], action="custom_field.script_exported").latest("created_at")
+    assert event.metadata["devices"] == 1 and "Ring 1" not in str(event.metadata)
+
+
+def test_export_apply_script_requires_apply_permission(world, ready, django_capture_on_commit_callbacks):
+    job, _ws, eng = _update_tbd_job(world, ready, django_capture_on_commit_callbacks)
+    # An engineer (prepare/preview only) may not export a runnable writer.
+    assert eng.get(f"{base(world)}/custom-field-jobs/{job['id']}/script/").status_code in (403, 404)
+    # Another customer's user cannot reach this job at all.
+    assert world.client(world.engineer_b).get(f"{base(world)}/custom-field-jobs/{job['id']}/script/").status_code in (
+        403,
+        404,
+    )

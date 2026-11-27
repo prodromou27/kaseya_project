@@ -296,6 +296,8 @@ class JobViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveMode
             # Engineers prepare and preview; only administrators apply changes to VSA X.
             "confirm": Cap.CUSTOMER_CF_APPROVE,
             "retry": Cap.CUSTOMER_CF_APPROVE,
+            # The exported script performs the actual VSA X write, so it needs the apply permission.
+            "script": Cap.CUSTOMER_CF_APPROVE,
             "report": Cap.CUSTOMER_EXPORT,
         }
         self.customer_capability = caps.get(
@@ -491,6 +493,31 @@ class JobViewSet(CustomerScopedMixin, mixins.ListModelMixin, mixins.RetrieveMode
             else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         resp["Content-Disposition"] = f'attachment; filename="custom-field-job-{stamp}.{fmt}"'
+        resp["X-Content-Type-Options"] = "nosniff"
+        return resp
+
+    @extend_schema(responses={200: OpenApiTypes.BINARY})
+    @action(detail=True, methods=["get"])
+    def script(self, request: Request, customer_pk: str | None = None, pk: str | None = None) -> HttpResponse:
+        """CFA-12: a stand-alone Python script that applies this job's remaining writes to the VSA X API, to run from
+        a workstation the proxy/WAF allows. The API token is never written into the file (read from the environment)."""
+        from . import script_export
+
+        job = self._job()
+        body = script_export.render_script(job)
+        record_event(
+            action="custom_field.script_exported",
+            outcome="success",
+            actor=request.user,
+            customer=job.customer,
+            target_type="custom_field_job",
+            target_id=str(job.id),
+            request=request,
+            metadata={"field": job.field.name, "devices": len(script_export.targets(job))},
+        )
+        stamp = timezone.now().strftime("%Y%m%d-%H%M")
+        resp = HttpResponse(body, content_type="text/x-python; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="apply-custom-field-{stamp}.py"'
         resp["X-Content-Type-Options"] = "nosniff"
         return resp
 

@@ -47,7 +47,12 @@ class ExecutionSerializer(serializers.ModelSerializer):
         answer = (event.metadata or {}).get("answer") if event else None
         if not isinstance(answer, dict):
             return None
-        return {k: answer[k] for k in ("documented_answer", "content_type", "content_length") if k in answer}
+        from apps.integrations.vsa.answer import describe
+
+        shaped = {k: answer[k] for k in ("documented_answer", "content_type", "content_length") if k in answer}
+        if answer.get("fingerprint"):
+            shaped["answered_by"] = describe(answer["fingerprint"])
+        return shaped
 
     class Meta:
         model = GroupMoveExecution

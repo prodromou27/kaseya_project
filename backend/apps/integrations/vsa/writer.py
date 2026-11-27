@@ -161,10 +161,19 @@ class VsaMoveWriter:
                 body = None
             data = body.get("Data") if isinstance(body, dict) else None
             documented = isinstance(data, dict) and "GroupId" in data
+            fp = None
             if not documented:
+                from .answer import describe, fingerprint
+
+                fp = fingerprint(resp)
                 logger.warning(
                     "group_move_answer_not_json",
-                    extra={"http_status": status, "content_type": content_type, "content_length": content_length},
+                    extra={
+                        "http_status": status,
+                        "content_type": content_type,
+                        "content_length": content_length,
+                        "answered_by": describe(fp),
+                    },
                 )
             data = data if isinstance(data, dict) else {}
             return {
@@ -176,6 +185,7 @@ class VsaMoveWriter:
                 "documented_answer": documented,
                 "content_type": content_type,
                 "content_length": content_length,
+                "fingerprint": fp,
             }
         if 300 <= status < 400 or status >= 500:
             raise MoveOutcomeUnknown(f"http_{status}", status)

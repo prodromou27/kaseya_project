@@ -1,5 +1,18 @@
 # Changelog
 
+## CFA-12 - 2026-11-27 - export a script to apply custom field writes from an allowlisted workstation
+
+- When a custom field job has devices VSA X did not apply (a proxy/WAF answering OK), an administrator can **Download apply script (Python)** from the job. The script applies the remaining writes with the documented VSA X API (`assign` / `updateAssigned`), reads each device's value first (idempotent, safe to re-run) and reads it back to confirm.
+- Run it from a workstation the proxy/WAF allows. It is not a firewall bypass: it makes the authorized call from a permitted host.
+- The API token is never written into the file - the script reads `VSA_TOKEN_ID` / `VSA_TOKEN_SECRET` from the environment and refuses to run without them; TLS verification is always on; only the documented endpoints are used.
+- New endpoint `GET /customers/{id}/custom-field-jobs/{job}/script/` (apply permission; audited as `custom_field.script_exported` with a device count, no values).
+
+## DIAG-01 - 2026-11-27 - identify a WAF or proxy that answers a VSA X write
+
+- When VSA X answers 2xx to a group move or custom field update but the change is not applied, the portal now keeps a safe *fingerprint* of who answered - the HTML `<title>` (block pages say "Request Rejected", "Access Denied", a support ID), named proxy/CDN/WAF headers (`Server`, `Via`, `CF-Ray`, `X-Iinfo`, `X-Sucuri-ID`, ...) and the *names* of cookies the answer sets (F5 `TS...`, Imperva `incap_ses...`). Never the body, header values beyond 120 chars, or cookie values.
+- Shown in the job item note ("Answered by: page title \"Request Rejected\"; Server: BigIP") and on a blocked move's reason line, and logged (`custom_field_write_not_confirmed`, `group_move_answer_not_json`) with `answered_by`. This tells an API answer apart from a WAF/proxy page without reading response bodies.
+- Worker logging fixed: `CELERY_WORKER_HIJACK_ROOT_LOGGER = False` so the worker keeps the portal's JSON format (structured fields and redaction) instead of Celery's plain format.
+
 ## MOV-02 - 2026-11-27 - move a list of devices to a group
 
 - **Group moves → Move a list**: paste device names, serials or VSA device IDs, or upload TXT/CSV/XLSX; choose the destination group; **Check list** shows per line *move* or *skipped* (not in VSA X / not onboarded, already in the group, another organisation, several matches, listed twice, invalid, inventory out of date). Servers may be moved too.

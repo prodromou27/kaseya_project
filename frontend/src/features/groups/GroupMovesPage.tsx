@@ -28,7 +28,7 @@ type Execution = {
   state: ExecutionState; executed_by: string; started_at: string; finished_at: string | null;
   http_status: number | null; error_code: string; observed_group_id: string; verified_at: string | null;
   /** Only for "answered OK but not applied": the shape of VSA X's answer (never its body). */
-  answer?: { documented_answer?: boolean; content_type?: string; content_length?: number } | null;
+  answer?: { documented_answer?: boolean; content_type?: string; content_length?: number; answered_by?: string } | null;
 };
 
 export const EXECUTION_TEXT: Record<ExecutionState, { label: string; tone: "good" | "warn" | "bad" | "neutral"; help: string }> = {
@@ -64,7 +64,8 @@ export function executionReason(ex: Execution): string {
   if (known && ex.error_code === "accepted_not_applied" && ex.answer) {
     const a = ex.answer;
     const shape = [ex.http_status ? `HTTP ${ex.http_status}` : "", a.content_type || "no content type", `${a.content_length ?? 0} bytes`].filter(Boolean).join(", ");
-    return `${known} VSA X's answer: ${shape}${a.documented_answer === false ? " - not the documented API answer" : ""}${/html/i.test(a.content_type ?? "") ? " (an HTML page usually means a proxy, firewall or login page answered)" : ""}.`;
+    const who = a.answered_by ? ` Answered by: ${a.answered_by}.` : "";
+    return `${known} VSA X's answer: ${shape}${a.documented_answer === false ? " - not the documented API answer" : ""}${/html/i.test(a.content_type ?? "") ? " (an HTML page usually means a proxy, firewall or login page answered)" : ""}.${who}`;
   }
   if (known) return known;
   if (/^http_\d+$/.test(ex.error_code)) return `VSA X answered with HTTP ${ex.error_code.slice(5)}.`;

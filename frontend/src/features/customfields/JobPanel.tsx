@@ -195,6 +195,8 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
         const c = j.counts;
         const done = DONE.has(j.state);
         const retryable = Object.entries(c.result ?? {}).some(([k, n]) => RETRYABLE.has(k) && n > 0);
+        // Devices VSA X did not apply (often a proxy/WAF answering OK): offer the stand-alone apply script.
+        const notApplied = (["failed", "verification_failed", "verification_pending", "unknown"] as const).some((k) => (c.result?.[k] ?? 0) > 0);
         const ownJob = me.email === j.created_by || me.email === j.confirmed_by;
         return (
           <section aria-label="Custom field job" className="space-y-3 rounded border border-slate-200 bg-white p-3">
@@ -324,7 +326,15 @@ export function JobPanel({ customer, jobId, onClose, onRetry }: { customer: Cust
                     <a className="btn-secondary" href={`/api/v1${base(customer, j.id)}/report/?type=csv`}>Download results (CSV)</a>
                   </> : null}
                   {retryable && canApply ? <button type="button" className="btn-secondary" onClick={() => act.mutate({ path: "retry" })}>Prepare a new job for the failed devices</button> : null}
+                  {notApplied && canApply ? <a className="btn-secondary" href={`/api/v1${base(customer, j.id)}/script/`}>Download apply script (Python)</a> : null}
                 </div>
+                {notApplied && canApply ? (
+                  <p className="text-xs text-slate-500">
+                    If VSA X answered OK but the value did not change (a proxy or firewall may be answering), download the script and run it
+                    from a workstation that is allowed through the firewall. It uses the documented VSA X API and asks you for the API token when
+                    it runs (on your workstation, secret hidden); the token is never written into the file or fetched from the server.
+                  </p>
+                ) : null}
               </>
             ) : null}
             {act.isError ? <p role="alert" className="text-sm text-red-700">{describeError(act.error)}</p> : null}

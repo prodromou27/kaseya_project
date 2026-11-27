@@ -215,6 +215,8 @@ CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_TASK_ALWAYS_EAGER", default=DJANGO_E
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Keep the portal's JSON logging (structured fields, redaction) in the worker instead of Celery's plain format.
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_RESULT_BACKEND = None
